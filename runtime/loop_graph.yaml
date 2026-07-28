@@ -1,0 +1,1352 @@
+version: 1.0
+cycle_controls:
+  correlation_id_required: true
+  max_fan_out_per_event: 5
+  duplicate_suppression: "deduplication_key per loop_id, event, asset, and proof scope"
+  loop_storm_breaker: "block and escalate when one correlation_id triggers more than 12 loop executions"
+  oscillation_escalation: "escalate when the same decision reverses more than twice inside the review window"
+edges:
+  -
+    from: loop-001-product-discovery-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-001-product-discovery-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-002-ai-use-case-validation-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-002-ai-use-case-validation-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-003-business-value-validation-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-003-business-value-validation-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-004-roadmap-alignment-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-004-roadmap-alignment-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-005-product-and-service-retirement-and-decommissioning-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-005-product-and-service-retirement-and-decommissioning-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-006-requirements-quality-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-006-requirements-quality-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-007-requirements-change-control-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-007-requirements-change-control-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-008-requirements-traceability-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-008-requirements-traceability-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-009-backlog-refinement-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-010-cross-team-system-and-vendor-dependency-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-010-cross-team-system-and-vendor-dependency-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-011-risk-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-012-sprint-execution-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-012-sprint-execution-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-013-delivery-forecasting-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-013-delivery-forecasting-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-014-retrospective-improvement-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-014-retrospective-improvement-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-015-design-review-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-015-design-review-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-016-architecture-fitness-and-future-compatibility-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-016-architecture-fitness-and-future-compatibility-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-017-api-lifecycle-and-backward-compatibility-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-017-api-lifecycle-and-backward-compatibility-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-018-configuration-and-feature-flag-governance-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-018-configuration-and-feature-flag-governance-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-019-technical-debt-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-019-technical-debt-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-020-application-modernization-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-020-application-modernization-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-021-code-build-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-021-code-build-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-022-code-quality-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-022-code-quality-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-023-pull-request-review-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-023-pull-request-review-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-024-software-dependency-and-package-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-024-software-dependency-and-package-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-025-ci-pipeline-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-025-ci-pipeline-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-026-test-data-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-026-test-data-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-027-unit-testing-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-027-unit-testing-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-028-integration-testing-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-028-integration-testing-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-029-end-to-end-testing-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-029-end-to-end-testing-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-030-regression-testing-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-030-regression-testing-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-031-performance-testing-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-031-performance-testing-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-032-user-acceptance-testing-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-032-user-acceptance-testing-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-033-accessibility-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-033-accessibility-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-034-defect-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-034-defect-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-035-ux-improvement-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-035-ux-improvement-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-036-release-readiness-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-036-release-readiness-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-037-operational-readiness-and-runbook-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-037-operational-readiness-and-runbook-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-038-deployment-validation-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-038-deployment-validation-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-039-environment-drift-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-039-environment-drift-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-040-rollback-backup-and-recovery-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-040-rollback-backup-and-recovery-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-041-observability-improvement-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-041-observability-improvement-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-042-reliability-slo-and-error-budget-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-042-reliability-slo-and-error-budget-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-043-incident-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-043-incident-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-044-ai-incident-response-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-044-ai-incident-response-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-045-problem-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-045-problem-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-046-performance-capacity-cost-and-ai-economics-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-046-performance-capacity-cost-and-ai-economics-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-047-chaos-engineering-and-resilience-testing-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-047-chaos-engineering-and-resilience-testing-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-048-business-continuity-and-crisis-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-048-business-continuity-and-crisis-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-049-data-governance-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-049-data-governance-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-050-data-schema-and-contract-evolution-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-050-data-schema-and-contract-evolution-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-051-ai-data-preparation-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-051-ai-data-preparation-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-052-data-quality-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-052-data-quality-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-053-data-pipeline-reliability-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-053-data-pipeline-reliability-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-054-database-performance-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-054-database-performance-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-056-model-data-and-prompt-lineage-and-reproducibility-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-056-model-data-and-prompt-lineage-and-reproducibility-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-057-prompt-engineering-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-057-prompt-engineering-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-058-model-evaluation-and-benchmarking-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-058-model-evaluation-and-benchmarking-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-059-rag-quality-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-059-rag-quality-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-060-ai-safety-and-responsible-ai-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-060-ai-safety-and-responsible-ai-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-061-hallucination-reduction-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-061-hallucination-reduction-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-062-model-and-data-drift-monitoring-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-062-model-and-data-drift-monitoring-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-063-ai-feedback-learning-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-063-ai-feedback-learning-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-064-evaluation-dataset-evolution-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-064-evaluation-dataset-evolution-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-065-model-lifecycle-and-upgrade-safety-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-065-model-lifecycle-and-upgrade-safety-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-066-agent-goal-achievement-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-066-agent-goal-achievement-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-067-agent-planning-quality-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-067-agent-planning-quality-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-068-tool-selection-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-068-tool-selection-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-069-tool-execution-validation-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-069-tool-execution-validation-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-070-agent-context-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-070-agent-context-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-071-agent-memory-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-071-agent-memory-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-072-agent-resource-budget-and-rate-limit-control-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-072-agent-resource-budget-and-rate-limit-control-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-073-agent-state-consistency-and-idempotency-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-073-agent-state-consistency-and-idempotency-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-074-agent-failure-recovery-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-074-agent-failure-recovery-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-075-multi-agent-coordination-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-075-multi-agent-coordination-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-076-agent-delegation-and-accountability-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-076-agent-delegation-and-accountability-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-077-secure-sdlc-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-077-secure-sdlc-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-078-model-and-agent-interaction-security-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-078-model-and-agent-interaction-security-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-079-agent-guardrail-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-079-agent-guardrail-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-080-agent-identity-and-credential-governance-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-080-agent-identity-and-credential-governance-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-081-access-governance-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-081-access-governance-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-082-vulnerability-management-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-082-vulnerability-management-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-083-security-operations-and-threat-detection-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-083-security-operations-and-threat-detection-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-084-ai-abuse-and-misuse-monitoring-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-084-ai-abuse-and-misuse-monitoring-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-085-frontier-cyber-defense-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-085-frontier-cyber-defense-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-086-software-supply-chain-and-build-integrity-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-086-software-supply-chain-and-build-integrity-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-087-ai-supply-chain-security-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-087-ai-supply-chain-security-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-088-privacy-engineering-and-data-protection-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-088-privacy-engineering-and-data-protection-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-089-audit-logging-and-forensic-readiness-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-089-audit-logging-and-forensic-readiness-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-090-ai-red-team-evolution-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-090-ai-red-team-evolution-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-091-frontier-model-advancement-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-091-frontier-model-advancement-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-092-model-portability-and-exit-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-092-model-portability-and-exit-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-093-capability-absorption-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-093-capability-absorption-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-094-product-obsolescence-detection-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-094-product-obsolescence-detection-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-095-agi-readiness-and-capability-escalation-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-095-agi-readiness-and-capability-escalation-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-097-catastrophic-failure-and-containment-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-097-catastrophic-failure-and-containment-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-098-quantum-computing-opportunity-scouting-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-098-quantum-computing-opportunity-scouting-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-099-adoption-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-099-adoption-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-100-human-oversight-approval-and-calibration-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-100-human-oversight-approval-and-calibration-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-101-agent-autonomy-calibration-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-101-agent-autonomy-calibration-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-102-autonomy-boundary-review-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-102-autonomy-boundary-review-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-103-capability-based-governance-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-103-capability-based-governance-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-104-compliance-evidence-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-104-compliance-evidence-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-105-legal-regulatory-and-standards-watch-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-105-legal-regulatory-and-standards-watch-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-106-vendor-and-third-party-risk-and-sla-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-106-vendor-and-third-party-risk-and-sla-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-107-ip-copyright-and-license-compliance-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-107-ip-copyright-and-license-compliance-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-108-workforce-skills-and-operating-model-readiness-loop
+    to: loop-009-backlog-refinement-loop
+    event: improvement_action_required
+    evidence: loop_record
+    priority: medium
+  -
+    from: loop-108-workforce-skills-and-operating-model-readiness-loop
+    to: loop-011-risk-management-loop
+    event: material_risk_identified
+    evidence: risk_signal
+    priority: medium
+  -
+    from: loop-069-tool-execution-validation-loop
+    to: loop-073-agent-state-consistency-and-idempotency-loop
+    event: partial_effect_detected
+    evidence: tool_execution_record
+    priority: high
+  -
+    from: loop-069-tool-execution-validation-loop
+    to: loop-074-agent-failure-recovery-loop
+    event: tool_execution_failed
+    evidence: tool_error_record
+    priority: high
+  -
+    from: loop-074-agent-failure-recovery-loop
+    to: loop-092-model-portability-and-exit-loop
+    event: repeated_provider_failure
+    evidence: failure_recovery_trend
+    priority: medium
+  -
+    from: loop-061-hallucination-reduction-loop
+    to: loop-064-evaluation-dataset-evolution-loop
+    event: new_supported_failure_case
+    evidence: hallucination_case
+    priority: medium
+  -
+    from: loop-044-ai-incident-response-loop
+    to: loop-090-ai-red-team-evolution-loop
+    event: ai_security_incident
+    evidence: incident_report
+    priority: high
+  -
+    from: loop-038-deployment-validation-loop
+    to: loop-040-rollback-backup-and-recovery-loop
+    event: deployment_validation_failed
+    evidence: deployment_evidence
+    priority: high
+  -
+    from: loop-043-incident-management-loop
+    to: loop-045-problem-management-loop
+    event: repeat_incident_or_systemic_cause
+    evidence: incident_timeline
+    priority: high
+  -
+    from: loop-088-privacy-engineering-and-data-protection-loop
+    to: loop-104-compliance-evidence-loop
+    event: privacy_control_evidence_required
+    evidence: privacy_assessment
+    priority: medium
+  -
+    from: loop-086-software-supply-chain-and-build-integrity-loop
+    to: loop-082-vulnerability-management-loop
+    event: supply_chain_vulnerability
+    evidence: sbom_or_scan_result
+    priority: high
+  -
+    from: loop-071-agent-memory-loop
+    to: loop-088-privacy-engineering-and-data-protection-loop
+    event: sensitive_memory_operation
+    evidence: memory_operation_record
+    priority: high

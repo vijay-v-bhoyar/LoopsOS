@@ -1,0 +1,28 @@
+version: 1.0
+status: known_activation_gaps_before_ACTIVE_use
+gaps:
+  -
+    gap_id: owners-unassigned
+    severity: activation_blocker
+    description: "category owner records are placeholders until named humans or accountable teams are assigned"
+    required_fix: "replace UNASSIGNED policy, gate, risk, backup, executor, and validator ownership before ACTIVE use"
+  -
+    gap_id: evidence-locations-unassigned
+    severity: activation_blocker
+    description: "evidence registries intentionally avoid inventing authoritative systems"
+    required_fix: "map each active category to source control, CI, ticketing, observability, GRC, data, or model-eval evidence stores"
+  -
+    gap_id: metric-targets-unset
+    severity: pilot_blocker
+    description: "metric packs define formulas but not organization-specific target values"
+    required_fix: "set target values and observation windows for selected pilot loops"
+  -
+    gap_id: probes-are-contracts-not-integrations
+    severity: pilot_blocker
+    description: "probe registry defines proof methods but does not yet call real CI, observability, security, or model-eval systems"
+    required_fix: "bind probe IDs to executable adapters for the first pilot playbook"
+  -
+    gap_id: golden-tasks-need-real-fixtures
+    severity: pilot_blocker
+    description: "golden tasks exist for every loop but need real examples from the operating environment"
+    required_fix: "seed golden tasks from recent releases, incidents, defects, AI failures, audits, and agent tool calls"

@@ -1,0 +1,56 @@
+version: 1.0
+orchestration_shape: supervisor_graph_with_deterministic_gates
+principle: "108 loops are runtime profiles, not 108 unconstrained autonomous agents"
+nodes:
+  -
+    node: "Trigger Router"
+    owns: "event classification, dedupe, initial routing"
+    reasoning_pattern: ReAct
+  -
+    node: "Qualification Gate"
+    owns: "scope, owner, input sufficiency, risk tier"
+    reasoning_pattern: "Chain of Verification"
+  -
+    node: "Evidence Collector"
+    owns: "authoritative evidence and lineage"
+    reasoning_pattern: ReWOO
+  -
+    node: "Diagnosis Planner"
+    owns: "gap and cause analysis"
+    reasoning_pattern: "Chain of Thought and Graph of Thoughts"
+  -
+    node: "Control Applicability Mapper"
+    owns: "LC control mapping"
+    reasoning_pattern: "LLM-as-Judge with rules"
+  -
+    node: "Action Planner"
+    owns: "remediation sequence and recovery plan"
+    reasoning_pattern: Plan-and-Execute
+  -
+    node: "Authority Gate"
+    owns: "approval, policy, separation of duties"
+    reasoning_pattern: "Guardrail Layers"
+  -
+    node: Executor
+    owns: "bounded action execution"
+    reasoning_pattern: "ReWOO or deterministic workflow"
+  -
+    node: Validator
+    owns: "immediate correctness and non-regression"
+    reasoning_pattern: "Chain of Verification"
+  -
+    node: "Proof Runner"
+    owns: "probe, drill, replay, canary, sustained proof"
+    reasoning_pattern: "Tool-driven verification"
+  -
+    node: Recorder
+    owns: "evidence, result envelope, lifecycle events"
+    reasoning_pattern: "deterministic write path"
+  -
+    node: "Learning Node"
+    owns: "regression cases, standards, backlog, memory"
+    reasoning_pattern: "Reflexion with governed memory"
+  -
+    node: "Effectiveness Monitor"
+    owns: "observation window and drift"
+    reasoning_pattern: "scheduled monitor"

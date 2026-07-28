@@ -1,0 +1,56 @@
+:root {
+  color-scheme: light;
+  --f2-font-family-base: "Segoe UI", "Segoe UI Variable", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --f2-bg-1: #fbfdff;
+  --f2-bg-2: #f3f8fd;
+  --f2-bg-3: #eaf3fb;
+  --f2-fg-1: #102033;
+  --f2-fg-2: #34485f;
+  --f2-fg-3: #66798d;
+  --f2-brand: #256f9c;
+  --f2-brand-strong: #185f87;
+  --f2-brand-subtle: #e6f3fb;
+  --f2-border-1: #c6d7e5;
+  --f2-border-2: #dce8f1;
+  --f2-success: #0f7b0f;
+  --f2-success-bg: #eff9ef;
+  --f2-warning: #8a5a00;
+  --f2-warning-bg: #fff8e5;
+  --f2-danger: #b10e1c;
+  --f2-danger-bg: #fdf3f4;
+  --f2-info-bg: #eef7fc;
+  --f2-glass-bg: rgba(251, 253, 255, 0.88);
+  --f2-glass-border: rgba(16, 32, 51, 0.12);
+  --f2-radius-control: 6px;
+  --f2-radius-panel: 8px;
+  --f2-shadow-card: 0 1px 2px rgba(16, 32, 51, 0.07), 0 8px 20px rgba(16, 32, 51, 0.06);
+  --f2-shadow-panel: 0 20px 40px rgba(16, 32, 51, 0.10);
+  --f2-shadow-focus: 0 0 0 3px rgba(37, 111, 156, 0.28);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --f2-bg-1: #181512;
+  --f2-bg-2: #221c17;
+  --f2-bg-3: #2d241c;
+  --f2-fg-1: #fff7ed;
+  --f2-fg-2: #ead9c7;
+  --f2-fg-3: #bda995;
+  --f2-brand: #f2a65a;
+  --f2-brand-strong: #ffd3a1;
+  --f2-brand-subtle: #3a2618;
+  --f2-border-1: #5a4635;
+  --f2-border-2: #3b3028;
+  --f2-success: #7ee787;
+  --f2-success-bg: #102415;
+  --f2-warning: #f8d66d;
+  --f2-warning-bg: #2b210b;
+  --f2-danger: #ff9aa2;
+  --f2-danger-bg: #30151a;
+  --f2-info-bg: #2b2119;
+  --f2-glass-bg: rgba(24, 21, 18, 0.88);
+  --f2-glass-border: rgba(255, 247, 237, 0.14);
+  --f2-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.24), 0 12px 28px rgba(0, 0, 0, 0.28);
+  --f2-shadow-panel: 0 20px 40px rgba(0, 0, 0, 0.35);
+  --f2-shadow-focus: 0 0 0 3px rgba(242, 166, 90, 0.34);
+}

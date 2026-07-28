@@ -1,0 +1,6 @@
+version: 1.0
+source: "C:\\Users\\vijay\\Downloads\\production-grade-continuous-improvement-loop.md"
+vendored_path: standards/production-grade-continuous-improvement-loop.md
+sha256: edf42050212daf26ebeab38254695062147076d50e3bb58ee83165e031b7c34e
+last_reviewed: 2026-07-13
+status: vendored_for_reproducible_generation

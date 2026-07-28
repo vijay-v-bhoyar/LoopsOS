@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Standard Result Envelope",
+  "type": "object",
+  "required": [
+    "loop_id",
+    "loop_version",
+    "execution_id",
+    "correlation_id",
+    "risk_tier",
+    "authority",
+    "trigger",
+    "scope",
+    "state",
+    "evidence",
+    "timestamp"
+  ],
+  "properties": {
+    "loop_id": {
+      "type": "string"
+    },
+    "loop_version": {
+      "type": "string"
+    },
+    "execution_id": {
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "risk_tier": {
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ]
+    },
+    "authority": {
+      "type": "object"
+    },
+    "trigger": {
+      "type": "object"
+    },
+    "scope": {
+      "type": "object"
+    },
+    "state": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "array"
+    },
+    "timestamp": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,1623 @@
+version: 1.0
+loop_count: 108
+loops:
+  -
+    loop_id: loop-001-product-discovery-loop
+    number: 1
+    name: "Product Discovery Loop"
+    slug: product-discovery-loop
+    category_number: 1
+    category_name: "Product Strategy, Discovery and Lifecycle"
+    category_slug: product-strategy-discovery-and-lifecycle
+    trigger: "New customer evidence, support patterns, market changes, or proposed opportunities."
+    run: "Collect evidence, define the user problem, identify expected outcomes, test assumptions through research or prototypes, and rank opportunities."
+    output: "Validated problem statement, supporting evidence, rejected assumptions, and candidate backlog items."
+    cadence: "Continuous, with weekly review"
+    baseline_risk_tier: R1
+    markdown_path: loops/01-product-strategy-discovery-and-lifecycle/001-product-discovery-loop.md
+    descriptor_path: runtime/loop-descriptors/001-product-discovery-loop.yaml
+  -
+    loop_id: loop-002-ai-use-case-validation-loop
+    number: 2
+    name: "AI Use-Case Validation Loop"
+    slug: ai-use-case-validation-loop
+    category_number: 1
+    category_name: "Product Strategy, Discovery and Lifecycle"
+    category_slug: product-strategy-discovery-and-lifecycle
+    trigger: "A proposal to use AI, GenAI, or agents."
+    run: "Compare AI with deterministic alternatives, assess data availability, evaluation feasibility, cost, risk, explainability, human oversight, and operational support. Prototype where necessary."
+    output: "Go, revise, or no-go decision with an AI use-case contract and success measures."
+    cadence: "At use-case intake and before funding"
+    baseline_risk_tier: R2
+    markdown_path: loops/01-product-strategy-discovery-and-lifecycle/002-ai-use-case-validation-loop.md
+    descriptor_path: runtime/loop-descriptors/002-ai-use-case-validation-loop.yaml
+  -
+    loop_id: loop-003-business-value-validation-loop
+    number: 3
+    name: "Business Value Validation Loop"
+    slug: business-value-validation-loop
+    category_number: 1
+    category_name: "Product Strategy, Discovery and Lifecycle"
+    category_slug: product-strategy-discovery-and-lifecycle
+    trigger: "A scheduled value review or material variance in product performance."
+    run: "Compare expected benefits with actual revenue, savings, quality, adoption, risk reduction, and operating cost. Check whether results are attributable to the product."
+    output: "Value scorecard and a scale, continue, change, pause, or stop recommendation."
+    cadence: "Monthly or quarterly"
+    baseline_risk_tier: R1
+    markdown_path: loops/01-product-strategy-discovery-and-lifecycle/003-business-value-validation-loop.md
+    descriptor_path: runtime/loop-descriptors/003-business-value-validation-loop.yaml
+  -
+    loop_id: loop-004-roadmap-alignment-loop
+    number: 4
+    name: "Roadmap Alignment Loop"
+    slug: roadmap-alignment-loop
+    category_number: 1
+    category_name: "Product Strategy, Discovery and Lifecycle"
+    category_slug: product-strategy-discovery-and-lifecycle
+    trigger: "Strategy, customer priority, capacity, dependency, regulation, or technology changes."
+    run: "Rebalance initiatives based on value, risk, capacity, dependencies, architectural constraints, and sequencing."
+    output: "Prioritized roadmap, updated assumptions, dependency decisions, and release direction."
+    cadence: "Monthly or after major change"
+    baseline_risk_tier: R1
+    markdown_path: loops/01-product-strategy-discovery-and-lifecycle/004-roadmap-alignment-loop.md
+    descriptor_path: runtime/loop-descriptors/004-roadmap-alignment-loop.yaml
+  -
+    loop_id: loop-005-product-and-service-retirement-and-decommissioning-loop
+    number: 5
+    name: "Product and Service Retirement and Decommissioning Loop"
+    slug: product-and-service-retirement-and-decommissioning-loop
+    category_number: 1
+    category_name: "Product Strategy, Discovery and Lifecycle"
+    category_slug: product-strategy-discovery-and-lifecycle
+    trigger: "End of support, low value, replacement, obsolescence, excessive risk, or strategic exit."
+    run: "Inventory users, data, integrations, infrastructure, contracts, and obligations; migrate consumers; archive or dispose of data; communicate changes; and verify shutdown."
+    output: "Approved retirement plan, migration evidence, residual-risk record, and decommissioning confirmation."
+    cadence: "Annual review and lifecycle event"
+    baseline_risk_tier: R1
+    markdown_path: loops/01-product-strategy-discovery-and-lifecycle/005-product-and-service-retirement-and-decommissioning-loop.md
+    descriptor_path: runtime/loop-descriptors/005-product-and-service-retirement-and-decommissioning-loop.yaml
+  -
+    loop_id: loop-006-requirements-quality-loop
+    number: 6
+    name: "Requirements Quality Loop"
+    slug: requirements-quality-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "Creation or modification of a requirement, feature, story, or acceptance criterion."
+    run: "Check clarity, completeness, testability, feasibility, assumptions, non-functional needs, data needs, security, dependencies, and measurable acceptance criteria."
+    output: "Ready, revise, or reject decision with identified gaps."
+    cadence: "Every requirement or story"
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/006-requirements-quality-loop.md
+    descriptor_path: runtime/loop-descriptors/006-requirements-quality-loop.yaml
+  -
+    loop_id: loop-007-requirements-change-control-loop
+    number: 7
+    name: "Requirements Change Control Loop"
+    slug: requirements-change-control-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "Requested change to approved scope or behavior."
+    run: "Assess impact on value, scope, cost, schedule, architecture, data, security, testing, operations, and dependencies; route the change to the correct authority."
+    output: "Approved, deferred, or rejected change with updated baselines and impact evidence."
+    cadence: "Every material change"
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/007-requirements-change-control-loop.md
+    descriptor_path: runtime/loop-descriptors/007-requirements-change-control-loop.yaml
+  -
+    loop_id: loop-008-requirements-traceability-loop
+    number: 8
+    name: "Requirements Traceability Loop"
+    slug: requirements-traceability-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "Requirement, design, code, test, or release changes."
+    run: "Link business objective to requirement, design, implementation, test case, release, and production evidence; identify broken or missing links."
+    output: "Traceability graph or matrix, coverage gaps, and release evidence."
+    cadence: "Every change, with release gate"
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/008-requirements-traceability-loop.md
+    descriptor_path: runtime/loop-descriptors/008-requirements-traceability-loop.yaml
+  -
+    loop_id: loop-009-backlog-refinement-loop
+    number: 9
+    name: "Backlog Refinement Loop"
+    slug: backlog-refinement-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "New work, changed priorities, or upcoming iteration planning."
+    run: "Remove duplicates, split oversized work, clarify outcomes, add acceptance criteria, identify dependencies, estimate effort, and establish readiness."
+    output: "Prioritized, estimated, and delivery-ready backlog."
+    cadence: "Weekly or every sprint"
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/009-backlog-refinement-loop.md
+    descriptor_path: runtime/loop-descriptors/009-backlog-refinement-loop.yaml
+  -
+    loop_id: loop-010-cross-team-system-and-vendor-dependency-management-loop
+    number: 10
+    name: "Cross-Team, System and Vendor Dependency Management Loop"
+    slug: cross-team-system-and-vendor-dependency-management-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "Work depends on another team, platform, vendor, approval, interface, or delivery."
+    run: "Record dependency, owner, required outcome, due date, assumptions, status, contingency, and escalation threshold."
+    output: "Current dependency register, alerts, and resolution or escalation actions."
+    cadence: "Event-driven, reviewed weekly"
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/010-cross-team-system-and-vendor-dependency-management-loop.md
+    descriptor_path: runtime/loop-descriptors/010-cross-team-system-and-vendor-dependency-management-loop.yaml
+  -
+    loop_id: loop-011-risk-management-loop
+    number: 11
+    name: "Risk Management Loop"
+    slug: risk-management-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "New work, material change, incident, delay, audit finding, or emerging uncertainty."
+    run: "Identify and score probability and impact, define triggers, assign ownership, plan mitigation and contingency, and reassess residual risk."
+    output: "Updated risk register and explicit accept, mitigate, transfer, avoid, or escalate decision."
+    cadence: "Continuous, reviewed weekly"
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/011-risk-management-loop.md
+    descriptor_path: runtime/loop-descriptors/011-risk-management-loop.yaml
+  -
+    loop_id: loop-012-sprint-execution-loop
+    number: 12
+    name: "Sprint Execution Loop"
+    slug: sprint-execution-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "Start of an iteration or committed delivery period."
+    run: "Confirm goal and capacity, commit work, track progress, remove blockers, validate completed work, demonstrate outcomes, and close unfinished items correctly."
+    output: "Completed sprint objective, accepted work, delivery metrics, and carried-over decisions."
+    cadence: "Every sprint, tracked daily"
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/012-sprint-execution-loop.md
+    descriptor_path: runtime/loop-descriptors/012-sprint-execution-loop.yaml
+  -
+    loop_id: loop-013-delivery-forecasting-loop
+    number: 13
+    name: "Delivery Forecasting Loop"
+    slug: delivery-forecasting-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "New scope, throughput changes, dependency changes, or schedule variance."
+    run: "Use remaining scope, historical throughput, capacity, uncertainty, and dependencies to produce scenario-based forecasts."
+    output: "Updated completion range, confidence level, assumptions, and corrective actions."
+    cadence: Weekly
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/013-delivery-forecasting-loop.md
+    descriptor_path: runtime/loop-descriptors/013-delivery-forecasting-loop.yaml
+  -
+    loop_id: loop-014-retrospective-improvement-loop
+    number: 14
+    name: "Retrospective Improvement Loop"
+    slug: retrospective-improvement-loop
+    category_number: 2
+    category_name: "Requirements, Backlog and Delivery Management"
+    category_slug: requirements-backlog-and-delivery-management
+    trigger: "End of sprint, release, incident, or major delivery stage."
+    run: "Review evidence, identify effective and ineffective practices, find root causes, select a limited number of improvements, assign owners, and measure whether prior actions worked."
+    output: "Owned improvement actions with due dates and effectiveness measures."
+    cadence: "Every sprint or release"
+    baseline_risk_tier: R1
+    markdown_path: loops/02-requirements-backlog-and-delivery-management/014-retrospective-improvement-loop.md
+    descriptor_path: runtime/loop-descriptors/014-retrospective-improvement-loop.yaml
+  -
+    loop_id: loop-015-design-review-loop
+    number: 15
+    name: "Design Review Loop"
+    slug: design-review-loop
+    category_number: 3
+    category_name: "Architecture, Design and Modernization"
+    category_slug: architecture-design-and-modernization
+    trigger: "New solution, major feature, integration, data flow, or significant design change."
+    run: "Review functional design, non-functional requirements, interfaces, data movement, failure modes, security boundaries, operability, scalability, and standards."
+    output: "Approved, conditionally approved, or rejected design with required actions and decision record."
+    cadence: "Every material design change"
+    baseline_risk_tier: R1
+    markdown_path: loops/03-architecture-design-and-modernization/015-design-review-loop.md
+    descriptor_path: runtime/loop-descriptors/015-design-review-loop.yaml
+  -
+    loop_id: loop-016-architecture-fitness-and-future-compatibility-loop
+    number: 16
+    name: "Architecture Fitness and Future Compatibility Loop"
+    slug: architecture-fitness-and-future-compatibility-loop
+    category_number: 3
+    category_name: "Architecture, Design and Modernization"
+    category_slug: architecture-design-and-modernization
+    trigger: "Architectural change, fitness threshold breach, or scheduled review."
+    run: "Measure modularity, coupling, scalability, resilience, portability, replaceability, interoperability, technology support, and readiness for new models, runtimes, or deployment targets."
+    output: "Architecture fitness score and prioritized remediation backlog."
+    cadence: "Continuous metrics, monthly or quarterly review"
+    baseline_risk_tier: R1
+    markdown_path: loops/03-architecture-design-and-modernization/016-architecture-fitness-and-future-compatibility-loop.md
+    descriptor_path: runtime/loop-descriptors/016-architecture-fitness-and-future-compatibility-loop.yaml
+  -
+    loop_id: loop-017-api-lifecycle-and-backward-compatibility-loop
+    number: 17
+    name: "API Lifecycle and Backward Compatibility Loop"
+    slug: api-lifecycle-and-backward-compatibility-loop
+    category_number: 3
+    category_name: "Architecture, Design and Modernization"
+    category_slug: architecture-design-and-modernization
+    trigger: "New API, contract modification, version change, or planned deprecation."
+    run: "Validate schemas, authentication, authorization, rate limits, errors, versioning, consumer impact, backward compatibility, documentation, and deprecation plan."
+    output: "Approved API version, migration guidance, consumer notifications, and retirement timeline."
+    cadence: "Every API change"
+    baseline_risk_tier: R1
+    markdown_path: loops/03-architecture-design-and-modernization/017-api-lifecycle-and-backward-compatibility-loop.md
+    descriptor_path: runtime/loop-descriptors/017-api-lifecycle-and-backward-compatibility-loop.yaml
+  -
+    loop_id: loop-018-configuration-and-feature-flag-governance-loop
+    number: 18
+    name: "Configuration and Feature Flag Governance Loop"
+    slug: configuration-and-feature-flag-governance-loop
+    category_number: 3
+    category_name: "Architecture, Design and Modernization"
+    category_slug: architecture-design-and-modernization
+    trigger: "Configuration or feature-flag creation, modification, rollout, or retirement."
+    run: "Validate ownership, environment scope, safe defaults, secrets handling, expiry date, rollout population, rollback behavior, and stale-flag removal."
+    output: "Approved configuration baseline or flag record with expiry and rollback controls."
+    cadence: "Every change, with daily stale scan"
+    baseline_risk_tier: R1
+    markdown_path: loops/03-architecture-design-and-modernization/018-configuration-and-feature-flag-governance-loop.md
+    descriptor_path: runtime/loop-descriptors/018-configuration-and-feature-flag-governance-loop.yaml
+  -
+    loop_id: loop-019-technical-debt-loop
+    number: 19
+    name: "Technical Debt Loop"
+    slug: technical-debt-loop
+    category_number: 3
+    category_name: "Architecture, Design and Modernization"
+    category_slug: architecture-design-and-modernization
+    trigger: "Detection of obsolete code, complexity, poor maintainability, workaround, unsupported component, or repeated delivery friction."
+    run: "Record debt, estimate impact and continuing cost, prioritize against business risk, remediate, and verify measurable reduction."
+    output: "Technical-debt register, remediation decision, and trend metrics."
+    cadence: "Continuous capture, weekly or monthly review"
+    baseline_risk_tier: R1
+    markdown_path: loops/03-architecture-design-and-modernization/019-technical-debt-loop.md
+    descriptor_path: runtime/loop-descriptors/019-technical-debt-loop.yaml
+  -
+    loop_id: loop-020-application-modernization-loop
+    number: 20
+    name: "Application Modernization Loop"
+    slug: application-modernization-loop
+    category_number: 3
+    category_name: "Architecture, Design and Modernization"
+    category_slug: architecture-design-and-modernization
+    trigger: "Unsupported technology, excessive operating cost, reliability limitation, scalability constraint, or strategic platform change."
+    run: "Inventory legacy components, assess support and risk, compare modernization options, plan migration, execute incrementally, and retire replaced assets."
+    output: "Modernization roadmap, migration increments, and decommissioning evidence."
+    cadence: "Quarterly or annual"
+    baseline_risk_tier: R1
+    markdown_path: loops/03-architecture-design-and-modernization/020-application-modernization-loop.md
+    descriptor_path: runtime/loop-descriptors/020-application-modernization-loop.yaml
+  -
+    loop_id: loop-021-code-build-loop
+    number: 21
+    name: "Code Build Loop"
+    slug: code-build-loop
+    category_number: 4
+    category_name: "Software Engineering and Build"
+    category_slug: software-engineering-and-build
+    trigger: "Approved engineering task or defect."
+    run: "Inspect existing code, understand constraints, design the change, implement it, compile or package it, execute local checks, and prepare reviewable artifacts."
+    output: "Working change, updated tests, build artifact, and implementation evidence."
+    cadence: "Every work item or commit"
+    baseline_risk_tier: R1
+    markdown_path: loops/04-software-engineering-and-build/021-code-build-loop.md
+    descriptor_path: runtime/loop-descriptors/021-code-build-loop.yaml
+  -
+    loop_id: loop-022-code-quality-loop
+    number: 22
+    name: "Code Quality Loop"
+    slug: code-quality-loop
+    category_number: 4
+    category_name: "Software Engineering and Build"
+    category_slug: software-engineering-and-build
+    trigger: "Code creation or modification."
+    run: "Check standards, readability, complexity, duplication, maintainability, error handling, dead code, logging, and testability; refactor until thresholds pass."
+    output: "Quality results, resolved findings, and maintainable code."
+    cadence: "Every commit or pull request"
+    baseline_risk_tier: R1
+    markdown_path: loops/04-software-engineering-and-build/022-code-quality-loop.md
+    descriptor_path: runtime/loop-descriptors/022-code-quality-loop.yaml
+  -
+    loop_id: loop-023-pull-request-review-loop
+    number: 23
+    name: "Pull Request Review Loop"
+    slug: pull-request-review-loop
+    category_number: 4
+    category_name: "Software Engineering and Build"
+    category_slug: software-engineering-and-build
+    trigger: "Pull request ready for review."
+    run: "Independently inspect correctness, tests, design, security, performance, data impact, compatibility, and operational effects; require correction and re-review where needed."
+    output: "Approved or rejected pull request with resolved comments and review evidence."
+    cadence: "Every pull request"
+    baseline_risk_tier: R1
+    markdown_path: loops/04-software-engineering-and-build/023-pull-request-review-loop.md
+    descriptor_path: runtime/loop-descriptors/023-pull-request-review-loop.yaml
+  -
+    loop_id: loop-024-software-dependency-and-package-management-loop
+    number: 24
+    name: "Software Dependency and Package Management Loop"
+    slug: software-dependency-and-package-management-loop
+    category_number: 4
+    category_name: "Software Engineering and Build"
+    category_slug: software-engineering-and-build
+    trigger: "New package, version update, vulnerability, license change, or package retirement."
+    run: "Check necessity, version support, vulnerabilities, licenses, compatibility, transitive dependencies, upgrade impact, and regression results."
+    output: "Approved package baseline, lockfile update, exception, or replacement plan."
+    cadence: "Continuous scan and every dependency change"
+    baseline_risk_tier: R1
+    markdown_path: loops/04-software-engineering-and-build/024-software-dependency-and-package-management-loop.md
+    descriptor_path: runtime/loop-descriptors/024-software-dependency-and-package-management-loop.yaml
+  -
+    loop_id: loop-025-ci-pipeline-loop
+    number: 25
+    name: "CI Pipeline Loop"
+    slug: ci-pipeline-loop
+    category_number: 4
+    category_name: "Software Engineering and Build"
+    category_slug: software-engineering-and-build
+    trigger: "Commit, pull request, merge, or release candidate."
+    run: "Build, test, scan, package, sign where required, publish artifacts, retain evidence, and enforce quality gates automatically."
+    output: "Accepted or blocked build with immutable pipeline results and deployable artifact."
+    cadence: "Every commit or pull request"
+    baseline_risk_tier: R1
+    markdown_path: loops/04-software-engineering-and-build/025-ci-pipeline-loop.md
+    descriptor_path: runtime/loop-descriptors/025-ci-pipeline-loop.yaml
+  -
+    loop_id: loop-026-test-data-management-loop
+    number: 26
+    name: "Test Data Management Loop"
+    slug: test-data-management-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "New test scenario, changed data structure, or test-environment refresh."
+    run: "Define representative cases and expected results, create synthetic or properly masked data, version datasets, seed environments, reset state, and enforce privacy and retention controls."
+    output: "Approved test dataset, expected outcomes, and data-control record."
+    cadence: "Before test execution and scheduled refresh"
+    baseline_risk_tier: R2
+    markdown_path: loops/05-testing-validation-and-experience-quality/026-test-data-management-loop.md
+    descriptor_path: runtime/loop-descriptors/026-test-data-management-loop.yaml
+  -
+    loop_id: loop-027-unit-testing-loop
+    number: 27
+    name: "Unit Testing Loop"
+    slug: unit-testing-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "Function, class, module, or component change."
+    run: "Derive positive, negative, boundary, and error cases; execute tests; measure coverage and test strength; fix failures."
+    output: "Passing unit suite and coverage evidence."
+    cadence: "Every commit or build"
+    baseline_risk_tier: R1
+    markdown_path: loops/05-testing-validation-and-experience-quality/027-unit-testing-loop.md
+    descriptor_path: runtime/loop-descriptors/027-unit-testing-loop.yaml
+  -
+    loop_id: loop-028-integration-testing-loop
+    number: 28
+    name: "Integration Testing Loop"
+    slug: integration-testing-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "Change to service, database, API, queue, file, event, or external integration."
+    run: "Validate contracts, data transformation, authentication, timeout, retry, failure handling, and reconciliation across participating components."
+    output: "Passing integration suite and verified interface contracts."
+    cadence: "Every relevant merge or build"
+    baseline_risk_tier: R1
+    markdown_path: loops/05-testing-validation-and-experience-quality/028-integration-testing-loop.md
+    descriptor_path: runtime/loop-descriptors/028-integration-testing-loop.yaml
+  -
+    loop_id: loop-029-end-to-end-testing-loop
+    number: 29
+    name: "End-to-End Testing Loop"
+    slug: end-to-end-testing-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "Release candidate or material change to a critical journey."
+    run: "Execute complete user and business workflows across systems, verify data movement and final outcomes, handle external dependencies, and clean up state."
+    output: "End-to-end journey evidence and unresolved failure list."
+    cadence: "Nightly for critical paths and every release"
+    baseline_risk_tier: R1
+    markdown_path: loops/05-testing-validation-and-experience-quality/029-end-to-end-testing-loop.md
+    descriptor_path: runtime/loop-descriptors/029-end-to-end-testing-loop.yaml
+  -
+    loop_id: loop-030-regression-testing-loop
+    number: 30
+    name: "Regression Testing Loop"
+    slug: regression-testing-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "Code, configuration, infrastructure, model, data, or dependency change."
+    run: "Select an impact-based regression set, execute it, compare with approved baseline, triage failures, and rerun after corrections."
+    output: "Regression confidence result and release-blocking findings."
+    cadence: "Every merge and release"
+    baseline_risk_tier: R1
+    markdown_path: loops/05-testing-validation-and-experience-quality/030-regression-testing-loop.md
+    descriptor_path: runtime/loop-descriptors/030-regression-testing-loop.yaml
+  -
+    loop_id: loop-031-performance-testing-loop
+    number: 31
+    name: "Performance Testing Loop"
+    slug: performance-testing-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "Significant implementation, architecture, infrastructure, database, or model change."
+    run: "Execute load, stress, spike, endurance, concurrency, and scalability tests; measure latency, throughput, error rate, and resource use; identify bottlenecks."
+    output: "Performance report, capacity recommendation, and tuning backlog."
+    cadence: "Major change and release"
+    baseline_risk_tier: R1
+    markdown_path: loops/05-testing-validation-and-experience-quality/031-performance-testing-loop.md
+    descriptor_path: runtime/loop-descriptors/031-performance-testing-loop.yaml
+  -
+    loop_id: loop-032-user-acceptance-testing-loop
+    number: 32
+    name: "User Acceptance Testing Loop"
+    slug: user-acceptance-testing-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "Business-ready release candidate."
+    run: "Prepare real business scenarios, authorized testers, expected outcomes, and representative data; record findings, resolve defects, and obtain explicit acceptance or waiver."
+    output: "Business sign-off, rejected release, or conditional acceptance."
+    cadence: "Every business release"
+    baseline_risk_tier: R1
+    markdown_path: loops/05-testing-validation-and-experience-quality/032-user-acceptance-testing-loop.md
+    descriptor_path: runtime/loop-descriptors/032-user-acceptance-testing-loop.yaml
+  -
+    loop_id: loop-033-accessibility-loop
+    number: 33
+    name: "Accessibility Loop"
+    slug: accessibility-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "New or changed user interface, interaction, document, or customer journey."
+    run: "Perform automated and manual checks for keyboard use, screen readers, labels, focus, structure, contrast, alternatives, and understandable errors."
+    output: "Accessibility results, defects, exceptions, and conformance evidence."
+    cadence: "Every UI change and release"
+    baseline_risk_tier: R3
+    markdown_path: loops/05-testing-validation-and-experience-quality/033-accessibility-loop.md
+    descriptor_path: runtime/loop-descriptors/033-accessibility-loop.yaml
+  -
+    loop_id: loop-034-defect-management-loop
+    number: 34
+    name: "Defect Management Loop"
+    slug: defect-management-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "Defect reported by testing, monitoring, customer, security, or operations."
+    run: "Record and reproduce the issue, classify impact and priority, assign ownership, determine cause, fix, retest, run regression, and close with evidence."
+    output: "Resolved or accepted defect and defect-trend data."
+    cadence: "Event-driven, triaged daily"
+    baseline_risk_tier: R1
+    markdown_path: loops/05-testing-validation-and-experience-quality/034-defect-management-loop.md
+    descriptor_path: runtime/loop-descriptors/034-defect-management-loop.yaml
+  -
+    loop_id: loop-035-ux-improvement-loop
+    number: 35
+    name: "UX Improvement Loop"
+    slug: ux-improvement-loop
+    category_number: 5
+    category_name: "Testing, Validation and Experience Quality"
+    category_slug: testing-validation-and-experience-quality
+    trigger: "User feedback, usability issue, abandonment, support volume, or product-analytics signal."
+    run: "Identify friction, form a hypothesis, redesign or prototype, perform usability testing, release the improvement, and measure the outcome."
+    output: "Validated UX improvement and updated journey metrics."
+    cadence: "Continuous, reviewed each sprint or month"
+    baseline_risk_tier: R1
+    markdown_path: loops/05-testing-validation-and-experience-quality/035-ux-improvement-loop.md
+    descriptor_path: runtime/loop-descriptors/035-ux-improvement-loop.yaml
+  -
+    loop_id: loop-036-release-readiness-loop
+    number: 36
+    name: "Release Readiness Loop"
+    slug: release-readiness-loop
+    category_number: 6
+    category_name: "DevOps, Release and Environment Management"
+    category_slug: devops-release-and-environment-management
+    trigger: "Release candidate prepared for deployment."
+    run: "Verify scope, traceability, tests, defects, security, compliance, data migration, operational support, monitoring, rollback, approvals, and known limitations."
+    output: "Go, conditional-go, or no-go decision with evidence."
+    cadence: "Every release"
+    baseline_risk_tier: R2
+    markdown_path: loops/06-devops-release-and-environment-management/036-release-readiness-loop.md
+    descriptor_path: runtime/loop-descriptors/036-release-readiness-loop.yaml
+  -
+    loop_id: loop-037-operational-readiness-and-runbook-loop
+    number: 37
+    name: "Operational Readiness and Runbook Loop"
+    slug: operational-readiness-and-runbook-loop
+    category_number: 6
+    category_name: "DevOps, Release and Environment Management"
+    category_slug: devops-release-and-environment-management
+    trigger: "New service, major capability, support-model change, or production release."
+    run: "Confirm ownership, SLOs, monitoring, alerts, capacity, dependencies, support hours, escalation, recovery steps, runbooks, and on-call readiness."
+    output: "Operational-readiness approval and usable runbook package."
+    cadence: "Every new service or major release"
+    baseline_risk_tier: R2
+    markdown_path: loops/06-devops-release-and-environment-management/037-operational-readiness-and-runbook-loop.md
+    descriptor_path: runtime/loop-descriptors/037-operational-readiness-and-runbook-loop.yaml
+  -
+    loop_id: loop-038-deployment-validation-loop
+    number: 38
+    name: "Deployment Validation Loop"
+    slug: deployment-validation-loop
+    category_number: 6
+    category_name: "DevOps, Release and Environment Management"
+    category_slug: devops-release-and-environment-management
+    trigger: "Deployment to any controlled environment."
+    run: "Execute prechecks, deploy, validate configuration and migrations, run smoke tests, inspect logs and health metrics, compare canary results, and continue or roll back."
+    output: "Verified deployment or controlled rollback with evidence."
+    cadence: "Every deployment"
+    baseline_risk_tier: R2
+    markdown_path: loops/06-devops-release-and-environment-management/038-deployment-validation-loop.md
+    descriptor_path: runtime/loop-descriptors/038-deployment-validation-loop.yaml
+  -
+    loop_id: loop-039-environment-drift-loop
+    number: 39
+    name: "Environment Drift Loop"
+    slug: environment-drift-loop
+    category_number: 6
+    category_name: "DevOps, Release and Environment Management"
+    category_slug: devops-release-and-environment-management
+    trigger: "Detected or scheduled comparison between actual and approved environments."
+    run: "Compare infrastructure, configuration, secrets references, runtime versions, dependencies, and access settings against source-controlled baselines; reconcile or record approved exceptions."
+    output: "Drift report and restored or accepted environment state."
+    cadence: "Continuous or daily"
+    baseline_risk_tier: R2
+    markdown_path: loops/06-devops-release-and-environment-management/039-environment-drift-loop.md
+    descriptor_path: runtime/loop-descriptors/039-environment-drift-loop.yaml
+  -
+    loop_id: loop-040-rollback-backup-and-recovery-loop
+    number: 40
+    name: "Rollback, Backup and Recovery Loop"
+    slug: rollback-backup-and-recovery-loop
+    category_number: 6
+    category_name: "DevOps, Release and Environment Management"
+    category_slug: devops-release-and-environment-management
+    trigger: "Release planning, backup schedule, recovery test, deployment failure, data loss, or service disruption."
+    run: "Create and verify backups, validate rollback compatibility, restore systems and data, reconcile state, test recovery objectives, and document unrecoverable gaps."
+    output: "Proven rollback and restore capability, recovery evidence, and remediation actions."
+    cadence: "Backup continuously or daily; test quarterly and before high-risk releases"
+    baseline_risk_tier: R2
+    markdown_path: loops/06-devops-release-and-environment-management/040-rollback-backup-and-recovery-loop.md
+    descriptor_path: runtime/loop-descriptors/040-rollback-backup-and-recovery-loop.yaml
+  -
+    loop_id: loop-041-observability-improvement-loop
+    number: 41
+    name: "Observability Improvement Loop"
+    slug: observability-improvement-loop
+    category_number: 7
+    category_name: "Operations, Reliability and Service Management"
+    category_slug: operations-reliability-and-service-management
+    trigger: "Monitoring gap, unexplained behavior, incident, new component, or noisy alert."
+    run: "Assess logs, metrics, traces, business events, dashboards, correlation identifiers, alert coverage, and signal quality; add missing telemetry and remove noise."
+    output: "Improved observability coverage and owned instrumentation backlog."
+    cadence: "Continuous, reviewed weekly"
+    baseline_risk_tier: R2
+    markdown_path: loops/07-operations-reliability-and-service-management/041-observability-improvement-loop.md
+    descriptor_path: runtime/loop-descriptors/041-observability-improvement-loop.yaml
+  -
+    loop_id: loop-042-reliability-slo-and-error-budget-management-loop
+    number: 42
+    name: "Reliability, SLO and Error-Budget Management Loop"
+    slug: reliability-slo-and-error-budget-management-loop
+    category_number: 7
+    category_name: "Operations, Reliability and Service Management"
+    category_slug: operations-reliability-and-service-management
+    trigger: "SLO definition, service degradation, error-budget consumption, or scheduled reliability review."
+    run: "Define or measure SLIs and SLOs, analyze failure modes, track error budget, prioritize reliability work, and restrict risky changes when thresholds are exceeded."
+    output: "Reliability scorecard, error-budget decision, and resilience actions."
+    cadence: "Continuous, reviewed weekly or monthly"
+    baseline_risk_tier: R2
+    markdown_path: loops/07-operations-reliability-and-service-management/042-reliability-slo-and-error-budget-management-loop.md
+    descriptor_path: runtime/loop-descriptors/042-reliability-slo-and-error-budget-management-loop.yaml
+  -
+    loop_id: loop-043-incident-management-loop
+    number: 43
+    name: "Incident Management Loop"
+    slug: incident-management-loop
+    category_number: 7
+    category_name: "Operations, Reliability and Service Management"
+    category_slug: operations-reliability-and-service-management
+    trigger: "Actual or suspected service disruption, degradation, security event, or customer-impacting failure."
+    run: "Detect, classify severity, assign command, contain, restore service, communicate, preserve evidence, and create follow-up actions."
+    output: "Restored service, incident timeline, impact statement, and corrective actions."
+    cadence: Event-driven
+    baseline_risk_tier: R2
+    markdown_path: loops/07-operations-reliability-and-service-management/043-incident-management-loop.md
+    descriptor_path: runtime/loop-descriptors/043-incident-management-loop.yaml
+  -
+    loop_id: loop-044-ai-incident-response-loop
+    number: 44
+    name: "AI Incident Response Loop"
+    slug: ai-incident-response-loop
+    category_number: 7
+    category_name: "Operations, Reliability and Service Management"
+    category_slug: operations-reliability-and-service-management
+    trigger: "Harmful AI output, data leakage, agent overreach, retrieval poisoning, model failure, prompt attack, or unsafe automated decision."
+    run: "Contain the AI path, suspend tools or model versions, preserve prompts and traces, assess affected users and data, remediate controls, and retest."
+    output: "Containment evidence, AI incident report, corrected configuration, and expanded evaluation cases."
+    cadence: Event-driven
+    baseline_risk_tier: R2
+    markdown_path: loops/07-operations-reliability-and-service-management/044-ai-incident-response-loop.md
+    descriptor_path: runtime/loop-descriptors/044-ai-incident-response-loop.yaml
+  -
+    loop_id: loop-045-problem-management-loop
+    number: 45
+    name: "Problem Management Loop"
+    slug: problem-management-loop
+    category_number: 7
+    category_name: "Operations, Reliability and Service Management"
+    category_slug: operations-reliability-and-service-management
+    trigger: "Repeated incidents, recurring defects, unexplained instability, or material post-incident finding."
+    run: "Group related events, analyze systemic cause, document known error and workaround, implement permanent correction, and monitor recurrence."
+    output: "Root-cause record, permanent corrective action, and recurrence evidence."
+    cadence: "Weekly and after major incidents"
+    baseline_risk_tier: R2
+    markdown_path: loops/07-operations-reliability-and-service-management/045-problem-management-loop.md
+    descriptor_path: runtime/loop-descriptors/045-problem-management-loop.yaml
+  -
+    loop_id: loop-046-performance-capacity-cost-and-ai-economics-loop
+    number: 46
+    name: "Performance, Capacity, Cost and AI Economics Loop"
+    slug: performance-capacity-cost-and-ai-economics-loop
+    category_number: 7
+    category_name: "Operations, Reliability and Service Management"
+    category_slug: operations-reliability-and-service-management
+    trigger: "Utilization change, budget variance, latency issue, demand forecast, or new model or infrastructure option."
+    run: "Analyze application and AI workloads, capacity, token use, model routing, caching, storage, network, and infrastructure; optimize while protecting quality and reliability."
+    output: "Capacity forecast, cost-per-outcome metrics, optimization actions, and verified savings."
+    cadence: "Continuous, reviewed weekly or monthly"
+    baseline_risk_tier: R2
+    markdown_path: loops/07-operations-reliability-and-service-management/046-performance-capacity-cost-and-ai-economics-loop.md
+    descriptor_path: runtime/loop-descriptors/046-performance-capacity-cost-and-ai-economics-loop.yaml
+  -
+    loop_id: loop-047-chaos-engineering-and-resilience-testing-loop
+    number: 47
+    name: "Chaos Engineering and Resilience Testing Loop"
+    slug: chaos-engineering-and-resilience-testing-loop
+    category_number: 7
+    category_name: "Operations, Reliability and Service Management"
+    category_slug: operations-reliability-and-service-management
+    trigger: "New resilience hypothesis, architecture change, or scheduled exercise."
+    run: "Define safe failure scenarios and blast radius, inject controlled faults, observe detection and recovery, stop safely, remediate weaknesses, and repeat."
+    output: "Proven resilience behavior, failure evidence, and hardening backlog."
+    cadence: "Monthly or quarterly"
+    baseline_risk_tier: R2
+    markdown_path: loops/07-operations-reliability-and-service-management/047-chaos-engineering-and-resilience-testing-loop.md
+    descriptor_path: runtime/loop-descriptors/047-chaos-engineering-and-resilience-testing-loop.yaml
+  -
+    loop_id: loop-048-business-continuity-and-crisis-management-loop
+    number: 48
+    name: "Business Continuity and Crisis Management Loop"
+    slug: business-continuity-and-crisis-management-loop
+    category_number: 7
+    category_name: "Operations, Reliability and Service Management"
+    category_slug: operations-reliability-and-service-management
+    trigger: "Scheduled exercise or prolonged technology, vendor, facility, workforce, cyber, or regional disruption."
+    run: "Identify critical services, dependencies, alternate operating methods, authority, communication, and recovery priorities; exercise the plan and correct failures."
+    output: "Tested continuity plan, crisis decision record, and recovery improvements."
+    cadence: "Semiannual or annual"
+    baseline_risk_tier: R2
+    markdown_path: loops/07-operations-reliability-and-service-management/048-business-continuity-and-crisis-management-loop.md
+    descriptor_path: runtime/loop-descriptors/048-business-continuity-and-crisis-management-loop.yaml
+  -
+    loop_id: loop-049-data-governance-loop
+    number: 49
+    name: "Data Governance Loop"
+    slug: data-governance-loop
+    category_number: 8
+    category_name: "Data, Database and Knowledge Management"
+    category_slug: data-database-and-knowledge-management
+    trigger: "New dataset, changed use, new system, ownership gap, or governance review."
+    run: "Catalog and classify data, assign owner and steward, define permitted use, quality expectations, lineage, access, retention, residency, and disposal rules."
+    output: "Governed data asset with accountable ownership and enforceable policies."
+    cadence: "Continuous, reviewed monthly or quarterly"
+    baseline_risk_tier: R2
+    markdown_path: loops/08-data-database-and-knowledge-management/049-data-governance-loop.md
+    descriptor_path: runtime/loop-descriptors/049-data-governance-loop.yaml
+  -
+    loop_id: loop-050-data-schema-and-contract-evolution-loop
+    number: 50
+    name: "Data Schema and Contract Evolution Loop"
+    slug: data-schema-and-contract-evolution-loop
+    category_number: 8
+    category_name: "Data, Database and Knowledge Management"
+    category_slug: data-database-and-knowledge-management
+    trigger: "Schema, event, file, table, or data-interface change."
+    run: "Version the contract, identify producers and consumers, test compatibility, plan migration and backfill, manage dual-read or dual-write periods, and define rollback."
+    output: "Approved schema version, migration plan, and consumer compatibility evidence."
+    cadence: "Every schema change"
+    baseline_risk_tier: R2
+    markdown_path: loops/08-data-database-and-knowledge-management/050-data-schema-and-contract-evolution-loop.md
+    descriptor_path: runtime/loop-descriptors/050-data-schema-and-contract-evolution-loop.yaml
+  -
+    loop_id: loop-051-ai-data-preparation-loop
+    number: 51
+    name: "AI Data Preparation Loop"
+    slug: ai-data-preparation-loop
+    category_number: 8
+    category_name: "Data, Database and Knowledge Management"
+    category_slug: data-database-and-knowledge-management
+    trigger: "New or changed data for training, tuning, evaluation, retrieval, or prompt examples."
+    run: "Validate source and usage rights, clean, normalize, deduplicate, label, de-identify, assess coverage and bias, split datasets, and version the result."
+    output: "Approved dataset, data documentation, quality results, and lineage."
+    cadence: "Every AI dataset change"
+    baseline_risk_tier: R2
+    markdown_path: loops/08-data-database-and-knowledge-management/051-ai-data-preparation-loop.md
+    descriptor_path: runtime/loop-descriptors/051-ai-data-preparation-loop.yaml
+  -
+    loop_id: loop-052-data-quality-loop
+    number: 52
+    name: "Data Quality Loop"
+    slug: data-quality-loop
+    category_number: 8
+    category_name: "Data, Database and Knowledge Management"
+    category_slug: data-database-and-knowledge-management
+    trigger: "Data arrival, failed rule, anomaly, consumer complaint, or scheduled profiling."
+    run: "Measure completeness, accuracy, validity, consistency, uniqueness, and timeliness; locate the source; correct data or pipeline logic; and reprocess affected records."
+    output: "Data-quality score, resolved issue, and preventive rule."
+    cadence: "Continuous or daily"
+    baseline_risk_tier: R2
+    markdown_path: loops/08-data-database-and-knowledge-management/052-data-quality-loop.md
+    descriptor_path: runtime/loop-descriptors/052-data-quality-loop.yaml
+  -
+    loop_id: loop-053-data-pipeline-reliability-loop
+    number: 53
+    name: "Data Pipeline Reliability Loop"
+    slug: data-pipeline-reliability-loop
+    category_number: 8
+    category_name: "Data, Database and Knowledge Management"
+    category_slug: data-database-and-knowledge-management
+    trigger: "Batch or stream execution, freshness breach, volume anomaly, schema failure, or downstream mismatch."
+    run: "Monitor execution, reconcile counts, handle retries and dead letters, preserve idempotency, backfill safely, and confirm downstream receipt."
+    output: "Reconciled pipeline run, recovery evidence, and unresolved exceptions."
+    cadence: Continuous
+    baseline_risk_tier: R2
+    markdown_path: loops/08-data-database-and-knowledge-management/053-data-pipeline-reliability-loop.md
+    descriptor_path: runtime/loop-descriptors/053-data-pipeline-reliability-loop.yaml
+  -
+    loop_id: loop-054-database-performance-loop
+    number: 54
+    name: "Database Performance Loop"
+    slug: database-performance-loop
+    category_number: 8
+    category_name: "Data, Database and Knowledge Management"
+    category_slug: data-database-and-knowledge-management
+    trigger: "Slow query, capacity alert, lock contention, replication lag, or scheduled review."
+    run: "Inspect execution plans, indexes, partitions, locks, connection use, storage, replication, and configuration; tune and retest under realistic load."
+    output: "Database performance results and approved tuning changes."
+    cadence: "Continuous, reviewed daily or weekly"
+    baseline_risk_tier: R2
+    markdown_path: loops/08-data-database-and-knowledge-management/054-database-performance-loop.md
+    descriptor_path: runtime/loop-descriptors/054-database-performance-loop.yaml
+  -
+    loop_id: loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop
+    number: 55
+    name: "Knowledge Base Freshness and RAG Content Lifecycle Loop"
+    slug: knowledge-base-freshness-and-rag-content-lifecycle-loop
+    category_number: 8
+    category_name: "Data, Database and Knowledge Management"
+    category_slug: data-database-and-knowledge-management
+    trigger: "Source creation, modification, expiry, revocation, or retrieval-quality issue."
+    run: "Validate authority and access, ingest, chunk, index, refresh, expire, remove, and reindex content; confirm that deleted or restricted material is no longer retrievable."
+    output: "Current knowledge index, freshness status, and content-lineage evidence."
+    cadence: "Continuous or daily"
+    baseline_risk_tier: R2
+    markdown_path: loops/08-data-database-and-knowledge-management/055-knowledge-base-freshness-and-rag-content-lifecycle-loop.md
+    descriptor_path: runtime/loop-descriptors/055-knowledge-base-freshness-and-rag-content-lifecycle-loop.yaml
+  -
+    loop_id: loop-056-model-data-and-prompt-lineage-and-reproducibility-loop
+    number: 56
+    name: "Model, Data and Prompt Lineage and Reproducibility Loop"
+    slug: model-data-and-prompt-lineage-and-reproducibility-loop
+    category_number: 8
+    category_name: "Data, Database and Knowledge Management"
+    category_slug: data-database-and-knowledge-management
+    trigger: "Change to model, data, prompt, code, configuration, evaluation, or environment."
+    run: "Record exact versions, relationships, parameters, approvals, artifacts, and runtime conditions; rerun a representative case to confirm reproducibility."
+    output: "Lineage manifest and reproducible execution evidence."
+    cadence: "Every AI change and release gate"
+    baseline_risk_tier: R2
+    markdown_path: loops/08-data-database-and-knowledge-management/056-model-data-and-prompt-lineage-and-reproducibility-loop.md
+    descriptor_path: runtime/loop-descriptors/056-model-data-and-prompt-lineage-and-reproducibility-loop.yaml
+  -
+    loop_id: loop-057-prompt-engineering-loop
+    number: 57
+    name: "Prompt Engineering Loop"
+    slug: prompt-engineering-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "New AI task, prompt defect, model change, or evaluation regression."
+    run: "Define the task contract, instructions, variables, examples, constraints, source use, output schema, and refusal behavior; evaluate, version, deploy, and preserve rollback."
+    output: "Approved prompt version and evaluation results."
+    cadence: "Every prompt change"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/057-prompt-engineering-loop.md
+    descriptor_path: runtime/loop-descriptors/057-prompt-engineering-loop.yaml
+  -
+    loop_id: loop-058-model-evaluation-and-benchmarking-loop
+    number: 58
+    name: "Model Evaluation and Benchmarking Loop"
+    slug: model-evaluation-and-benchmarking-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "New model, configuration, provider, fine-tune, routing strategy, or scheduled challenger review."
+    run: "Execute current and candidate models on production-relevant and adversarial datasets; compare task quality, consistency, tool use, safety, latency, and cost."
+    output: "Model scorecard and adopt, retain, route, restrict, or reject decision."
+    cadence: "Every model change, with monthly or quarterly challenge"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/058-model-evaluation-and-benchmarking-loop.md
+    descriptor_path: runtime/loop-descriptors/058-model-evaluation-and-benchmarking-loop.yaml
+  -
+    loop_id: loop-059-rag-quality-loop
+    number: 59
+    name: "RAG Quality Loop"
+    slug: rag-quality-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "Retrieval, embedding, chunking, reranking, source, index, or model change."
+    run: "Evaluate ingestion, recall, precision, ranking, source authority, citation accuracy, groundedness, answer relevance, conflict handling, and abstention behavior."
+    output: "RAG scorecard, failure categories, and tuning actions."
+    cadence: "Every RAG change, with scheduled regression"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/059-rag-quality-loop.md
+    descriptor_path: runtime/loop-descriptors/059-rag-quality-loop.yaml
+  -
+    loop_id: loop-060-ai-safety-and-responsible-ai-loop
+    number: 60
+    name: "AI Safety and Responsible AI Loop"
+    slug: ai-safety-and-responsible-ai-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "New AI use case, model, data, prompt, user group, deployment, or material behavior change."
+    run: "Assess harmful outputs, bias, fairness, privacy, transparency, human impact, explainability needs, misuse, vulnerable users, and control effectiveness."
+    output: "Risk classification, required safeguards, residual-risk acceptance, and approval status."
+    cadence: "Every AI release, with quarterly deep review"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/060-ai-safety-and-responsible-ai-loop.md
+    descriptor_path: runtime/loop-descriptors/060-ai-safety-and-responsible-ai-loop.yaml
+  -
+    loop_id: loop-061-hallucination-reduction-loop
+    number: 61
+    name: "Hallucination Reduction Loop"
+    slug: hallucination-reduction-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "Unsupported answer, incorrect citation, fabricated detail, or low-grounding score."
+    run: "Capture and classify the failure, inspect context and retrieval, improve prompt, source selection, verification, confidence, or abstention controls, and add the case to regression testing."
+    output: "Corrected behavior and reduced unsupported-answer rate."
+    cadence: "Continuous, reviewed daily or weekly"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/061-hallucination-reduction-loop.md
+    descriptor_path: runtime/loop-descriptors/061-hallucination-reduction-loop.yaml
+  -
+    loop_id: loop-062-model-and-data-drift-monitoring-loop
+    number: 62
+    name: "Model and Data Drift Monitoring Loop"
+    slug: model-and-data-drift-monitoring-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "Production inference, scheduled evaluation, or detected distribution change."
+    run: "Monitor input, data, concept, output, calibration, segment, and outcome drift; compare with baselines; alert and initiate reconfiguration, retraining, rollback, or investigation."
+    output: "Drift status, affected segments, and corrective decision."
+    cadence: "Continuous or daily"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/062-model-and-data-drift-monitoring-loop.md
+    descriptor_path: runtime/loop-descriptors/062-model-and-data-drift-monitoring-loop.yaml
+  -
+    loop_id: loop-063-ai-feedback-learning-loop
+    number: 63
+    name: "AI Feedback Learning Loop"
+    slug: ai-feedback-learning-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "User rating, correction, escalation, override, abandonment, or measured downstream outcome."
+    run: "Validate and categorize feedback, remove noise, identify systemic causes, prioritize improvements, add suitable cases to evaluation or training data, and measure change."
+    output: "Feedback-derived improvement backlog and verified quality movement."
+    cadence: "Continuous, processed weekly"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/063-ai-feedback-learning-loop.md
+    descriptor_path: runtime/loop-descriptors/063-ai-feedback-learning-loop.yaml
+  -
+    loop_id: loop-064-evaluation-dataset-evolution-loop
+    number: 64
+    name: "Evaluation Dataset Evolution Loop"
+    slug: evaluation-dataset-evolution-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "Production failure, new capability, emerging threat, model change, or weak evaluation coverage."
+    run: "Add difficult, representative, adversarial, ambiguous, and edge cases; check labels, duplication, leakage, contamination, segment balance, and version history."
+    output: "Versioned evaluation set with documented coverage."
+    cadence: "Weekly or monthly, and after incidents"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/064-evaluation-dataset-evolution-loop.md
+    descriptor_path: runtime/loop-descriptors/064-evaluation-dataset-evolution-loop.yaml
+  -
+    loop_id: loop-065-model-lifecycle-and-upgrade-safety-loop
+    number: 65
+    name: "Model Lifecycle and Upgrade Safety Loop"
+    slug: model-lifecycle-and-upgrade-safety-loop
+    category_number: 9
+    category_name: "AI and Generative AI Lifecycle and Quality"
+    category_slug: ai-and-generative-ai-lifecycle-and-quality
+    trigger: "Model onboarding, upgrade, routing change, deprecation, provider retirement, or rollback need."
+    run: "Register the model, evaluate compatibility and risk, perform shadow and canary testing, obtain approval, promote gradually, monitor behavior, and roll back or retire safely."
+    output: "Approved lifecycle state, deployment decision, migration record, and rollback package."
+    cadence: "Every model lifecycle event"
+    baseline_risk_tier: R2
+    markdown_path: loops/09-ai-and-generative-ai-lifecycle-and-quality/065-model-lifecycle-and-upgrade-safety-loop.md
+    descriptor_path: runtime/loop-descriptors/065-model-lifecycle-and-upgrade-safety-loop.yaml
+  -
+    loop_id: loop-066-agent-goal-achievement-loop
+    number: 66
+    name: "Agent Goal Achievement Loop"
+    slug: agent-goal-achievement-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "Agent receives an objective."
+    run: "Interpret the goal, constraints, authority, and success conditions; build a plan; execute actions; observe results; evaluate progress; replan; and stop, complete, or escalate."
+    output: "Verified result, execution trace, and completion evidence."
+    cadence: "Every agent task"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/066-agent-goal-achievement-loop.md
+    descriptor_path: runtime/loop-descriptors/066-agent-goal-achievement-loop.yaml
+  -
+    loop_id: loop-067-agent-planning-quality-loop
+    number: 67
+    name: "Agent Planning Quality Loop"
+    slug: agent-planning-quality-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "New agent workflow, planning failure, or sampled production run."
+    run: "Evaluate decomposition, ordering, dependencies, assumptions, risks, unnecessary actions, stopping conditions, and recovery paths; improve planning prompts or policies and retest."
+    output: "Planning score and corrected planning strategy."
+    cadence: "Every material workflow change and continuous sampling"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/067-agent-planning-quality-loop.md
+    descriptor_path: runtime/loop-descriptors/067-agent-planning-quality-loop.yaml
+  -
+    loop_id: loop-068-tool-selection-loop
+    number: 68
+    name: "Tool Selection Loop"
+    slug: tool-selection-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "Agent determines that an external capability may be required."
+    run: "Match intent to approved tools, schemas, permissions, data sensitivity, cost, reversibility, and risk; select the safest suitable tool or decline tool use."
+    output: "Authorized tool choice and rationale."
+    cadence: "Every proposed tool action"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/068-tool-selection-loop.md
+    descriptor_path: runtime/loop-descriptors/068-tool-selection-loop.yaml
+  -
+    loop_id: loop-069-tool-execution-validation-loop
+    number: 69
+    name: "Tool Execution Validation Loop"
+    slug: tool-execution-validation-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "Tool call proposed or completed."
+    run: "Validate arguments and preconditions, execute within scope, inspect the response, verify the actual system state, detect partial effects, and compensate, retry, or escalate when necessary."
+    output: "Verified action result and tool evidence."
+    cadence: "Every tool call"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/069-tool-execution-validation-loop.md
+    descriptor_path: runtime/loop-descriptors/069-tool-execution-validation-loop.yaml
+  -
+    loop_id: loop-070-agent-context-management-loop
+    number: 70
+    name: "Agent Context Management Loop"
+    slug: agent-context-management-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "New task, reasoning step, context-window pressure, or retrieval request."
+    run: "Preserve instruction hierarchy, retrieve authoritative material, separate untrusted content, remove irrelevant information, compress safely, maintain provenance, and enforce token limits."
+    output: "Minimal sufficient context package with source traceability."
+    cadence: "Every task or reasoning cycle"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/070-agent-context-management-loop.md
+    descriptor_path: runtime/loop-descriptors/070-agent-context-management-loop.yaml
+  -
+    loop_id: loop-071-agent-memory-loop
+    number: 71
+    name: "Agent Memory Loop"
+    slug: agent-memory-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "Memory read, write, update, expiry, correction, or deletion request."
+    run: "Decide whether information should be stored, classify sensitivity, obtain required consent, deduplicate, resolve conflicts, set retention, retrieve selectively, and support correction and deletion."
+    output: "Accurate, relevant, and governed memory state."
+    cadence: "Every memory operation, with scheduled cleanup"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/071-agent-memory-loop.md
+    descriptor_path: runtime/loop-descriptors/071-agent-memory-loop.yaml
+  -
+    loop_id: loop-072-agent-resource-budget-and-rate-limit-control-loop
+    number: 72
+    name: "Agent Resource, Budget and Rate-Limit Control Loop"
+    slug: agent-resource-budget-and-rate-limit-control-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "Agent run, tool call, transaction, or resource-threshold approach."
+    run: "Enforce limits for tokens, time, model calls, tool calls, spend, concurrency, retries, data volume, and transaction impact; stop or escalate before limits are exceeded."
+    output: "Resource decision, consumption record, and controlled termination where required."
+    cadence: "Real-time during every run"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/072-agent-resource-budget-and-rate-limit-control-loop.md
+    descriptor_path: runtime/loop-descriptors/072-agent-resource-budget-and-rate-limit-control-loop.yaml
+  -
+    loop_id: loop-073-agent-state-consistency-and-idempotency-loop
+    number: 73
+    name: "Agent State Consistency and Idempotency Loop"
+    slug: agent-state-consistency-and-idempotency-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "State-changing action, retry, timeout, parallel execution, or recovery."
+    run: "Use operation identifiers, checkpoints, transactions, locks where appropriate, and idempotency controls; detect duplicates, conflicts, replay, and partial completion; reconcile or compensate."
+    output: "Consistent system state and state-transition evidence."
+    cadence: "Every state-changing action"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/073-agent-state-consistency-and-idempotency-loop.md
+    descriptor_path: runtime/loop-descriptors/073-agent-state-consistency-and-idempotency-loop.yaml
+  -
+    loop_id: loop-074-agent-failure-recovery-loop
+    number: 74
+    name: "Agent Failure Recovery Loop"
+    slug: agent-failure-recovery-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "Planning, model, tool, data, permission, policy, or execution failure."
+    run: "Classify the failure, determine whether retry is safe, apply limits and backoff, select an alternate path, roll back partial work, or escalate to a human."
+    output: "Recovered workflow or controlled failure with diagnostic evidence."
+    cadence: "Every agent failure"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/074-agent-failure-recovery-loop.md
+    descriptor_path: runtime/loop-descriptors/074-agent-failure-recovery-loop.yaml
+  -
+    loop_id: loop-075-multi-agent-coordination-loop
+    number: 75
+    name: "Multi-Agent Coordination Loop"
+    slug: multi-agent-coordination-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "A goal is divided among multiple specialized agents."
+    run: "Define roles and contracts, assign work, manage dependencies and shared state, exchange outputs, resolve conflicts, validate contributions, and integrate the result."
+    output: "Coherent combined result and contribution trace."
+    cadence: "Every multi-agent workflow"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/075-multi-agent-coordination-loop.md
+    descriptor_path: runtime/loop-descriptors/075-multi-agent-coordination-loop.yaml
+  -
+    loop_id: loop-076-agent-delegation-and-accountability-loop
+    number: 76
+    name: "Agent Delegation and Accountability Loop"
+    slug: agent-delegation-and-accountability-loop
+    category_number: 10
+    category_name: "Agentic AI Execution and Orchestration"
+    category_slug: agentic-ai-execution-and-orchestration
+    trigger: "Human or agent delegates authority or work to another agent."
+    run: "Record delegator, delegatee, permitted scope, data, tools, duration, limits, downstream delegation, and accountable human; prevent authority expansion beyond the original grant."
+    output: "Enforceable delegation record and accountability trail."
+    cadence: "Every delegation"
+    baseline_risk_tier: R3
+    markdown_path: loops/10-agentic-ai-execution-and-orchestration/076-agent-delegation-and-accountability-loop.md
+    descriptor_path: runtime/loop-descriptors/076-agent-delegation-and-accountability-loop.yaml
+  -
+    loop_id: loop-077-secure-sdlc-loop
+    number: 77
+    name: "Secure SDLC Loop"
+    slug: secure-sdlc-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "New product, feature, design, code change, or release."
+    run: "Define security requirements, perform threat modeling, design review, static and dynamic testing, secrets and infrastructure scanning, remediation, retesting, and release-risk assessment."
+    output: "Security evidence, unresolved-risk decision, and release status."
+    cadence: "Every material change"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/077-secure-sdlc-loop.md
+    descriptor_path: runtime/loop-descriptors/077-secure-sdlc-loop.yaml
+  -
+    loop_id: loop-078-model-and-agent-interaction-security-loop
+    number: 78
+    name: "Model and Agent Interaction Security Loop"
+    slug: model-and-agent-interaction-security-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "Model, prompt, retrieval, memory, agent, tool, or external-content change."
+    run: "Test direct and indirect prompt injection, jailbreaks, context and memory poisoning, retrieval poisoning, system-instruction exposure, data exfiltration, tool hijacking, and cross-agent attacks; strengthen isolation and authorization."
+    output: "Attack results, control effectiveness, and regression suite."
+    cadence: "Every AI change, with continuous runtime controls"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/078-model-and-agent-interaction-security-loop.md
+    descriptor_path: runtime/loop-descriptors/078-model-and-agent-interaction-security-loop.yaml
+  -
+    loop_id: loop-079-agent-guardrail-loop
+    number: 79
+    name: "Agent Guardrail Loop"
+    slug: agent-guardrail-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "Agent proposes an action, response, tool call, or state change."
+    run: "Evaluate the proposal against user intent, policy, authorization, allowlists, risk tier, reversibility, transaction limits, and approval requirements; allow, modify, block, or escalate."
+    output: "Guardrail decision and audit record."
+    cadence: "Every consequential agent action"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/079-agent-guardrail-loop.md
+    descriptor_path: runtime/loop-descriptors/079-agent-guardrail-loop.yaml
+  -
+    loop_id: loop-080-agent-identity-and-credential-governance-loop
+    number: 80
+    name: "Agent Identity and Credential Governance Loop"
+    slug: agent-identity-and-credential-governance-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "Agent creation, session start, tool access, credential change, or termination."
+    run: "Assign a distinct non-human identity, issue scoped and short-lived credentials, store secrets securely, rotate and revoke access, and preserve action attribution."
+    output: "Governed agent identity and credential record."
+    cadence: "Every agent session or access change"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/080-agent-identity-and-credential-governance-loop.md
+    descriptor_path: runtime/loop-descriptors/080-agent-identity-and-credential-governance-loop.yaml
+  -
+    loop_id: loop-081-access-governance-loop
+    number: 81
+    name: "Access Governance Loop"
+    slug: access-governance-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "User, service, agent, role, employment, responsibility, or system change."
+    run: "Apply least privilege, role or attribute policies, privileged-access controls, joiner-mover-leaver processing, conflict checks, periodic recertification, and access removal."
+    output: "Approved access state and certification evidence."
+    cadence: "Continuous, with quarterly recertification"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/081-access-governance-loop.md
+    descriptor_path: runtime/loop-descriptors/081-access-governance-loop.yaml
+  -
+    loop_id: loop-082-vulnerability-management-loop
+    number: 82
+    name: "Vulnerability Management Loop"
+    slug: vulnerability-management-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "Scanner finding, advisory, penetration test, incident, or researcher report."
+    run: "Validate the issue, assess exposure and exploitability, prioritize by business impact, assign remediation SLA, patch or mitigate, retest, and accept residual risk only through authority."
+    output: "Closed, mitigated, or accepted vulnerability record."
+    cadence: "Continuous scanning, daily triage"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/082-vulnerability-management-loop.md
+    descriptor_path: runtime/loop-descriptors/082-vulnerability-management-loop.yaml
+  -
+    loop_id: loop-083-security-operations-and-threat-detection-loop
+    number: 83
+    name: "Security Operations and Threat Detection Loop"
+    slug: security-operations-and-threat-detection-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "Security telemetry, suspicious behavior, intelligence update, or detection rule."
+    run: "Collect and correlate signals, enrich context, triage alerts, investigate, contain threats, preserve evidence, and tune detections based on false positives and missed events."
+    output: "Security disposition, incident escalation, and improved detection logic."
+    cadence: Continuous
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/083-security-operations-and-threat-detection-loop.md
+    descriptor_path: runtime/loop-descriptors/083-security-operations-and-threat-detection-loop.yaml
+  -
+    loop_id: loop-084-ai-abuse-and-misuse-monitoring-loop
+    number: 84
+    name: "AI Abuse and Misuse Monitoring Loop"
+    slug: ai-abuse-and-misuse-monitoring-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "AI request, user behavior, traffic anomaly, policy evasion, or suspicious usage pattern."
+    run: "Detect malicious automation, fraud, scraping, prohibited content, credential abuse, data extraction, evasion, and coordinated misuse; throttle, block, challenge, or investigate."
+    output: "Abuse disposition and updated detection controls."
+    cadence: Continuous
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/084-ai-abuse-and-misuse-monitoring-loop.md
+    descriptor_path: runtime/loop-descriptors/084-ai-abuse-and-misuse-monitoring-loop.yaml
+  -
+    loop_id: loop-085-frontier-cyber-defense-loop
+    number: 85
+    name: "Frontier Cyber Defense Loop"
+    slug: frontier-cyber-defense-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "New attacker capability, frontier-model release, critical vulnerability class, or threat-intelligence change."
+    run: "Reassess attack surface assuming AI-enhanced reconnaissance, code analysis, social engineering, and exploit chaining; red-team the product and reduce remediation time."
+    output: "Updated threat model, exploit-chain findings, and hardening plan."
+    cadence: "Monthly or quarterly, and after major threat change"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/085-frontier-cyber-defense-loop.md
+    descriptor_path: runtime/loop-descriptors/085-frontier-cyber-defense-loop.yaml
+  -
+    loop_id: loop-086-software-supply-chain-and-build-integrity-loop
+    number: 86
+    name: "Software Supply-Chain and Build Integrity Loop"
+    slug: software-supply-chain-and-build-integrity-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "Source change, dependency update, build, artifact publication, or release."
+    run: "Verify source provenance, signed changes, isolated build process, dependency integrity, software bill of materials, artifact signatures, attestations, and reproducibility."
+    output: "Trusted or blocked artifact with provenance evidence."
+    cadence: "Every build and release"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/086-software-supply-chain-and-build-integrity-loop.md
+    descriptor_path: runtime/loop-descriptors/086-software-supply-chain-and-build-integrity-loop.yaml
+  -
+    loop_id: loop-087-ai-supply-chain-security-loop
+    number: 87
+    name: "AI Supply-Chain Security Loop"
+    slug: ai-supply-chain-security-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "Onboarding or changing a model, dataset, embedding, agent framework, plugin, MCP server, tool, container, or external AI API."
+    run: "Inventory the component, assess provenance, ownership, license, security, privacy, availability, provider change risk, and required access; approve, restrict, monitor, or replace it."
+    output: "AI component record and supplier-risk decision."
+    cadence: "Every component change, reviewed quarterly"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/087-ai-supply-chain-security-loop.md
+    descriptor_path: runtime/loop-descriptors/087-ai-supply-chain-security-loop.yaml
+  -
+    loop_id: loop-088-privacy-engineering-and-data-protection-loop
+    number: 88
+    name: "Privacy Engineering and Data Protection Loop"
+    slug: privacy-engineering-and-data-protection-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "New feature, data flow, processing purpose, jurisdiction, model use, or privacy incident."
+    run: "Map data, minimize collection, confirm purpose and consent, enforce residency, retention and deletion, perform privacy threat assessment, and test controls."
+    output: "Privacy decision, required controls, assessment evidence, and residual-risk record."
+    cadence: "Every data-flow change"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/088-privacy-engineering-and-data-protection-loop.md
+    descriptor_path: runtime/loop-descriptors/088-privacy-engineering-and-data-protection-loop.yaml
+  -
+    loop_id: loop-089-audit-logging-and-forensic-readiness-loop
+    number: 89
+    name: "Audit Logging and Forensic Readiness Loop"
+    slug: audit-logging-and-forensic-readiness-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "User, service, model, agent, tool, data, configuration, security, or administrative action."
+    run: "Produce tamper-resistant, time-synchronized, correlated logs with appropriate retention and access controls; periodically prove that an event can be reconstructed."
+    output: "Searchable evidence trail and forensic-readiness result."
+    cadence: "Continuous, tested quarterly"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/089-audit-logging-and-forensic-readiness-loop.md
+    descriptor_path: runtime/loop-descriptors/089-audit-logging-and-forensic-readiness-loop.yaml
+  -
+    loop_id: loop-090-ai-red-team-evolution-loop
+    number: 90
+    name: "AI Red-Team Evolution Loop"
+    slug: ai-red-team-evolution-loop
+    category_number: 11
+    category_name: "Security, Privacy and Supply-Chain Assurance"
+    category_slug: security-privacy-and-supply-chain-assurance
+    trigger: "New attack method, provider disclosure, internal failure, incident, or model capability."
+    run: "Convert threats and failures into adversarial cases, run them across versions, record bypasses, improve defenses, and preserve failures as security regression tests."
+    output: "Expanding adversarial suite and control-effectiveness trend."
+    cadence: "Monthly or quarterly, and after incidents"
+    baseline_risk_tier: R3
+    markdown_path: loops/11-security-privacy-and-supply-chain-assurance/090-ai-red-team-evolution-loop.md
+    descriptor_path: runtime/loop-descriptors/090-ai-red-team-evolution-loop.yaml
+  -
+    loop_id: loop-091-frontier-model-advancement-loop
+    number: 91
+    name: "Frontier Model Advancement Loop"
+    slug: frontier-model-advancement-loop
+    category_number: 12
+    category_name: "Frontier, Quantum and Strategic Resilience"
+    category_slug: frontier-quantum-and-strategic-resilience
+    trigger: "New model, major capability release, material price change, or strategic review."
+    run: "Maintain a capability radar, benchmark new models on product-specific tasks, compare quality, safety, autonomy, cost, latency, and operational constraints, and decide whether to experiment, adopt, route, or defer."
+    output: "Model-advancement scorecard and product action plan."
+    cadence: "Monthly or quarterly"
+    baseline_risk_tier: R3
+    markdown_path: loops/12-frontier-quantum-and-strategic-resilience/091-frontier-model-advancement-loop.md
+    descriptor_path: runtime/loop-descriptors/091-frontier-model-advancement-loop.yaml
+  -
+    loop_id: loop-092-model-portability-and-exit-loop
+    number: 92
+    name: "Model Portability and Exit Loop"
+    slug: model-portability-and-exit-loop
+    category_number: 12
+    category_name: "Frontier, Quantum and Strategic Resilience"
+    category_slug: frontier-quantum-and-strategic-resilience
+    trigger: "Provider concentration concern, model retirement, service degradation, contract change, or scheduled portability test."
+    run: "Test alternate models, isolate provider-specific prompts and schemas, verify tool and state portability, measure migration effort and quality loss, and maintain failover and exit procedures."
+    output: "Portability score, validated fallback, and exit plan."
+    cadence: "Quarterly or semiannual"
+    baseline_risk_tier: R3
+    markdown_path: loops/12-frontier-quantum-and-strategic-resilience/092-model-portability-and-exit-loop.md
+    descriptor_path: runtime/loop-descriptors/092-model-portability-and-exit-loop.yaml
+  -
+    loop_id: loop-093-capability-absorption-loop
+    number: 93
+    name: "Capability Absorption Loop"
+    slug: capability-absorption-loop
+    category_number: 12
+    category_name: "Frontier, Quantum and Strategic Resilience"
+    category_slug: frontier-quantum-and-strategic-resilience
+    trigger: "A model gains native capability currently implemented through custom code, chains, classifiers, extraction logic, or infrastructure."
+    run: "Identify potentially redundant components, benchmark native replacement, compare quality, cost, control, and risk, simplify architecture, and retire unnecessary layers."
+    output: "Simplification decision, removed complexity, and verified replacement."
+    cadence: Quarterly
+    baseline_risk_tier: R3
+    markdown_path: loops/12-frontier-quantum-and-strategic-resilience/093-capability-absorption-loop.md
+    descriptor_path: runtime/loop-descriptors/093-capability-absorption-loop.yaml
+  -
+    loop_id: loop-094-product-obsolescence-detection-loop
+    number: 94
+    name: "Product Obsolescence Detection Loop"
+    slug: product-obsolescence-detection-loop
+    category_number: 12
+    category_name: "Frontier, Quantum and Strategic Resilience"
+    category_slug: frontier-quantum-and-strategic-resilience
+    trigger: "Frontier capability, competitor, platform, pricing, or customer-expectation change."
+    run: "Test whether a general model or platform now performs the product’s core task, identify commoditized features, assess unique data, workflow, trust, integration, compliance, and distribution advantages, and reposition where needed."
+    output: "Obsolescence-risk score and defend, differentiate, pivot, partner, or retire decision."
+    cadence: Quarterly
+    baseline_risk_tier: R3
+    markdown_path: loops/12-frontier-quantum-and-strategic-resilience/094-product-obsolescence-detection-loop.md
+    descriptor_path: runtime/loop-descriptors/094-product-obsolescence-detection-loop.yaml
+  -
+    loop_id: loop-095-agi-readiness-and-capability-escalation-loop
+    number: 95
+    name: "AGI Readiness and Capability Escalation Loop"
+    slug: agi-readiness-and-capability-escalation-loop
+    category_number: 12
+    category_name: "Frontier, Quantum and Strategic Resilience"
+    category_slug: frontier-quantum-and-strategic-resilience
+    trigger: "Material increase in reasoning, autonomy, cyber ability, tool use, self-correction, persistence, or ability to complete long-horizon work."
+    run: "Reclassify capability and impact, rerun adversarial evaluations, reassess permissions and human supervision, strengthen containment, and reduce or expand autonomy only with evidence."
+    output: "Capability tier, permitted use, and required safeguards."
+    cadence: "Every significant capability increase, reviewed quarterly"
+    baseline_risk_tier: R3
+    markdown_path: loops/12-frontier-quantum-and-strategic-resilience/095-agi-readiness-and-capability-escalation-loop.md
+    descriptor_path: runtime/loop-descriptors/095-agi-readiness-and-capability-escalation-loop.yaml
+  -
+    loop_id: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop
+    number: 96
+    name: "Post-Quantum Cryptography, Crypto-Agility and Long-Lived Data Protection Loop"
+    slug: post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop
+    category_number: 12
+    category_name: "Frontier, Quantum and Strategic Resilience"
+    category_slug: frontier-quantum-and-strategic-resilience
+    trigger: "Cryptographic change, standard update, vendor roadmap change, or scheduled quantum-risk review."
+    run: "Inventory cryptography, identify quantum-vulnerable algorithms and long-lived sensitive data, abstract algorithm dependencies, test replacement or hybrid methods, measure interoperability and performance, and prioritize migration."
+    output: "Cryptographic inventory, exposure register, crypto-agility score, and migration roadmap."
+    cadence: "Semiannual or annual"
+    baseline_risk_tier: R3
+    markdown_path: loops/12-frontier-quantum-and-strategic-resilience/096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop.md
+    descriptor_path: runtime/loop-descriptors/096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop.yaml
+  -
+    loop_id: loop-097-catastrophic-failure-and-containment-loop
+    number: 97
+    name: "Catastrophic Failure and Containment Loop"
+    slug: catastrophic-failure-and-containment-loop
+    category_number: 12
+    category_name: "Frontier, Quantum and Strategic Resilience"
+    category_slug: frontier-quantum-and-strategic-resilience
+    trigger: "High-risk model, agent, privileged tool, major release, or scheduled containment exercise."
+    run: "Define worst-case scenarios, test kill switches, credential revocation, network isolation, rate and transaction limits, checkpoints, rollback, safe mode, manual takeover, and immutable evidence."
+    output: "Containment result, maximum-loss estimate, and corrected emergency procedures."
+    cadence: "Quarterly or semiannual"
+    baseline_risk_tier: R4
+    markdown_path: loops/12-frontier-quantum-and-strategic-resilience/097-catastrophic-failure-and-containment-loop.md
+    descriptor_path: runtime/loop-descriptors/097-catastrophic-failure-and-containment-loop.yaml
+  -
+    loop_id: loop-098-quantum-computing-opportunity-scouting-loop
+    number: 98
+    name: "Quantum Computing Opportunity Scouting Loop"
+    slug: quantum-computing-opportunity-scouting-loop
+    category_number: 12
+    category_name: "Frontier, Quantum and Strategic Resilience"
+    category_slug: frontier-quantum-and-strategic-resilience
+    trigger: "Strategic technology review or credible quantum or hybrid capability development."
+    run: "Identify optimization, simulation, search, security, or scientific workloads; establish a strong classical baseline; assess data, hardware, cost, maturity, and measurable advantage; run limited experiments."
+    output: "Experiment evidence and pursue, monitor, partner, or reject decision."
+    cadence: "Semiannual or annual"
+    baseline_risk_tier: R3
+    markdown_path: loops/12-frontier-quantum-and-strategic-resilience/098-quantum-computing-opportunity-scouting-loop.md
+    descriptor_path: runtime/loop-descriptors/098-quantum-computing-opportunity-scouting-loop.yaml
+  -
+    loop_id: loop-099-adoption-loop
+    number: 99
+    name: "Adoption Loop"
+    slug: adoption-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "Product launch, usage change, low activation, abandonment, weak retention, or support feedback."
+    run: "Measure awareness, onboarding, activation, repeated use, outcome realization, and drop-off; segment users; improve training, workflow, guidance, and product experience."
+    output: "Adoption scorecard and targeted intervention plan."
+    cadence: "Continuous analytics, monthly review"
+    baseline_risk_tier: R1
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/099-adoption-loop.md
+    descriptor_path: runtime/loop-descriptors/099-adoption-loop.yaml
+  -
+    loop_id: loop-100-human-oversight-approval-and-calibration-loop
+    number: 100
+    name: "Human Oversight, Approval and Calibration Loop"
+    slug: human-oversight-approval-and-calibration-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "High-impact action requiring approval or scheduled review of human decisions."
+    run: "Present evidence, risk, alternatives, and recommendation to an authorized reviewer; capture the decision; periodically measure reviewer agreement, expertise, fatigue, automation bias, and escalation quality."
+    output: "Approval record and calibrated human-review process."
+    cadence: "Every high-impact action, reviewed monthly"
+    baseline_risk_tier: R1
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/100-human-oversight-approval-and-calibration-loop.md
+    descriptor_path: runtime/loop-descriptors/100-human-oversight-approval-and-calibration-loop.yaml
+  -
+    loop_id: loop-101-agent-autonomy-calibration-loop
+    number: 101
+    name: "Agent Autonomy Calibration Loop"
+    slug: agent-autonomy-calibration-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "New agent, material model change, performance trend, incident, or scheduled autonomy review."
+    run: "Evaluate task risk, historical reliability, reversibility, detectability, supervision cost, and failure severity; assign the appropriate autonomy mode and monitor outcomes."
+    output: "Approved autonomy level and conditions for expansion or reduction."
+    cadence: "Monthly or quarterly"
+    baseline_risk_tier: R3
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/101-agent-autonomy-calibration-loop.md
+    descriptor_path: runtime/loop-descriptors/101-agent-autonomy-calibration-loop.yaml
+  -
+    loop_id: loop-102-autonomy-boundary-review-loop
+    number: 102
+    name: "Autonomy Boundary Review Loop"
+    slug: autonomy-boundary-review-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "Agent permission, tool, system, model, workflow, or data-access change."
+    run: "Inventory what the agent can read, write, delete, deploy, communicate, purchase, approve, spend, create, or delegate; simulate misuse and remove unnecessary authority."
+    output: "Authority map, least-privilege policy, and prohibited-action list."
+    cadence: "Every authority change, reviewed quarterly"
+    baseline_risk_tier: R3
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/102-autonomy-boundary-review-loop.md
+    descriptor_path: runtime/loop-descriptors/102-autonomy-boundary-review-loop.yaml
+  -
+    loop_id: loop-103-capability-based-governance-loop
+    number: 103
+    name: "Capability-Based Governance Loop"
+    slug: capability-based-governance-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "Model or agent onboarding, upgrade, new use, or scheduled governance review."
+    run: "Classify actual capabilities and potential impact rather than relying on vendor labels; map the tier to mandatory evaluations, security, monitoring, human approval, containment, and audit controls."
+    output: "Governance tier and enforceable control profile."
+    cadence: "Every onboarding or upgrade, reviewed quarterly"
+    baseline_risk_tier: R1
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/103-capability-based-governance-loop.md
+    descriptor_path: runtime/loop-descriptors/103-capability-based-governance-loop.yaml
+  -
+    loop_id: loop-104-compliance-evidence-loop
+    number: 104
+    name: "Compliance Evidence Loop"
+    slug: compliance-evidence-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "Control execution, audit requirement, regulatory obligation, or evidence-expiry threshold."
+    run: "Map controls to systems and owners, collect authoritative evidence, verify completeness and freshness, identify gaps, initiate remediation, and package evidence for review."
+    output: "Current control status and audit-ready evidence set."
+    cadence: "Continuous collection, monthly or quarterly review"
+    baseline_risk_tier: R3
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/104-compliance-evidence-loop.md
+    descriptor_path: runtime/loop-descriptors/104-compliance-evidence-loop.yaml
+  -
+    loop_id: loop-105-legal-regulatory-and-standards-watch-loop
+    number: 105
+    name: "Legal, Regulatory and Standards Watch Loop"
+    slug: legal-regulatory-and-standards-watch-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "New law, regulation, standard, enforcement action, contractual obligation, or jurisdictional expansion."
+    run: "Determine applicability, assess product and operating impact, map required changes to controls and owners, track implementation, and retain decision evidence."
+    output: "Obligation register and required product, process, or policy changes."
+    cadence: "Monthly or quarterly"
+    baseline_risk_tier: R1
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/105-legal-regulatory-and-standards-watch-loop.md
+    descriptor_path: runtime/loop-descriptors/105-legal-regulatory-and-standards-watch-loop.yaml
+  -
+    loop_id: loop-106-vendor-and-third-party-risk-and-sla-loop
+    number: 106
+    name: "Vendor and Third-Party Risk and SLA Loop"
+    slug: vendor-and-third-party-risk-and-sla-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "Vendor onboarding, contract renewal, performance breach, incident, material service change, or scheduled review."
+    run: "Assess security, privacy, resilience, compliance, concentration, subcontractors, data access, financial viability, service performance, exit capability, and SLA compliance."
+    output: "Approved, restricted, remediated, or exited vendor decision."
+    cadence: "Onboarding and monthly or quarterly review"
+    baseline_risk_tier: R1
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/106-vendor-and-third-party-risk-and-sla-loop.md
+    descriptor_path: runtime/loop-descriptors/106-vendor-and-third-party-risk-and-sla-loop.yaml
+  -
+    loop_id: loop-107-ip-copyright-and-license-compliance-loop
+    number: 107
+    name: "IP, Copyright and License Compliance Loop"
+    slug: ip-copyright-and-license-compliance-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "New code, dataset, model, document, media, generated output, package, or external asset."
+    run: "Verify ownership, permitted use, training and output rights, open-source obligations, attribution, redistribution, derivative-work limits, and contractual restrictions."
+    output: "Approved use, required attribution, remediation, or blocked asset."
+    cadence: "Every asset intake and release"
+    baseline_risk_tier: R3
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/107-ip-copyright-and-license-compliance-loop.md
+    descriptor_path: runtime/loop-descriptors/107-ip-copyright-and-license-compliance-loop.yaml
+  -
+    loop_id: loop-108-workforce-skills-and-operating-model-readiness-loop
+    number: 108
+    name: "Workforce Skills and Operating Model Readiness Loop"
+    slug: workforce-skills-and-operating-model-readiness-loop
+    category_number: 13
+    category_name: "Enterprise Governance, Adoption and Workforce"
+    category_slug: enterprise-governance-adoption-and-workforce
+    trigger: "Technology, process, product, role, or automation change."
+    run: "Assess required roles, competencies, capacity, separation of duties, decision rights, training, support model, and standard procedures; close gaps and verify readiness through exercises or assessments."
+    output: "Workforce-readiness score, training plan, role changes, and operating-model actions."
+    cadence: "Quarterly or annual"
+    baseline_risk_tier: R1
+    markdown_path: loops/13-enterprise-governance-adoption-and-workforce/108-workforce-skills-and-operating-model-readiness-loop.md
+    descriptor_path: runtime/loop-descriptors/108-workforce-skills-and-operating-model-readiness-loop.yaml

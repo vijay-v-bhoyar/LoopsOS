@@ -1,0 +1,121 @@
+@import "./fluent2.tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: var(--f2-bg-2);
+    color: var(--f2-fg-1);
+    font-family: var(--f2-font-family-base);
+    line-height: 1.5;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    appearance: none;
+    background: transparent;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  a:focus-visible {
+    outline: none;
+    box-shadow: var(--f2-shadow-focus);
+  }
+
+  ::selection {
+    background: var(--f2-brand-subtle);
+    color: var(--f2-fg-1);
+  }
+}
+
+@layer components {
+  .surface {
+    background: var(--f2-bg-1);
+    border: 1px solid var(--f2-border-2);
+    border-radius: var(--f2-radius-panel);
+    box-shadow: var(--f2-shadow-card);
+  }
+
+  .chrome-surface {
+    background: var(--f2-glass-bg);
+    border: 1px solid var(--f2-glass-border);
+    border-radius: var(--f2-radius-panel);
+  }
+
+  .control {
+    border: 1px solid var(--f2-border-1);
+    border-radius: var(--f2-radius-control);
+    background: var(--f2-bg-1);
+    color: var(--f2-fg-1);
+  }
+
+  .control-muted {
+    border: 1px solid var(--f2-border-2);
+    border-radius: var(--f2-radius-control);
+    background: var(--f2-bg-2);
+    color: var(--f2-fg-2);
+  }
+
+  .interactive-surface {
+    appearance: none;
+    background-color: var(--f2-bg-1);
+    border: 1px solid var(--f2-border-2);
+    border-radius: var(--f2-radius-panel);
+    color: var(--f2-fg-1);
+  }
+
+  .reduced-motion-safe {
+    transition-duration: 160ms;
+    transition-property: background-color, border-color, color, box-shadow, transform;
+    transition-timing-function: ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .chrome-surface,
+  .surface {
+    background: Canvas;
+    border-color: CanvasText;
+    color: CanvasText;
+    box-shadow: none;
+  }
+}
+
+@media print {
+  body,
+  .chrome-surface,
+  .surface {
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: none;
+  }
+}

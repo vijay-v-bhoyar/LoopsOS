@@ -1,0 +1,215 @@
+loop_id: loop-041-observability-improvement-loop
+name: "Observability Improvement Loop"
+version: 1.0
+status: DRAFT
+category:
+  number: 7
+  name: "Operations, Reliability and Service Management"
+refs:
+  markdown: loops/07-operations-reliability-and-service-management/041-observability-improvement-loop.md
+  control_catalog: controls/CONTROL_CATALOG.yaml
+  state_machine: runtime/state_machine.yaml
+  loop_graph: runtime/loop_graph.yaml
+  owner_registry: owners/OWNER_REGISTRY.yaml
+  evidence_registry: evidence/EVIDENCE_LOCATION_REGISTRY.yaml
+purpose:
+  outcome_to_improve: "Improved observability coverage and owned instrumentation backlog."
+  trigger: "Monitoring gap, unexplained behavior, incident, new component, or noisy alert."
+  run_summary: "Assess logs, metrics, traces, business events, dashboards, correlation identifiers, alert coverage, and signal quality; add missing telemetry and remove noise."
+  minimum_cadence: "Continuous, reviewed weekly"
+risk:
+  baseline_tier: R2
+  effective_tier_rule: highest_applicable_dimension
+  escalation_dimensions:
+    - environment
+    - data_sensitivity
+    - external_effect
+    - reversibility
+    - blast_radius
+    - autonomy
+    - security_privilege
+    - regulatory_impact
+    - maximum_loss
+authority:
+  policy_owner_ref: owner-category-07
+  gate_owner_ref: owner-category-07
+  executor_ref: executor-loop-041-observability-improvement-loop
+  validator_ref: validator-loop-041-observability-improvement-loop
+  risk_owner_ref: owner-category-07
+evidence:
+  primary_location_ref: evidence-category-07
+  freshness_policy_ref: freshness-R2
+  retention_policy_ref: retention-R2
+controls:
+  applicability_profile_ref: profile-loop-041-observability-improvement-loop
+  applicable_control_ids:
+    - LC-001
+    - LC-002
+    - LC-003
+    - LC-004
+    - LC-005
+    - LC-006
+    - LC-007
+    - LC-008
+    - LC-009
+    - LC-010
+    - LC-011
+    - LC-012
+    - LC-013
+    - LC-014
+    - LC-015
+    - LC-016
+    - LC-017
+    - LC-018
+    - LC-019
+    - LC-020
+    - LC-021
+    - LC-022
+    - LC-023
+    - LC-024
+    - LC-025
+    - LC-026
+    - LC-027
+    - LC-028
+    - LC-029
+    - LC-030
+    - LC-031
+    - LC-032
+    - LC-033
+    - LC-034
+    - LC-035
+    - LC-036
+    - LC-037
+    - LC-038
+    - LC-039
+    - LC-040
+    - LC-041
+    - LC-042
+    - LC-043
+    - LC-044
+    - LC-045
+    - LC-046
+    - LC-047
+    - LC-049
+    - LC-050
+    - LC-051
+    - LC-052
+    - LC-053
+    - LC-054
+    - LC-055
+    - LC-056
+    - LC-057
+    - LC-058
+    - LC-059
+    - LC-060
+    - LC-063
+    - LC-065
+    - LC-066
+    - LC-067
+    - LC-068
+    - LC-069
+    - LC-070
+    - LC-071
+    - LC-072
+    - LC-073
+    - LC-075
+    - LC-076
+    - LC-077
+    - LC-078
+    - LC-079
+    - LC-080
+    - LC-081
+    - LC-082
+    - LC-083
+    - LC-084
+    - LC-085
+    - LC-086
+    - LC-087
+    - LC-088
+    - LC-089
+    - LC-090
+    - LC-091
+    - LC-092
+    - LC-093
+    - LC-094
+    - LC-095
+    - LC-096
+    - LC-097
+    - LC-098
+    - LC-099
+    - LC-100
+    - LC-101
+    - LC-102
+    - LC-103
+    - LC-104
+    - LC-105
+    - LC-106
+    - LC-107
+    - LC-108
+    - LC-109
+tools:
+  - control_applicability_resolver
+  - corpus_validator
+  - evidence_reader
+  - notification_router
+  - owner_registry_lookup
+  - probe_runner
+  - result_envelope_writer
+  - risk_tier_calculator
+  - source_freshness_checker
+  - state_transition_writer
+  - verdict_writer
+golden_tasks_ref: golden-loop-041-observability-improvement-loop
+metric_pack_ref: metrics-loop-041-observability-improvement-loop
+runtime_layers:
+  orchestration: langgraph_compatible_state_graph
+  durable_execution: restate_default_temporal_compatible
+  policy: opa_compatible_policy_decision_point
+  guardrails: external_guardrail_adapter
+  observability: langfuse_or_phoenix_trace_adapter
+tool_policy:
+  allowed_action_classes:
+    - read_only
+    - reversible_write
+  privileged_action_rule: "R3/R4, external-effect, irreversible, financial, security-privileged, and cross-tenant actions require deterministic authorization and payload-bound approval."
+  policy_decision_ref_required: true
+sandbox:
+  profile_ref: sandbox-governed-standard
+  filesystem: read_only_default
+  privilege: non_privileged
+  metadata_endpoint_blocked: true
+egress:
+  default_policy: deny
+  allowed_hosts_ref: runtime/architecture_stack.yaml#required_layers.sandboxing
+  private_network_block: true
+identity:
+  workload_identity_required: true
+  tenant_boundary: required
+  authorization_model: RBAC_ABAC
+secrets:
+  source: KMS
+  injection: short_lived_runtime
+  trace_redaction_required: true
+observability:
+  trace_sink_ref: langfuse_or_phoenix_trace
+  audit_sink_ref: tenant-audit-chain-plus-siem-export
+  redaction_proof_required: true
+durability:
+  workflow_adapter_ref: restate_default_temporal_compatible
+  idempotency_scope: tenant_workflow_tool_payload
+  retry_budget:
+    max_attempts: 3
+    retryable_failures_only: true
+    reconciliation_before_retry: true
+recovery:
+  mode: bounded_retry_then_block_or_compensate
+  reconciliation_required: true
+  compensation_required_for_external_effect: true
+kill_switch:
+  scopes:
+    - tenant
+    - agent
+    - tool
+    - global
+  activation_record_required: true
+

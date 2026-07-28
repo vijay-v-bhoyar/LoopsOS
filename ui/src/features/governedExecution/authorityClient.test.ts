@@ -1,0 +1,157 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { buildConnectorEventsForRelease, buildReleaseInitiativeRecord, buildWorkspaceExecutionPlan } from "./types";
+import { createReleaseAssuranceProfile } from "../../lib/releaseAssurance";
+import { createUser, createWorkspace, DEFAULT_WORKSPACE_USE_CASE } from "../../lib/workspaceStore";
+import { createReleaseInitiative, createDevelopmentSession, getReleaseProofPack, recordConnectorEvent, streamGovernedRun } from "./authorityClient";
+import { looposData } from "../../lib/loopos";
+import type { InitiativeWorkspace } from "../../types";
+
+describe("authorityClient", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it("builds an evidence-bearing plan with validation and effectiveness probes", () => {
+    const user = createUser("Operator", "operator@example.local", "Operator");
+    const workspace = createWorkspace(user, "Claims", DEFAULT_WORKSPACE_USE_CASE);
+    const input = buildWorkspaceExecutionPlan(workspace, "loop-001-product-discovery-loop", "Product Discovery Loop", "R1");
+
+    expect(input.plan.evidence).toHaveLength(1);
+    expect(input.plan.action.tool).toBe("record_action");
+    expect(input.plan.validation_probes).toHaveLength(1);
+    expect(input.plan.effectiveness_probes).toHaveLength(1);
+    expect(input.plan.action.idempotency_key).toMatch(/^action-/);
+    expect(input.plan.enterprise_context).toBeNull();
+  });
+
+  it("adds enterprise runtime context for high-risk governed runs", () => {
+    const user = createUser("Approver", "approver@example.local", "Approver");
+    const workspace = createWorkspace(user, "Agent guardrails", DEFAULT_WORKSPACE_USE_CASE);
+    const input = buildWorkspaceExecutionPlan(workspace, "loop-079-agent-guardrail-loop", "Agent Guardrail Loop", "R3");
+
+    expect(input.plan.enterprise_context).toEqual(expect.objectContaining({
+      sandbox_profile_ref: "sandbox-e2b-firecracker-production",
+      idempotency_scope: "tenant_workflow_tool_payload",
+      evidence_refs: ["workspace-snapshot"],
+    }));
+  });
+
+  it("creates an explicit development authority session without persisting the token", async () => {
+    const fetchImpl = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ access_token: "token", token_type: "bearer", expires_in: 3600, actor: { tenant_id: "local-evaluation", user_id: "user", name: "Operator", role: "Operator" } }), { status: 200, headers: { "content-type": "application/json" } }));
+    const user = createUser("Operator", "operator@example.local", "Operator");
+    const session = await createDevelopmentSession(user);
+
+    expect(session.access_token).toBe("token");
+    expect(fetchImpl).toHaveBeenCalledWith("/authority/v1/dev/sessions", expect.objectContaining({ credentials: "omit", redirect: "error" }));
+    expect(window.localStorage.length).toBe(0);
+  });
+
+  it("builds and posts a release assurance initiative record", async () => {
+    const user = createUser("Operator", "operator@example.local", "Operator");
+    const workspace = createWorkspace(user, "Release", {
+      ...DEFAULT_WORKSPACE_USE_CASE,
+      title: "Prepare release 2026.08",
+      description: "Govern a production release with Jira and GitHub evidence.",
+    });
+    const initiative: InitiativeWorkspace = {
+      id: "initiative-release",
+      title: workspace.use_case.title,
+      description: workspace.use_case.description,
+      workflow_type: "release",
+      business_outcome: workspace.use_case.businessOutcome,
+      maturity: workspace.use_case.maturity,
+      risk: "R3",
+      status: "planned",
+      created_at: "2026-07-23T12:00:00.000Z",
+      updated_at: "2026-07-23T12:00:00.000Z",
+      loop_bundle_ids: ["loop-036-release-readiness-loop", "loop-038-deployment-validation-loop"],
+      execution_records: [],
+      evidence_records: [],
+      approvals: [],
+      handoffs: [],
+      roi_assumptions: {
+        initiative_id: "initiative-release",
+        meetings_avoided: 1,
+        review_cycles_reduced: 1,
+        evidence_items_reused: 1,
+        hours_saved_estimate: 3,
+        assumptions: "test",
+        confidence_basis: "recorded facts",
+      },
+    };
+    initiative.release_assurance = createReleaseAssuranceProfile(workspace, initiative, looposData, user.name, "2026-07-23T12:00:00.000Z");
+    const connectorInput = buildConnectorEventsForRelease(workspace, initiative)[0];
+    expect(connectorInput.verification_status).toBe("session_authenticated");
+    expect(connectorInput.payload.trust_boundary).toBe("shadow evidence only; governed write-back requires separate authority action");
+    const fetchImpl = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...connectorInput, connector_event_id: "connector-event-1", tenant_id: "local-evaluation", payload_hash: "hash-1", verification_status: "session_authenticated", created_by: user.user_id, created_at: "2026-07-23T12:00:00.000Z" }), { status: 201, headers: { "content-type": "application/json" } }))
+      .mockImplementationOnce(async (_url, init) => {
+        const body = JSON.parse(String(init?.body)) as { source_event_ids: string[] };
+        return new Response(JSON.stringify({ ...body, ...buildReleaseInitiativeRecord(workspace, initiative, body.source_event_ids), initiative_id: "initiative-authority", tenant_id: "local-evaluation", freshness_summary: { status: "fresh", source_event_count: 1 }, readiness_verdict: { verdict: "NO_GO", failing_reasons: ["release gate blocked"] }, created_by: user.user_id, created_at: "2026-07-23T12:00:00.000Z", updated_at: "2026-07-23T12:00:00.000Z" }), { status: 201, headers: { "content-type": "application/json" } });
+      });
+
+    const event = await recordConnectorEvent("token", connectorInput);
+    const input = buildReleaseInitiativeRecord(workspace, initiative, [event.connector_event_id]);
+    const record = await createReleaseInitiative("token", input);
+
+    expect(record.initiative_id).toBe("initiative-authority");
+    expect(record.source_event_ids).toEqual(["connector-event-1"]);
+    expect(record.release_assurance.gates.length).toBeGreaterThan(0);
+    expect(record.freshness_summary?.status).toBe("fresh");
+    expect(record.readiness_verdict?.verdict).toBe("NO_GO");
+    expect(fetchImpl).toHaveBeenNthCalledWith(1, "/authority/v1/connector-events", expect.objectContaining({ method: "POST" }));
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, "/authority/v1/release-initiatives", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ authorization: "Bearer token", "idempotency-key": expect.stringContaining("release-") }),
+    }));
+  });
+
+  it("parses streamed audit events and stops at an authority release boundary", async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('id: 1\nevent: RUN_CREATED\ndata: {"sequence":1,"event_type":"RUN_CREATED","payload":{}}\n\n'));
+        controller.enqueue(encoder.encode('id: 2\nevent: RUN_RELEASED\ndata: {"sequence":2,"event_type":"RUN_RELEASED","payload":{"runner_status":"completed"}}\n\n'));
+        controller.close();
+      },
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(stream, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    const events: string[] = [];
+    await streamGovernedRun("token", "run-1", (event) => events.push(event.event_type), undefined, 7);
+    expect(events).toEqual(["RUN_CREATED", "RUN_RELEASED"]);
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("after=7"), expect.any(Object));
+  });
+
+  it("fetches a release proof pack from the durable authority record", async () => {
+    const fetchImpl = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      initiative_id: "initiative-authority",
+      tenant_id: "local-evaluation",
+      workspace_id: "workspace-release",
+      release_name: "Release 2026.08",
+      readiness_verdict: { verdict: "NO_GO" },
+      freshness_summary: { status: "fresh" },
+      source_event_ids: ["connector-event-1"],
+      markdown: "# LoopOS Authority Release Proof Pack",
+      markdown_hash: "a".repeat(64),
+      generated_at: "2026-07-23T12:00:00.000Z",
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    const proofPack = await getReleaseProofPack("token", "initiative-authority");
+
+    expect(proofPack.markdown).toContain("Authority Release Proof Pack");
+    expect(proofPack.markdown_hash).toHaveLength(64);
+    expect(fetchImpl).toHaveBeenCalledWith("/authority/v1/release-initiatives/initiative-authority/proof-pack", expect.objectContaining({
+      headers: expect.objectContaining({ authorization: "Bearer token" }),
+    }));
+  });
+
+  it("releases a stream while delayed effectiveness is pending", async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('id: 9\nevent: RUN_RELEASED\ndata: {"sequence":9,"event_type":"RUN_RELEASED","payload":{"runner_status":"awaiting_effectiveness"}}\n\n'));
+      },
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(stream, { status: 200 }));
+    await streamGovernedRun("token", "run-delayed", () => undefined);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+});

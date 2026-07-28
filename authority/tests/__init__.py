@@ -1,0 +1,1 @@
+"""Authority service tests."""

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Control Coverage Profile",
+  "type": "object",
+  "required": [
+    "profile_id",
+    "loop_id",
+    "baseline_risk_tier",
+    "applicable_control_ids",
+    "control_mappings"
+  ],
+  "properties": {
+    "profile_id": {
+      "type": "string"
+    },
+    "loop_id": {
+      "type": "string"
+    },
+    "baseline_risk_tier": {
+      "enum": [
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ]
+    },
+    "applicable_control_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^LC-[0-9]{3}$"
+      }
+    },
+    "control_mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["control_id", "status", "proof_required"],
+        "properties": {
+          "control_id": {
+            "type": "string",
+            "pattern": "^LC-[0-9]{3}$"
+          },
+          "status": {
+            "enum": ["applicable", "conditional", "delegated", "not_applicable", "blocked_until_proven"]
+          },
+          "proof_required": {
+            "type": "string"
+          },
+          "owner_ref": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

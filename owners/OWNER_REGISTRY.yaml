@@ -1,0 +1,108 @@
+version: 1.0
+status: draft_registry_requires_named_humans_before_active_use
+activation_rule: "DRAFT loops may use category placeholder owners; ACTIVE loops must resolve named policy, gate, risk, executor, and validator owners."
+owners:
+  -
+    owner_ref: owner-category-01
+    category: "1. Product Strategy, Discovery and Lifecycle"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-02
+    category: "2. Requirements, Backlog and Delivery Management"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-03
+    category: "3. Architecture, Design and Modernization"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-04
+    category: "4. Software Engineering and Build"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-05
+    category: "5. Testing, Validation and Experience Quality"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-06
+    category: "6. DevOps, Release and Environment Management"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-07
+    category: "7. Operations, Reliability and Service Management"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-08
+    category: "8. Data, Database and Knowledge Management"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-09
+    category: "9. AI and Generative AI Lifecycle and Quality"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-10
+    category: "10. Agentic AI Execution and Orchestration"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-11
+    category: "11. Security, Privacy and Supply-Chain Assurance"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-12
+    category: "12. Frontier, Quantum and Strategic Resilience"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT
+  -
+    owner_ref: owner-category-13
+    category: "13. Enterprise Governance, Adoption and Workforce"
+    policy_owner: UNASSIGNED
+    gate_owner: UNASSIGNED
+    risk_owner: UNASSIGNED
+    backup_owner: UNASSIGNED
+    status: DRAFT

@@ -1,0 +1,25 @@
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+export default defineConfig({
+    plugins: [react()],
+    server: {
+        proxy: {
+            "/authority": {
+                target: "http://127.0.0.1:8787",
+                changeOrigin: false,
+                rewrite: function (path) { return path.replace(/^\/authority/, ""); },
+            },
+        },
+    },
+    test: {
+        include: ["src/**/*.test.{ts,tsx}"],
+        environment: "jsdom",
+        environmentOptions: {
+            jsdom: {
+                url: "http://localhost/",
+            },
+        },
+        setupFiles: "./src/test/setup.ts",
+        globals: true,
+    },
+});

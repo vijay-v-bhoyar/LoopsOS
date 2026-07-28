@@ -1,0 +1,118 @@
+version: 1.0
+locations:
+  -
+    evidence_ref: evidence-category-01
+    category: "1. Product Strategy, Discovery and Lifecycle"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-02
+    category: "2. Requirements, Backlog and Delivery Management"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-03
+    category: "3. Architecture, Design and Modernization"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-04
+    category: "4. Software Engineering and Build"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-05
+    category: "5. Testing, Validation and Experience Quality"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-06
+    category: "6. DevOps, Release and Environment Management"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-07
+    category: "7. Operations, Reliability and Service Management"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-08
+    category: "8. Data, Database and Knowledge Management"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-09
+    category: "9. AI and Generative AI Lifecycle and Quality"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-10
+    category: "10. Agentic AI Execution and Orchestration"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-11
+    category: "11. Security, Privacy and Supply-Chain Assurance"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-12
+    category: "12. Frontier, Quantum and Strategic Resilience"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+  -
+    evidence_ref: evidence-category-13
+    category: "13. Enterprise Governance, Adoption and Workforce"
+    authoritative_location: UNASSIGNED
+    freshness_policy: "freshness policy must be assigned before ACTIVE status"
+    retention_policy: "retention policy must be assigned before ACTIVE status"
+    access_control: "least privilege"
+    status: DRAFT
+freshness_policies:
+  freshness-R0: "best effort"
+  freshness-R1: "current within the review cadence"
+  freshness-R2: "current within the gate or observation window"
+  freshness-R3: "current and source-bound before consequential action"
+  freshness-R4: "current, independently verified, and scope-bound before action"
+retention_policies:
+  retention-R0: "short-lived unless promoted"
+  retention-R1: "retain through review cadence"
+  retention-R2: "retain through release or operational window"
+  retention-R3: "retain for audit and incident reconstruction"
+  retention-R4: "retain for audit, forensic, and continuity requirements"

@@ -1,0 +1,59 @@
+name: LoopOS UI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+      - name: Install browser
+        working-directory: ui
+        run: npx playwright install --with-deps chromium
+      - name: Install authority dependencies
+        run: python -m pip install --requirement authority/requirements.txt
+      - name: Verify corpus
+        run: python scripts/validate_loop_corpus.py
+      - name: Governed authority tests
+        env:
+          PYTHONPATH: authority
+        run: python -m unittest discover -s authority/tests -v
+      - name: Audit loop practicality
+        run: python scripts/audit_loop_practicality.py
+      - name: Unit and integration tests
+        working-directory: ui
+        run: npm test
+      - name: Design token conformance
+        working-directory: ui
+        run: npm run lint:design
+      - name: Production build
+        working-directory: ui
+        run: npm run build
+      - name: Browser tests
+        working-directory: ui
+        run: npm run test:e2e
+      - name: Dependency audit
+        working-directory: ui
+        run: npm audit --audit-level=high
+      - name: Build hardened image
+        run: docker build -f ui/Dockerfile -t loopos-ui:ci .
+      - name: Build authority image
+        run: docker build -f authority/Dockerfile -t loopos-authority:ci .

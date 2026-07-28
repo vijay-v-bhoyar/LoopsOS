@@ -1,0 +1,42 @@
+services:
+  authority:
+    build:
+      context: .
+      dockerfile: authority/Dockerfile
+    environment:
+      LOOPOS_ALLOW_DEV_AUTH: "true"
+      LOOPOS_ALLOWED_HTTP_HOSTS: ""
+      LOOPOS_CORS_ORIGINS: "http://127.0.0.1:8080"
+      LOOPOS_STORAGE_BACKEND: "sqlite"
+      LOOPOS_SESSION_HMAC_SECRET: "local-compose-secret-change-before-shared-use"
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - authority-data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  ui:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    depends_on:
+      authority:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  authority-data:

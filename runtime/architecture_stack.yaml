@@ -1,0 +1,105 @@
+version: 1.0
+principle: "The model may propose; deterministic systems authorize, execute, validate, and record."
+status: provider_neutral_reference_stack
+required_layers:
+  orchestration:
+    interface: langgraph_compatible_state_graph
+    recommended_default: LangGraph
+    alternatives:
+      - Microsoft Agent Framework
+      - Mastra
+    must_provide:
+      - explicit_state_nodes
+      - cyclic_reasoning_controls
+      - structured_handoffs
+      - deterministic_gate_integration
+  durable_execution:
+    interface: durable_workflow_adapter
+    recommended_default: Restate
+    enterprise_history_option: Temporal
+    event_driven_option: Inngest
+    must_provide:
+      - idempotency_keys
+      - durable_checkpoints
+      - bounded_retries
+      - crash_recovery
+      - reconciliation_before_retry
+  sandboxing:
+    interface: isolated_execution_adapter
+    production_untrusted_code_default: E2B_Firecracker
+    burst_execution_option: Modal_gVisor
+    must_provide:
+      - ephemeral_non_privileged_workloads
+      - read_only_filesystem_by_default
+      - blocked_cloud_metadata_endpoints
+      - default_deny_network_egress
+      - per_tool_resource_limits
+  policy:
+    interface: opa_compatible_policy_decision_point
+    recommended_default: Open Policy Agent
+    must_provide:
+      - policy_as_code
+      - tool_authorization_decisions
+      - tenant_and_role_conditions
+      - explainable_allow_deny_escalate_results
+      - immutable_policy_decision_logs
+  guardrails:
+    interface: external_guardrail_adapter
+    recommended_defaults:
+      - Guardrails AI
+      - NeMo Guardrails
+    must_provide:
+      - input_validation
+      - output_validation
+      - content_restriction
+      - pii_detection_or_redaction
+      - prompt_injection_detection
+  observability:
+    interface: llm_observability_adapter
+    recommended_defaults:
+      - Langfuse
+      - Arize Phoenix
+    must_provide:
+      - trace_redaction
+      - dataset_versioning
+      - pre_release_eval_suites
+      - production_trace_sampling
+      - forensic_correlation_ids
+  identity_and_secrets:
+    interface: enterprise_identity_and_kms_adapter
+    recommended_default: IdP_issued_workload_identity_with_KMS
+    must_provide:
+      - short_lived_credentials
+      - rbac_abac_authorization_context
+      - tenant_isolation_claims
+      - server_side_secret_injection
+      - trace_secret_redaction
+  cloud_deployment_profiles:
+    local_dev:
+      purpose: "developer validation only"
+      required_controls:
+        - dev_auth_explicitly_enabled
+        - localhost_only_connectors
+        - non_production_storage
+    azure_governed:
+      purpose: "strict enterprise governance"
+      recommended_services:
+        - Azure AI Foundry
+        - Microsoft Agent Framework
+        - Azure Key Vault
+        - Microsoft Entra ID
+    aws_infrastructure:
+      purpose: "low-level isolation and durable infrastructure"
+      recommended_services:
+        - Firecracker
+        - AWS Step Functions
+        - AWS KMS
+        - CloudTrail
+    gcp_native:
+      purpose: "Vertex AI and Google-native runtime integration"
+      recommended_services:
+        - Google Agent Development Kit
+        - Vertex AI
+        - Cloud KMS
+        - Cloud Audit Logs
+promotion_rule: "A loop may move out of DRAFT only when required runtime layers, evidence proofs, owner references, tool contracts, and authority tests are current."

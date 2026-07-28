@@ -1,0 +1,2162 @@
+version: 1.0
+metric_packs:
+  -
+    loop_id: loop-001-product-discovery-loop
+    metric_pack_ref: metrics-loop-001-product-discovery-loop
+    primary_metric:
+      name: product_discovery_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-002-ai-use-case-validation-loop
+    metric_pack_ref: metrics-loop-002-ai-use-case-validation-loop
+    primary_metric:
+      name: ai_use_case_validation_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-003-business-value-validation-loop
+    metric_pack_ref: metrics-loop-003-business-value-validation-loop
+    primary_metric:
+      name: business_value_validation_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-004-roadmap-alignment-loop
+    metric_pack_ref: metrics-loop-004-roadmap-alignment-loop
+    primary_metric:
+      name: roadmap_alignment_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-005-product-and-service-retirement-and-decommissioning-loop
+    metric_pack_ref: metrics-loop-005-product-and-service-retirement-and-decommissioning-loop
+    primary_metric:
+      name: product_and_service_retirement_and_decommissioning_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-006-requirements-quality-loop
+    metric_pack_ref: metrics-loop-006-requirements-quality-loop
+    primary_metric:
+      name: requirements_quality_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-007-requirements-change-control-loop
+    metric_pack_ref: metrics-loop-007-requirements-change-control-loop
+    primary_metric:
+      name: requirements_change_control_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-008-requirements-traceability-loop
+    metric_pack_ref: metrics-loop-008-requirements-traceability-loop
+    primary_metric:
+      name: requirements_traceability_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-009-backlog-refinement-loop
+    metric_pack_ref: metrics-loop-009-backlog-refinement-loop
+    primary_metric:
+      name: backlog_refinement_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-010-cross-team-system-and-vendor-dependency-management-loop
+    metric_pack_ref: metrics-loop-010-cross-team-system-and-vendor-dependency-management-loop
+    primary_metric:
+      name: cross_team_system_and_vendor_dependency_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-011-risk-management-loop
+    metric_pack_ref: metrics-loop-011-risk-management-loop
+    primary_metric:
+      name: risk_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-012-sprint-execution-loop
+    metric_pack_ref: metrics-loop-012-sprint-execution-loop
+    primary_metric:
+      name: sprint_execution_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-013-delivery-forecasting-loop
+    metric_pack_ref: metrics-loop-013-delivery-forecasting-loop
+    primary_metric:
+      name: delivery_forecasting_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-014-retrospective-improvement-loop
+    metric_pack_ref: metrics-loop-014-retrospective-improvement-loop
+    primary_metric:
+      name: retrospective_improvement_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-015-design-review-loop
+    metric_pack_ref: metrics-loop-015-design-review-loop
+    primary_metric:
+      name: design_review_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-016-architecture-fitness-and-future-compatibility-loop
+    metric_pack_ref: metrics-loop-016-architecture-fitness-and-future-compatibility-loop
+    primary_metric:
+      name: architecture_fitness_and_future_compatibility_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-017-api-lifecycle-and-backward-compatibility-loop
+    metric_pack_ref: metrics-loop-017-api-lifecycle-and-backward-compatibility-loop
+    primary_metric:
+      name: api_lifecycle_and_backward_compatibility_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-018-configuration-and-feature-flag-governance-loop
+    metric_pack_ref: metrics-loop-018-configuration-and-feature-flag-governance-loop
+    primary_metric:
+      name: configuration_and_feature_flag_governance_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-019-technical-debt-loop
+    metric_pack_ref: metrics-loop-019-technical-debt-loop
+    primary_metric:
+      name: technical_debt_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-020-application-modernization-loop
+    metric_pack_ref: metrics-loop-020-application-modernization-loop
+    primary_metric:
+      name: application_modernization_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-021-code-build-loop
+    metric_pack_ref: metrics-loop-021-code-build-loop
+    primary_metric:
+      name: code_build_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-022-code-quality-loop
+    metric_pack_ref: metrics-loop-022-code-quality-loop
+    primary_metric:
+      name: code_quality_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-023-pull-request-review-loop
+    metric_pack_ref: metrics-loop-023-pull-request-review-loop
+    primary_metric:
+      name: pull_request_review_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-024-software-dependency-and-package-management-loop
+    metric_pack_ref: metrics-loop-024-software-dependency-and-package-management-loop
+    primary_metric:
+      name: software_dependency_and_package_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-025-ci-pipeline-loop
+    metric_pack_ref: metrics-loop-025-ci-pipeline-loop
+    primary_metric:
+      name: ci_pipeline_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-026-test-data-management-loop
+    metric_pack_ref: metrics-loop-026-test-data-management-loop
+    primary_metric:
+      name: test_data_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-027-unit-testing-loop
+    metric_pack_ref: metrics-loop-027-unit-testing-loop
+    primary_metric:
+      name: unit_testing_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-028-integration-testing-loop
+    metric_pack_ref: metrics-loop-028-integration-testing-loop
+    primary_metric:
+      name: integration_testing_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-029-end-to-end-testing-loop
+    metric_pack_ref: metrics-loop-029-end-to-end-testing-loop
+    primary_metric:
+      name: end_to_end_testing_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-030-regression-testing-loop
+    metric_pack_ref: metrics-loop-030-regression-testing-loop
+    primary_metric:
+      name: regression_testing_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-031-performance-testing-loop
+    metric_pack_ref: metrics-loop-031-performance-testing-loop
+    primary_metric:
+      name: performance_testing_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-032-user-acceptance-testing-loop
+    metric_pack_ref: metrics-loop-032-user-acceptance-testing-loop
+    primary_metric:
+      name: user_acceptance_testing_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-033-accessibility-loop
+    metric_pack_ref: metrics-loop-033-accessibility-loop
+    primary_metric:
+      name: accessibility_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-034-defect-management-loop
+    metric_pack_ref: metrics-loop-034-defect-management-loop
+    primary_metric:
+      name: defect_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-035-ux-improvement-loop
+    metric_pack_ref: metrics-loop-035-ux-improvement-loop
+    primary_metric:
+      name: ux_improvement_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-036-release-readiness-loop
+    metric_pack_ref: metrics-loop-036-release-readiness-loop
+    primary_metric:
+      name: release_readiness_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-037-operational-readiness-and-runbook-loop
+    metric_pack_ref: metrics-loop-037-operational-readiness-and-runbook-loop
+    primary_metric:
+      name: operational_readiness_and_runbook_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-038-deployment-validation-loop
+    metric_pack_ref: metrics-loop-038-deployment-validation-loop
+    primary_metric:
+      name: deployment_validation_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-039-environment-drift-loop
+    metric_pack_ref: metrics-loop-039-environment-drift-loop
+    primary_metric:
+      name: environment_drift_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-040-rollback-backup-and-recovery-loop
+    metric_pack_ref: metrics-loop-040-rollback-backup-and-recovery-loop
+    primary_metric:
+      name: rollback_backup_and_recovery_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-041-observability-improvement-loop
+    metric_pack_ref: metrics-loop-041-observability-improvement-loop
+    primary_metric:
+      name: observability_improvement_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-042-reliability-slo-and-error-budget-management-loop
+    metric_pack_ref: metrics-loop-042-reliability-slo-and-error-budget-management-loop
+    primary_metric:
+      name: reliability_slo_and_error_budget_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-043-incident-management-loop
+    metric_pack_ref: metrics-loop-043-incident-management-loop
+    primary_metric:
+      name: incident_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-044-ai-incident-response-loop
+    metric_pack_ref: metrics-loop-044-ai-incident-response-loop
+    primary_metric:
+      name: ai_incident_response_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-045-problem-management-loop
+    metric_pack_ref: metrics-loop-045-problem-management-loop
+    primary_metric:
+      name: problem_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-046-performance-capacity-cost-and-ai-economics-loop
+    metric_pack_ref: metrics-loop-046-performance-capacity-cost-and-ai-economics-loop
+    primary_metric:
+      name: performance_capacity_cost_and_ai_economics_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-047-chaos-engineering-and-resilience-testing-loop
+    metric_pack_ref: metrics-loop-047-chaos-engineering-and-resilience-testing-loop
+    primary_metric:
+      name: chaos_engineering_and_resilience_testing_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-048-business-continuity-and-crisis-management-loop
+    metric_pack_ref: metrics-loop-048-business-continuity-and-crisis-management-loop
+    primary_metric:
+      name: business_continuity_and_crisis_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-049-data-governance-loop
+    metric_pack_ref: metrics-loop-049-data-governance-loop
+    primary_metric:
+      name: data_governance_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-050-data-schema-and-contract-evolution-loop
+    metric_pack_ref: metrics-loop-050-data-schema-and-contract-evolution-loop
+    primary_metric:
+      name: data_schema_and_contract_evolution_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-051-ai-data-preparation-loop
+    metric_pack_ref: metrics-loop-051-ai-data-preparation-loop
+    primary_metric:
+      name: ai_data_preparation_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-052-data-quality-loop
+    metric_pack_ref: metrics-loop-052-data-quality-loop
+    primary_metric:
+      name: data_quality_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-053-data-pipeline-reliability-loop
+    metric_pack_ref: metrics-loop-053-data-pipeline-reliability-loop
+    primary_metric:
+      name: data_pipeline_reliability_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-054-database-performance-loop
+    metric_pack_ref: metrics-loop-054-database-performance-loop
+    primary_metric:
+      name: database_performance_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop
+    metric_pack_ref: metrics-loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop
+    primary_metric:
+      name: knowledge_base_freshness_and_rag_content_lifecycle_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-056-model-data-and-prompt-lineage-and-reproducibility-loop
+    metric_pack_ref: metrics-loop-056-model-data-and-prompt-lineage-and-reproducibility-loop
+    primary_metric:
+      name: model_data_and_prompt_lineage_and_reproducibility_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-057-prompt-engineering-loop
+    metric_pack_ref: metrics-loop-057-prompt-engineering-loop
+    primary_metric:
+      name: prompt_engineering_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-058-model-evaluation-and-benchmarking-loop
+    metric_pack_ref: metrics-loop-058-model-evaluation-and-benchmarking-loop
+    primary_metric:
+      name: model_evaluation_and_benchmarking_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-059-rag-quality-loop
+    metric_pack_ref: metrics-loop-059-rag-quality-loop
+    primary_metric:
+      name: rag_quality_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-060-ai-safety-and-responsible-ai-loop
+    metric_pack_ref: metrics-loop-060-ai-safety-and-responsible-ai-loop
+    primary_metric:
+      name: ai_safety_and_responsible_ai_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-061-hallucination-reduction-loop
+    metric_pack_ref: metrics-loop-061-hallucination-reduction-loop
+    primary_metric:
+      name: hallucination_reduction_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-062-model-and-data-drift-monitoring-loop
+    metric_pack_ref: metrics-loop-062-model-and-data-drift-monitoring-loop
+    primary_metric:
+      name: model_and_data_drift_monitoring_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-063-ai-feedback-learning-loop
+    metric_pack_ref: metrics-loop-063-ai-feedback-learning-loop
+    primary_metric:
+      name: ai_feedback_learning_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-064-evaluation-dataset-evolution-loop
+    metric_pack_ref: metrics-loop-064-evaluation-dataset-evolution-loop
+    primary_metric:
+      name: evaluation_dataset_evolution_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-065-model-lifecycle-and-upgrade-safety-loop
+    metric_pack_ref: metrics-loop-065-model-lifecycle-and-upgrade-safety-loop
+    primary_metric:
+      name: model_lifecycle_and_upgrade_safety_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-066-agent-goal-achievement-loop
+    metric_pack_ref: metrics-loop-066-agent-goal-achievement-loop
+    primary_metric:
+      name: agent_goal_achievement_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-067-agent-planning-quality-loop
+    metric_pack_ref: metrics-loop-067-agent-planning-quality-loop
+    primary_metric:
+      name: agent_planning_quality_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-068-tool-selection-loop
+    metric_pack_ref: metrics-loop-068-tool-selection-loop
+    primary_metric:
+      name: tool_selection_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-069-tool-execution-validation-loop
+    metric_pack_ref: metrics-loop-069-tool-execution-validation-loop
+    primary_metric:
+      name: tool_execution_validation_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-070-agent-context-management-loop
+    metric_pack_ref: metrics-loop-070-agent-context-management-loop
+    primary_metric:
+      name: agent_context_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-071-agent-memory-loop
+    metric_pack_ref: metrics-loop-071-agent-memory-loop
+    primary_metric:
+      name: agent_memory_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-072-agent-resource-budget-and-rate-limit-control-loop
+    metric_pack_ref: metrics-loop-072-agent-resource-budget-and-rate-limit-control-loop
+    primary_metric:
+      name: agent_resource_budget_and_rate_limit_control_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-073-agent-state-consistency-and-idempotency-loop
+    metric_pack_ref: metrics-loop-073-agent-state-consistency-and-idempotency-loop
+    primary_metric:
+      name: agent_state_consistency_and_idempotency_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-074-agent-failure-recovery-loop
+    metric_pack_ref: metrics-loop-074-agent-failure-recovery-loop
+    primary_metric:
+      name: agent_failure_recovery_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-075-multi-agent-coordination-loop
+    metric_pack_ref: metrics-loop-075-multi-agent-coordination-loop
+    primary_metric:
+      name: multi_agent_coordination_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-076-agent-delegation-and-accountability-loop
+    metric_pack_ref: metrics-loop-076-agent-delegation-and-accountability-loop
+    primary_metric:
+      name: agent_delegation_and_accountability_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-077-secure-sdlc-loop
+    metric_pack_ref: metrics-loop-077-secure-sdlc-loop
+    primary_metric:
+      name: secure_sdlc_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-078-model-and-agent-interaction-security-loop
+    metric_pack_ref: metrics-loop-078-model-and-agent-interaction-security-loop
+    primary_metric:
+      name: model_and_agent_interaction_security_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-079-agent-guardrail-loop
+    metric_pack_ref: metrics-loop-079-agent-guardrail-loop
+    primary_metric:
+      name: agent_guardrail_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-080-agent-identity-and-credential-governance-loop
+    metric_pack_ref: metrics-loop-080-agent-identity-and-credential-governance-loop
+    primary_metric:
+      name: agent_identity_and_credential_governance_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-081-access-governance-loop
+    metric_pack_ref: metrics-loop-081-access-governance-loop
+    primary_metric:
+      name: access_governance_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-082-vulnerability-management-loop
+    metric_pack_ref: metrics-loop-082-vulnerability-management-loop
+    primary_metric:
+      name: vulnerability_management_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-083-security-operations-and-threat-detection-loop
+    metric_pack_ref: metrics-loop-083-security-operations-and-threat-detection-loop
+    primary_metric:
+      name: security_operations_and_threat_detection_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-084-ai-abuse-and-misuse-monitoring-loop
+    metric_pack_ref: metrics-loop-084-ai-abuse-and-misuse-monitoring-loop
+    primary_metric:
+      name: ai_abuse_and_misuse_monitoring_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-085-frontier-cyber-defense-loop
+    metric_pack_ref: metrics-loop-085-frontier-cyber-defense-loop
+    primary_metric:
+      name: frontier_cyber_defense_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-086-software-supply-chain-and-build-integrity-loop
+    metric_pack_ref: metrics-loop-086-software-supply-chain-and-build-integrity-loop
+    primary_metric:
+      name: software_supply_chain_and_build_integrity_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-087-ai-supply-chain-security-loop
+    metric_pack_ref: metrics-loop-087-ai-supply-chain-security-loop
+    primary_metric:
+      name: ai_supply_chain_security_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-088-privacy-engineering-and-data-protection-loop
+    metric_pack_ref: metrics-loop-088-privacy-engineering-and-data-protection-loop
+    primary_metric:
+      name: privacy_engineering_and_data_protection_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-089-audit-logging-and-forensic-readiness-loop
+    metric_pack_ref: metrics-loop-089-audit-logging-and-forensic-readiness-loop
+    primary_metric:
+      name: audit_logging_and_forensic_readiness_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-090-ai-red-team-evolution-loop
+    metric_pack_ref: metrics-loop-090-ai-red-team-evolution-loop
+    primary_metric:
+      name: ai_red_team_evolution_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-091-frontier-model-advancement-loop
+    metric_pack_ref: metrics-loop-091-frontier-model-advancement-loop
+    primary_metric:
+      name: frontier_model_advancement_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-092-model-portability-and-exit-loop
+    metric_pack_ref: metrics-loop-092-model-portability-and-exit-loop
+    primary_metric:
+      name: model_portability_and_exit_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-093-capability-absorption-loop
+    metric_pack_ref: metrics-loop-093-capability-absorption-loop
+    primary_metric:
+      name: capability_absorption_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-094-product-obsolescence-detection-loop
+    metric_pack_ref: metrics-loop-094-product-obsolescence-detection-loop
+    primary_metric:
+      name: product_obsolescence_detection_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-095-agi-readiness-and-capability-escalation-loop
+    metric_pack_ref: metrics-loop-095-agi-readiness-and-capability-escalation-loop
+    primary_metric:
+      name: agi_readiness_and_capability_escalation_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop
+    metric_pack_ref: metrics-loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop
+    primary_metric:
+      name: post_quantum_cryptography_crypto_agility_and_long_lived_data_protection_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-097-catastrophic-failure-and-containment-loop
+    metric_pack_ref: metrics-loop-097-catastrophic-failure-and-containment-loop
+    primary_metric:
+      name: catastrophic_failure_and_containment_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-098-quantum-computing-opportunity-scouting-loop
+    metric_pack_ref: metrics-loop-098-quantum-computing-opportunity-scouting-loop
+    primary_metric:
+      name: quantum_computing_opportunity_scouting_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-099-adoption-loop
+    metric_pack_ref: metrics-loop-099-adoption-loop
+    primary_metric:
+      name: adoption_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-100-human-oversight-approval-and-calibration-loop
+    metric_pack_ref: metrics-loop-100-human-oversight-approval-and-calibration-loop
+    primary_metric:
+      name: human_oversight_approval_and_calibration_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-101-agent-autonomy-calibration-loop
+    metric_pack_ref: metrics-loop-101-agent-autonomy-calibration-loop
+    primary_metric:
+      name: agent_autonomy_calibration_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-102-autonomy-boundary-review-loop
+    metric_pack_ref: metrics-loop-102-autonomy-boundary-review-loop
+    primary_metric:
+      name: autonomy_boundary_review_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-103-capability-based-governance-loop
+    metric_pack_ref: metrics-loop-103-capability-based-governance-loop
+    primary_metric:
+      name: capability_based_governance_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-104-compliance-evidence-loop
+    metric_pack_ref: metrics-loop-104-compliance-evidence-loop
+    primary_metric:
+      name: compliance_evidence_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-105-legal-regulatory-and-standards-watch-loop
+    metric_pack_ref: metrics-loop-105-legal-regulatory-and-standards-watch-loop
+    primary_metric:
+      name: legal_regulatory_and_standards_watch_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-106-vendor-and-third-party-risk-and-sla-loop
+    metric_pack_ref: metrics-loop-106-vendor-and-third-party-risk-and-sla-loop
+    primary_metric:
+      name: vendor_and_third_party_risk_and_sla_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-107-ip-copyright-and-license-compliance-loop
+    metric_pack_ref: metrics-loop-107-ip-copyright-and-license-compliance-loop
+    primary_metric:
+      name: ip_copyright_and_license_compliance_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result
+  -
+    loop_id: loop-108-workforce-skills-and-operating-model-readiness-loop
+    metric_pack_ref: metrics-loop-108-workforce-skills-and-operating-model-readiness-loop
+    primary_metric:
+      name: workforce_skills_and_operating_model_readiness_loop_effectiveness_rate
+      formula: "proven_successful_executions / qualified_executions"
+      target_value: to_be_set_by_policy_owner
+      observation_window: cadence-bound
+    guardrails:
+      - no_unmapped_authority
+      - no_expired_proof_passes
+      - no_illegal_state_transition
+      - no_unowned_action
+    health_metrics:
+      - trigger_volume
+      - qualification_rate
+      - proof_freshness_rate
+      - repeat_gap_rate
+      - cost_per_execution
+      - mean_time_to_validated_result

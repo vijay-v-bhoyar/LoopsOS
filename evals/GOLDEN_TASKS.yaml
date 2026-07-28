@@ -1,0 +1,2499 @@
+version: 1.0
+enterprise_task_types:
+  - authorization_denied
+  - idempotency_replay
+  - sandbox_egress_blocked
+  - credential_redaction
+  - tenant_isolation
+  - policy_denied
+  - rollback_required
+  - kill_switch_triggered
+enterprise_runtime_golden_tasks:
+  - task_id: agent-tool-authorization-denied
+    type: authorization_denied
+    loop_ids:
+      - loop-069-tool-execution-validation-loop
+      - loop-079-agent-guardrail-loop
+    scenario: "A privileged external-effect tool call lacks a valid policy decision or payload-bound approval."
+    expected: "The run remains blocked or awaiting approval; no external side effect is attempted."
+  - task_id: agent-idempotency-replay
+    type: idempotency_replay
+    loop_ids:
+      - loop-073-agent-state-consistency-and-idempotency-loop
+    scenario: "A retry uses the same tenant, workflow, tool, idempotency key, and payload."
+    expected: "The prior invocation result is replayed; conflicting payload reuse is rejected."
+  - task_id: agent-sandbox-egress-blocked
+    type: sandbox_egress_blocked
+    loop_ids:
+      - loop-069-tool-execution-validation-loop
+      - loop-078-model-and-agent-interaction-security-loop
+    scenario: "A tool attempts non-HTTPS, private-network, metadata-endpoint, or unallowlisted outbound access."
+    expected: "Egress is denied before execution and the policy decision is recorded."
+  - task_id: agent-credential-redaction
+    type: credential_redaction
+    loop_ids:
+      - loop-080-agent-identity-and-credential-governance-loop
+      - loop-089-audit-logging-and-forensic-readiness-loop
+    scenario: "A connector action receives a short-lived credential from KMS-backed injection."
+    expected: "The credential never appears in prompts, traces, evidence payloads, or audit event bodies."
+  - task_id: agent-tenant-isolation
+    type: tenant_isolation
+    loop_ids:
+      - loop-075-multi-agent-coordination-loop
+      - loop-080-agent-identity-and-credential-governance-loop
+    scenario: "A user or agent from one tenant requests another tenant's run, evidence, connector event, or proof pack."
+    expected: "The request is denied or returns not found, with no cross-tenant data disclosure."
+  - task_id: agent-policy-denied
+    type: policy_denied
+    loop_ids:
+      - loop-079-agent-guardrail-loop
+      - loop-102-autonomy-boundary-review-loop
+    scenario: "OPA-compatible policy returns deny for action class, role, tenant, environment, or data class."
+    expected: "The action is blocked and an immutable policy decision record is available."
+  - task_id: agent-rollback-required
+    type: rollback_required
+    loop_ids:
+      - loop-074-agent-failure-recovery-loop
+      - loop-100-human-oversight-approval-and-calibration-loop
+    scenario: "An external-effect action is submitted without a rollback or compensating action contract."
+    expected: "The plan is rejected before dispatch."
+  - task_id: agent-kill-switch-triggered
+    type: kill_switch_triggered
+    loop_ids:
+      - loop-072-agent-resource-budget-and-rate-limit-control-loop
+      - loop-097-catastrophic-failure-and-containment-loop
+    scenario: "Tenant, agent, tool, or global kill switch is activated."
+    expected: "New work is denied, queued work is paused or blocked, and activation is auditable."
+golden_tasks:
+  -
+    loop_id: loop-001-product-discovery-loop
+    golden_task_ref: golden-loop-001-product-discovery-loop
+    tasks:
+      -
+        task_id: loop-001-product-discovery-loop-happy-path
+        type: happy_path
+        scenario: "Product Discovery Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-001-product-discovery-loop-missing-proof
+        type: failure_path
+        scenario: "Product Discovery Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-001-product-discovery-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Product Discovery Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-002-ai-use-case-validation-loop
+    golden_task_ref: golden-loop-002-ai-use-case-validation-loop
+    tasks:
+      -
+        task_id: loop-002-ai-use-case-validation-loop-happy-path
+        type: happy_path
+        scenario: "AI Use-Case Validation Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-002-ai-use-case-validation-loop-missing-proof
+        type: failure_path
+        scenario: "AI Use-Case Validation Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-002-ai-use-case-validation-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AI Use-Case Validation Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-003-business-value-validation-loop
+    golden_task_ref: golden-loop-003-business-value-validation-loop
+    tasks:
+      -
+        task_id: loop-003-business-value-validation-loop-happy-path
+        type: happy_path
+        scenario: "Business Value Validation Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-003-business-value-validation-loop-missing-proof
+        type: failure_path
+        scenario: "Business Value Validation Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-003-business-value-validation-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Business Value Validation Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-004-roadmap-alignment-loop
+    golden_task_ref: golden-loop-004-roadmap-alignment-loop
+    tasks:
+      -
+        task_id: loop-004-roadmap-alignment-loop-happy-path
+        type: happy_path
+        scenario: "Roadmap Alignment Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-004-roadmap-alignment-loop-missing-proof
+        type: failure_path
+        scenario: "Roadmap Alignment Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-004-roadmap-alignment-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Roadmap Alignment Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-005-product-and-service-retirement-and-decommissioning-loop
+    golden_task_ref: golden-loop-005-product-and-service-retirement-and-decommissioning-loop
+    tasks:
+      -
+        task_id: loop-005-product-and-service-retirement-and-decommissioning-loop-happy-path
+        type: happy_path
+        scenario: "Product and Service Retirement and Decommissioning Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-005-product-and-service-retirement-and-decommissioning-loop-missing-proof
+        type: failure_path
+        scenario: "Product and Service Retirement and Decommissioning Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-005-product-and-service-retirement-and-decommissioning-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Product and Service Retirement and Decommissioning Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-006-requirements-quality-loop
+    golden_task_ref: golden-loop-006-requirements-quality-loop
+    tasks:
+      -
+        task_id: loop-006-requirements-quality-loop-happy-path
+        type: happy_path
+        scenario: "Requirements Quality Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-006-requirements-quality-loop-missing-proof
+        type: failure_path
+        scenario: "Requirements Quality Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-006-requirements-quality-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Requirements Quality Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-007-requirements-change-control-loop
+    golden_task_ref: golden-loop-007-requirements-change-control-loop
+    tasks:
+      -
+        task_id: loop-007-requirements-change-control-loop-happy-path
+        type: happy_path
+        scenario: "Requirements Change Control Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-007-requirements-change-control-loop-missing-proof
+        type: failure_path
+        scenario: "Requirements Change Control Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-007-requirements-change-control-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Requirements Change Control Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-008-requirements-traceability-loop
+    golden_task_ref: golden-loop-008-requirements-traceability-loop
+    tasks:
+      -
+        task_id: loop-008-requirements-traceability-loop-happy-path
+        type: happy_path
+        scenario: "Requirements Traceability Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-008-requirements-traceability-loop-missing-proof
+        type: failure_path
+        scenario: "Requirements Traceability Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-008-requirements-traceability-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Requirements Traceability Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-009-backlog-refinement-loop
+    golden_task_ref: golden-loop-009-backlog-refinement-loop
+    tasks:
+      -
+        task_id: loop-009-backlog-refinement-loop-happy-path
+        type: happy_path
+        scenario: "Backlog Refinement Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-009-backlog-refinement-loop-missing-proof
+        type: failure_path
+        scenario: "Backlog Refinement Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-009-backlog-refinement-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Backlog Refinement Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-010-cross-team-system-and-vendor-dependency-management-loop
+    golden_task_ref: golden-loop-010-cross-team-system-and-vendor-dependency-management-loop
+    tasks:
+      -
+        task_id: loop-010-cross-team-system-and-vendor-dependency-management-loop-happy-path
+        type: happy_path
+        scenario: "Cross-Team, System and Vendor Dependency Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-010-cross-team-system-and-vendor-dependency-management-loop-missing-proof
+        type: failure_path
+        scenario: "Cross-Team, System and Vendor Dependency Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-010-cross-team-system-and-vendor-dependency-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Cross-Team, System and Vendor Dependency Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-011-risk-management-loop
+    golden_task_ref: golden-loop-011-risk-management-loop
+    tasks:
+      -
+        task_id: loop-011-risk-management-loop-happy-path
+        type: happy_path
+        scenario: "Risk Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-011-risk-management-loop-missing-proof
+        type: failure_path
+        scenario: "Risk Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-011-risk-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Risk Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-012-sprint-execution-loop
+    golden_task_ref: golden-loop-012-sprint-execution-loop
+    tasks:
+      -
+        task_id: loop-012-sprint-execution-loop-happy-path
+        type: happy_path
+        scenario: "Sprint Execution Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-012-sprint-execution-loop-missing-proof
+        type: failure_path
+        scenario: "Sprint Execution Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-012-sprint-execution-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Sprint Execution Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-013-delivery-forecasting-loop
+    golden_task_ref: golden-loop-013-delivery-forecasting-loop
+    tasks:
+      -
+        task_id: loop-013-delivery-forecasting-loop-happy-path
+        type: happy_path
+        scenario: "Delivery Forecasting Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-013-delivery-forecasting-loop-missing-proof
+        type: failure_path
+        scenario: "Delivery Forecasting Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-013-delivery-forecasting-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Delivery Forecasting Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-014-retrospective-improvement-loop
+    golden_task_ref: golden-loop-014-retrospective-improvement-loop
+    tasks:
+      -
+        task_id: loop-014-retrospective-improvement-loop-happy-path
+        type: happy_path
+        scenario: "Retrospective Improvement Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-014-retrospective-improvement-loop-missing-proof
+        type: failure_path
+        scenario: "Retrospective Improvement Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-014-retrospective-improvement-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Retrospective Improvement Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-015-design-review-loop
+    golden_task_ref: golden-loop-015-design-review-loop
+    tasks:
+      -
+        task_id: loop-015-design-review-loop-happy-path
+        type: happy_path
+        scenario: "Design Review Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-015-design-review-loop-missing-proof
+        type: failure_path
+        scenario: "Design Review Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-015-design-review-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Design Review Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-016-architecture-fitness-and-future-compatibility-loop
+    golden_task_ref: golden-loop-016-architecture-fitness-and-future-compatibility-loop
+    tasks:
+      -
+        task_id: loop-016-architecture-fitness-and-future-compatibility-loop-happy-path
+        type: happy_path
+        scenario: "Architecture Fitness and Future Compatibility Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-016-architecture-fitness-and-future-compatibility-loop-missing-proof
+        type: failure_path
+        scenario: "Architecture Fitness and Future Compatibility Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-016-architecture-fitness-and-future-compatibility-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Architecture Fitness and Future Compatibility Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-017-api-lifecycle-and-backward-compatibility-loop
+    golden_task_ref: golden-loop-017-api-lifecycle-and-backward-compatibility-loop
+    tasks:
+      -
+        task_id: loop-017-api-lifecycle-and-backward-compatibility-loop-happy-path
+        type: happy_path
+        scenario: "API Lifecycle and Backward Compatibility Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-017-api-lifecycle-and-backward-compatibility-loop-missing-proof
+        type: failure_path
+        scenario: "API Lifecycle and Backward Compatibility Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-017-api-lifecycle-and-backward-compatibility-loop-conditional-expiry
+        type: conditional_path
+        scenario: "API Lifecycle and Backward Compatibility Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-018-configuration-and-feature-flag-governance-loop
+    golden_task_ref: golden-loop-018-configuration-and-feature-flag-governance-loop
+    tasks:
+      -
+        task_id: loop-018-configuration-and-feature-flag-governance-loop-happy-path
+        type: happy_path
+        scenario: "Configuration and Feature Flag Governance Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-018-configuration-and-feature-flag-governance-loop-missing-proof
+        type: failure_path
+        scenario: "Configuration and Feature Flag Governance Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-018-configuration-and-feature-flag-governance-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Configuration and Feature Flag Governance Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-019-technical-debt-loop
+    golden_task_ref: golden-loop-019-technical-debt-loop
+    tasks:
+      -
+        task_id: loop-019-technical-debt-loop-happy-path
+        type: happy_path
+        scenario: "Technical Debt Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-019-technical-debt-loop-missing-proof
+        type: failure_path
+        scenario: "Technical Debt Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-019-technical-debt-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Technical Debt Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-020-application-modernization-loop
+    golden_task_ref: golden-loop-020-application-modernization-loop
+    tasks:
+      -
+        task_id: loop-020-application-modernization-loop-happy-path
+        type: happy_path
+        scenario: "Application Modernization Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-020-application-modernization-loop-missing-proof
+        type: failure_path
+        scenario: "Application Modernization Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-020-application-modernization-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Application Modernization Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-021-code-build-loop
+    golden_task_ref: golden-loop-021-code-build-loop
+    tasks:
+      -
+        task_id: loop-021-code-build-loop-happy-path
+        type: happy_path
+        scenario: "Code Build Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-021-code-build-loop-missing-proof
+        type: failure_path
+        scenario: "Code Build Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-021-code-build-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Code Build Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-022-code-quality-loop
+    golden_task_ref: golden-loop-022-code-quality-loop
+    tasks:
+      -
+        task_id: loop-022-code-quality-loop-happy-path
+        type: happy_path
+        scenario: "Code Quality Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-022-code-quality-loop-missing-proof
+        type: failure_path
+        scenario: "Code Quality Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-022-code-quality-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Code Quality Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-023-pull-request-review-loop
+    golden_task_ref: golden-loop-023-pull-request-review-loop
+    tasks:
+      -
+        task_id: loop-023-pull-request-review-loop-happy-path
+        type: happy_path
+        scenario: "Pull Request Review Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-023-pull-request-review-loop-missing-proof
+        type: failure_path
+        scenario: "Pull Request Review Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-023-pull-request-review-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Pull Request Review Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-024-software-dependency-and-package-management-loop
+    golden_task_ref: golden-loop-024-software-dependency-and-package-management-loop
+    tasks:
+      -
+        task_id: loop-024-software-dependency-and-package-management-loop-happy-path
+        type: happy_path
+        scenario: "Software Dependency and Package Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-024-software-dependency-and-package-management-loop-missing-proof
+        type: failure_path
+        scenario: "Software Dependency and Package Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-024-software-dependency-and-package-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Software Dependency and Package Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-025-ci-pipeline-loop
+    golden_task_ref: golden-loop-025-ci-pipeline-loop
+    tasks:
+      -
+        task_id: loop-025-ci-pipeline-loop-happy-path
+        type: happy_path
+        scenario: "CI Pipeline Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-025-ci-pipeline-loop-missing-proof
+        type: failure_path
+        scenario: "CI Pipeline Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-025-ci-pipeline-loop-conditional-expiry
+        type: conditional_path
+        scenario: "CI Pipeline Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-026-test-data-management-loop
+    golden_task_ref: golden-loop-026-test-data-management-loop
+    tasks:
+      -
+        task_id: loop-026-test-data-management-loop-happy-path
+        type: happy_path
+        scenario: "Test Data Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-026-test-data-management-loop-missing-proof
+        type: failure_path
+        scenario: "Test Data Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-026-test-data-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Test Data Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-027-unit-testing-loop
+    golden_task_ref: golden-loop-027-unit-testing-loop
+    tasks:
+      -
+        task_id: loop-027-unit-testing-loop-happy-path
+        type: happy_path
+        scenario: "Unit Testing Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-027-unit-testing-loop-missing-proof
+        type: failure_path
+        scenario: "Unit Testing Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-027-unit-testing-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Unit Testing Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-028-integration-testing-loop
+    golden_task_ref: golden-loop-028-integration-testing-loop
+    tasks:
+      -
+        task_id: loop-028-integration-testing-loop-happy-path
+        type: happy_path
+        scenario: "Integration Testing Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-028-integration-testing-loop-missing-proof
+        type: failure_path
+        scenario: "Integration Testing Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-028-integration-testing-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Integration Testing Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-029-end-to-end-testing-loop
+    golden_task_ref: golden-loop-029-end-to-end-testing-loop
+    tasks:
+      -
+        task_id: loop-029-end-to-end-testing-loop-happy-path
+        type: happy_path
+        scenario: "End-to-End Testing Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-029-end-to-end-testing-loop-missing-proof
+        type: failure_path
+        scenario: "End-to-End Testing Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-029-end-to-end-testing-loop-conditional-expiry
+        type: conditional_path
+        scenario: "End-to-End Testing Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-030-regression-testing-loop
+    golden_task_ref: golden-loop-030-regression-testing-loop
+    tasks:
+      -
+        task_id: loop-030-regression-testing-loop-happy-path
+        type: happy_path
+        scenario: "Regression Testing Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-030-regression-testing-loop-missing-proof
+        type: failure_path
+        scenario: "Regression Testing Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-030-regression-testing-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Regression Testing Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-031-performance-testing-loop
+    golden_task_ref: golden-loop-031-performance-testing-loop
+    tasks:
+      -
+        task_id: loop-031-performance-testing-loop-happy-path
+        type: happy_path
+        scenario: "Performance Testing Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-031-performance-testing-loop-missing-proof
+        type: failure_path
+        scenario: "Performance Testing Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-031-performance-testing-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Performance Testing Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-032-user-acceptance-testing-loop
+    golden_task_ref: golden-loop-032-user-acceptance-testing-loop
+    tasks:
+      -
+        task_id: loop-032-user-acceptance-testing-loop-happy-path
+        type: happy_path
+        scenario: "User Acceptance Testing Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-032-user-acceptance-testing-loop-missing-proof
+        type: failure_path
+        scenario: "User Acceptance Testing Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-032-user-acceptance-testing-loop-conditional-expiry
+        type: conditional_path
+        scenario: "User Acceptance Testing Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-033-accessibility-loop
+    golden_task_ref: golden-loop-033-accessibility-loop
+    tasks:
+      -
+        task_id: loop-033-accessibility-loop-happy-path
+        type: happy_path
+        scenario: "Accessibility Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-033-accessibility-loop-missing-proof
+        type: failure_path
+        scenario: "Accessibility Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-033-accessibility-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Accessibility Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-033-accessibility-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Accessibility Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-033-accessibility-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Accessibility Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-034-defect-management-loop
+    golden_task_ref: golden-loop-034-defect-management-loop
+    tasks:
+      -
+        task_id: loop-034-defect-management-loop-happy-path
+        type: happy_path
+        scenario: "Defect Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-034-defect-management-loop-missing-proof
+        type: failure_path
+        scenario: "Defect Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-034-defect-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Defect Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-035-ux-improvement-loop
+    golden_task_ref: golden-loop-035-ux-improvement-loop
+    tasks:
+      -
+        task_id: loop-035-ux-improvement-loop-happy-path
+        type: happy_path
+        scenario: "UX Improvement Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-035-ux-improvement-loop-missing-proof
+        type: failure_path
+        scenario: "UX Improvement Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-035-ux-improvement-loop-conditional-expiry
+        type: conditional_path
+        scenario: "UX Improvement Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-036-release-readiness-loop
+    golden_task_ref: golden-loop-036-release-readiness-loop
+    tasks:
+      -
+        task_id: loop-036-release-readiness-loop-happy-path
+        type: happy_path
+        scenario: "Release Readiness Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-036-release-readiness-loop-missing-proof
+        type: failure_path
+        scenario: "Release Readiness Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-036-release-readiness-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Release Readiness Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-037-operational-readiness-and-runbook-loop
+    golden_task_ref: golden-loop-037-operational-readiness-and-runbook-loop
+    tasks:
+      -
+        task_id: loop-037-operational-readiness-and-runbook-loop-happy-path
+        type: happy_path
+        scenario: "Operational Readiness and Runbook Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-037-operational-readiness-and-runbook-loop-missing-proof
+        type: failure_path
+        scenario: "Operational Readiness and Runbook Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-037-operational-readiness-and-runbook-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Operational Readiness and Runbook Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-038-deployment-validation-loop
+    golden_task_ref: golden-loop-038-deployment-validation-loop
+    tasks:
+      -
+        task_id: loop-038-deployment-validation-loop-happy-path
+        type: happy_path
+        scenario: "Deployment Validation Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-038-deployment-validation-loop-missing-proof
+        type: failure_path
+        scenario: "Deployment Validation Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-038-deployment-validation-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Deployment Validation Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-039-environment-drift-loop
+    golden_task_ref: golden-loop-039-environment-drift-loop
+    tasks:
+      -
+        task_id: loop-039-environment-drift-loop-happy-path
+        type: happy_path
+        scenario: "Environment Drift Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-039-environment-drift-loop-missing-proof
+        type: failure_path
+        scenario: "Environment Drift Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-039-environment-drift-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Environment Drift Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-040-rollback-backup-and-recovery-loop
+    golden_task_ref: golden-loop-040-rollback-backup-and-recovery-loop
+    tasks:
+      -
+        task_id: loop-040-rollback-backup-and-recovery-loop-happy-path
+        type: happy_path
+        scenario: "Rollback, Backup and Recovery Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-040-rollback-backup-and-recovery-loop-missing-proof
+        type: failure_path
+        scenario: "Rollback, Backup and Recovery Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-040-rollback-backup-and-recovery-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Rollback, Backup and Recovery Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-041-observability-improvement-loop
+    golden_task_ref: golden-loop-041-observability-improvement-loop
+    tasks:
+      -
+        task_id: loop-041-observability-improvement-loop-happy-path
+        type: happy_path
+        scenario: "Observability Improvement Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-041-observability-improvement-loop-missing-proof
+        type: failure_path
+        scenario: "Observability Improvement Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-041-observability-improvement-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Observability Improvement Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-042-reliability-slo-and-error-budget-management-loop
+    golden_task_ref: golden-loop-042-reliability-slo-and-error-budget-management-loop
+    tasks:
+      -
+        task_id: loop-042-reliability-slo-and-error-budget-management-loop-happy-path
+        type: happy_path
+        scenario: "Reliability, SLO and Error-Budget Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-042-reliability-slo-and-error-budget-management-loop-missing-proof
+        type: failure_path
+        scenario: "Reliability, SLO and Error-Budget Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-042-reliability-slo-and-error-budget-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Reliability, SLO and Error-Budget Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-043-incident-management-loop
+    golden_task_ref: golden-loop-043-incident-management-loop
+    tasks:
+      -
+        task_id: loop-043-incident-management-loop-happy-path
+        type: happy_path
+        scenario: "Incident Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-043-incident-management-loop-missing-proof
+        type: failure_path
+        scenario: "Incident Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-043-incident-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Incident Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-044-ai-incident-response-loop
+    golden_task_ref: golden-loop-044-ai-incident-response-loop
+    tasks:
+      -
+        task_id: loop-044-ai-incident-response-loop-happy-path
+        type: happy_path
+        scenario: "AI Incident Response Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-044-ai-incident-response-loop-missing-proof
+        type: failure_path
+        scenario: "AI Incident Response Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-044-ai-incident-response-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AI Incident Response Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-045-problem-management-loop
+    golden_task_ref: golden-loop-045-problem-management-loop
+    tasks:
+      -
+        task_id: loop-045-problem-management-loop-happy-path
+        type: happy_path
+        scenario: "Problem Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-045-problem-management-loop-missing-proof
+        type: failure_path
+        scenario: "Problem Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-045-problem-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Problem Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-046-performance-capacity-cost-and-ai-economics-loop
+    golden_task_ref: golden-loop-046-performance-capacity-cost-and-ai-economics-loop
+    tasks:
+      -
+        task_id: loop-046-performance-capacity-cost-and-ai-economics-loop-happy-path
+        type: happy_path
+        scenario: "Performance, Capacity, Cost and AI Economics Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-046-performance-capacity-cost-and-ai-economics-loop-missing-proof
+        type: failure_path
+        scenario: "Performance, Capacity, Cost and AI Economics Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-046-performance-capacity-cost-and-ai-economics-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Performance, Capacity, Cost and AI Economics Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-047-chaos-engineering-and-resilience-testing-loop
+    golden_task_ref: golden-loop-047-chaos-engineering-and-resilience-testing-loop
+    tasks:
+      -
+        task_id: loop-047-chaos-engineering-and-resilience-testing-loop-happy-path
+        type: happy_path
+        scenario: "Chaos Engineering and Resilience Testing Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-047-chaos-engineering-and-resilience-testing-loop-missing-proof
+        type: failure_path
+        scenario: "Chaos Engineering and Resilience Testing Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-047-chaos-engineering-and-resilience-testing-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Chaos Engineering and Resilience Testing Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-048-business-continuity-and-crisis-management-loop
+    golden_task_ref: golden-loop-048-business-continuity-and-crisis-management-loop
+    tasks:
+      -
+        task_id: loop-048-business-continuity-and-crisis-management-loop-happy-path
+        type: happy_path
+        scenario: "Business Continuity and Crisis Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-048-business-continuity-and-crisis-management-loop-missing-proof
+        type: failure_path
+        scenario: "Business Continuity and Crisis Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-048-business-continuity-and-crisis-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Business Continuity and Crisis Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-049-data-governance-loop
+    golden_task_ref: golden-loop-049-data-governance-loop
+    tasks:
+      -
+        task_id: loop-049-data-governance-loop-happy-path
+        type: happy_path
+        scenario: "Data Governance Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-049-data-governance-loop-missing-proof
+        type: failure_path
+        scenario: "Data Governance Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-049-data-governance-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Data Governance Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-050-data-schema-and-contract-evolution-loop
+    golden_task_ref: golden-loop-050-data-schema-and-contract-evolution-loop
+    tasks:
+      -
+        task_id: loop-050-data-schema-and-contract-evolution-loop-happy-path
+        type: happy_path
+        scenario: "Data Schema and Contract Evolution Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-050-data-schema-and-contract-evolution-loop-missing-proof
+        type: failure_path
+        scenario: "Data Schema and Contract Evolution Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-050-data-schema-and-contract-evolution-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Data Schema and Contract Evolution Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-051-ai-data-preparation-loop
+    golden_task_ref: golden-loop-051-ai-data-preparation-loop
+    tasks:
+      -
+        task_id: loop-051-ai-data-preparation-loop-happy-path
+        type: happy_path
+        scenario: "AI Data Preparation Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-051-ai-data-preparation-loop-missing-proof
+        type: failure_path
+        scenario: "AI Data Preparation Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-051-ai-data-preparation-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AI Data Preparation Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-052-data-quality-loop
+    golden_task_ref: golden-loop-052-data-quality-loop
+    tasks:
+      -
+        task_id: loop-052-data-quality-loop-happy-path
+        type: happy_path
+        scenario: "Data Quality Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-052-data-quality-loop-missing-proof
+        type: failure_path
+        scenario: "Data Quality Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-052-data-quality-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Data Quality Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-053-data-pipeline-reliability-loop
+    golden_task_ref: golden-loop-053-data-pipeline-reliability-loop
+    tasks:
+      -
+        task_id: loop-053-data-pipeline-reliability-loop-happy-path
+        type: happy_path
+        scenario: "Data Pipeline Reliability Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-053-data-pipeline-reliability-loop-missing-proof
+        type: failure_path
+        scenario: "Data Pipeline Reliability Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-053-data-pipeline-reliability-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Data Pipeline Reliability Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-054-database-performance-loop
+    golden_task_ref: golden-loop-054-database-performance-loop
+    tasks:
+      -
+        task_id: loop-054-database-performance-loop-happy-path
+        type: happy_path
+        scenario: "Database Performance Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-054-database-performance-loop-missing-proof
+        type: failure_path
+        scenario: "Database Performance Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-054-database-performance-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Database Performance Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop
+    golden_task_ref: golden-loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop
+    tasks:
+      -
+        task_id: loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop-happy-path
+        type: happy_path
+        scenario: "Knowledge Base Freshness and RAG Content Lifecycle Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop-missing-proof
+        type: failure_path
+        scenario: "Knowledge Base Freshness and RAG Content Lifecycle Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-055-knowledge-base-freshness-and-rag-content-lifecycle-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Knowledge Base Freshness and RAG Content Lifecycle Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-056-model-data-and-prompt-lineage-and-reproducibility-loop
+    golden_task_ref: golden-loop-056-model-data-and-prompt-lineage-and-reproducibility-loop
+    tasks:
+      -
+        task_id: loop-056-model-data-and-prompt-lineage-and-reproducibility-loop-happy-path
+        type: happy_path
+        scenario: "Model, Data and Prompt Lineage and Reproducibility Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-056-model-data-and-prompt-lineage-and-reproducibility-loop-missing-proof
+        type: failure_path
+        scenario: "Model, Data and Prompt Lineage and Reproducibility Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-056-model-data-and-prompt-lineage-and-reproducibility-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Model, Data and Prompt Lineage and Reproducibility Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-057-prompt-engineering-loop
+    golden_task_ref: golden-loop-057-prompt-engineering-loop
+    tasks:
+      -
+        task_id: loop-057-prompt-engineering-loop-happy-path
+        type: happy_path
+        scenario: "Prompt Engineering Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-057-prompt-engineering-loop-missing-proof
+        type: failure_path
+        scenario: "Prompt Engineering Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-057-prompt-engineering-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Prompt Engineering Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-058-model-evaluation-and-benchmarking-loop
+    golden_task_ref: golden-loop-058-model-evaluation-and-benchmarking-loop
+    tasks:
+      -
+        task_id: loop-058-model-evaluation-and-benchmarking-loop-happy-path
+        type: happy_path
+        scenario: "Model Evaluation and Benchmarking Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-058-model-evaluation-and-benchmarking-loop-missing-proof
+        type: failure_path
+        scenario: "Model Evaluation and Benchmarking Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-058-model-evaluation-and-benchmarking-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Model Evaluation and Benchmarking Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-059-rag-quality-loop
+    golden_task_ref: golden-loop-059-rag-quality-loop
+    tasks:
+      -
+        task_id: loop-059-rag-quality-loop-happy-path
+        type: happy_path
+        scenario: "RAG Quality Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-059-rag-quality-loop-missing-proof
+        type: failure_path
+        scenario: "RAG Quality Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-059-rag-quality-loop-conditional-expiry
+        type: conditional_path
+        scenario: "RAG Quality Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-060-ai-safety-and-responsible-ai-loop
+    golden_task_ref: golden-loop-060-ai-safety-and-responsible-ai-loop
+    tasks:
+      -
+        task_id: loop-060-ai-safety-and-responsible-ai-loop-happy-path
+        type: happy_path
+        scenario: "AI Safety and Responsible AI Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-060-ai-safety-and-responsible-ai-loop-missing-proof
+        type: failure_path
+        scenario: "AI Safety and Responsible AI Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-060-ai-safety-and-responsible-ai-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AI Safety and Responsible AI Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-061-hallucination-reduction-loop
+    golden_task_ref: golden-loop-061-hallucination-reduction-loop
+    tasks:
+      -
+        task_id: loop-061-hallucination-reduction-loop-happy-path
+        type: happy_path
+        scenario: "Hallucination Reduction Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-061-hallucination-reduction-loop-missing-proof
+        type: failure_path
+        scenario: "Hallucination Reduction Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-061-hallucination-reduction-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Hallucination Reduction Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-062-model-and-data-drift-monitoring-loop
+    golden_task_ref: golden-loop-062-model-and-data-drift-monitoring-loop
+    tasks:
+      -
+        task_id: loop-062-model-and-data-drift-monitoring-loop-happy-path
+        type: happy_path
+        scenario: "Model and Data Drift Monitoring Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-062-model-and-data-drift-monitoring-loop-missing-proof
+        type: failure_path
+        scenario: "Model and Data Drift Monitoring Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-062-model-and-data-drift-monitoring-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Model and Data Drift Monitoring Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-063-ai-feedback-learning-loop
+    golden_task_ref: golden-loop-063-ai-feedback-learning-loop
+    tasks:
+      -
+        task_id: loop-063-ai-feedback-learning-loop-happy-path
+        type: happy_path
+        scenario: "AI Feedback Learning Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-063-ai-feedback-learning-loop-missing-proof
+        type: failure_path
+        scenario: "AI Feedback Learning Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-063-ai-feedback-learning-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AI Feedback Learning Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-064-evaluation-dataset-evolution-loop
+    golden_task_ref: golden-loop-064-evaluation-dataset-evolution-loop
+    tasks:
+      -
+        task_id: loop-064-evaluation-dataset-evolution-loop-happy-path
+        type: happy_path
+        scenario: "Evaluation Dataset Evolution Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-064-evaluation-dataset-evolution-loop-missing-proof
+        type: failure_path
+        scenario: "Evaluation Dataset Evolution Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-064-evaluation-dataset-evolution-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Evaluation Dataset Evolution Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-065-model-lifecycle-and-upgrade-safety-loop
+    golden_task_ref: golden-loop-065-model-lifecycle-and-upgrade-safety-loop
+    tasks:
+      -
+        task_id: loop-065-model-lifecycle-and-upgrade-safety-loop-happy-path
+        type: happy_path
+        scenario: "Model Lifecycle and Upgrade Safety Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-065-model-lifecycle-and-upgrade-safety-loop-missing-proof
+        type: failure_path
+        scenario: "Model Lifecycle and Upgrade Safety Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-065-model-lifecycle-and-upgrade-safety-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Model Lifecycle and Upgrade Safety Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-066-agent-goal-achievement-loop
+    golden_task_ref: golden-loop-066-agent-goal-achievement-loop
+    tasks:
+      -
+        task_id: loop-066-agent-goal-achievement-loop-happy-path
+        type: happy_path
+        scenario: "Agent Goal Achievement Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-066-agent-goal-achievement-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Goal Achievement Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-066-agent-goal-achievement-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Goal Achievement Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-066-agent-goal-achievement-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Goal Achievement Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-066-agent-goal-achievement-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Goal Achievement Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-067-agent-planning-quality-loop
+    golden_task_ref: golden-loop-067-agent-planning-quality-loop
+    tasks:
+      -
+        task_id: loop-067-agent-planning-quality-loop-happy-path
+        type: happy_path
+        scenario: "Agent Planning Quality Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-067-agent-planning-quality-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Planning Quality Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-067-agent-planning-quality-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Planning Quality Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-067-agent-planning-quality-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Planning Quality Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-067-agent-planning-quality-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Planning Quality Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-068-tool-selection-loop
+    golden_task_ref: golden-loop-068-tool-selection-loop
+    tasks:
+      -
+        task_id: loop-068-tool-selection-loop-happy-path
+        type: happy_path
+        scenario: "Tool Selection Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-068-tool-selection-loop-missing-proof
+        type: failure_path
+        scenario: "Tool Selection Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-068-tool-selection-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Tool Selection Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-068-tool-selection-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Tool Selection Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-068-tool-selection-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Tool Selection Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-069-tool-execution-validation-loop
+    golden_task_ref: golden-loop-069-tool-execution-validation-loop
+    tasks:
+      -
+        task_id: loop-069-tool-execution-validation-loop-happy-path
+        type: happy_path
+        scenario: "Tool Execution Validation Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-069-tool-execution-validation-loop-missing-proof
+        type: failure_path
+        scenario: "Tool Execution Validation Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-069-tool-execution-validation-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Tool Execution Validation Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-069-tool-execution-validation-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Tool Execution Validation Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-069-tool-execution-validation-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Tool Execution Validation Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-070-agent-context-management-loop
+    golden_task_ref: golden-loop-070-agent-context-management-loop
+    tasks:
+      -
+        task_id: loop-070-agent-context-management-loop-happy-path
+        type: happy_path
+        scenario: "Agent Context Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-070-agent-context-management-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Context Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-070-agent-context-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Context Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-070-agent-context-management-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Context Management Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-070-agent-context-management-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Context Management Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-071-agent-memory-loop
+    golden_task_ref: golden-loop-071-agent-memory-loop
+    tasks:
+      -
+        task_id: loop-071-agent-memory-loop-happy-path
+        type: happy_path
+        scenario: "Agent Memory Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-071-agent-memory-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Memory Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-071-agent-memory-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Memory Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-071-agent-memory-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Memory Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-071-agent-memory-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Memory Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-072-agent-resource-budget-and-rate-limit-control-loop
+    golden_task_ref: golden-loop-072-agent-resource-budget-and-rate-limit-control-loop
+    tasks:
+      -
+        task_id: loop-072-agent-resource-budget-and-rate-limit-control-loop-happy-path
+        type: happy_path
+        scenario: "Agent Resource, Budget and Rate-Limit Control Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-072-agent-resource-budget-and-rate-limit-control-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Resource, Budget and Rate-Limit Control Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-072-agent-resource-budget-and-rate-limit-control-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Resource, Budget and Rate-Limit Control Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-072-agent-resource-budget-and-rate-limit-control-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Resource, Budget and Rate-Limit Control Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-072-agent-resource-budget-and-rate-limit-control-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Resource, Budget and Rate-Limit Control Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-073-agent-state-consistency-and-idempotency-loop
+    golden_task_ref: golden-loop-073-agent-state-consistency-and-idempotency-loop
+    tasks:
+      -
+        task_id: loop-073-agent-state-consistency-and-idempotency-loop-happy-path
+        type: happy_path
+        scenario: "Agent State Consistency and Idempotency Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-073-agent-state-consistency-and-idempotency-loop-missing-proof
+        type: failure_path
+        scenario: "Agent State Consistency and Idempotency Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-073-agent-state-consistency-and-idempotency-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent State Consistency and Idempotency Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-073-agent-state-consistency-and-idempotency-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent State Consistency and Idempotency Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-073-agent-state-consistency-and-idempotency-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent State Consistency and Idempotency Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-074-agent-failure-recovery-loop
+    golden_task_ref: golden-loop-074-agent-failure-recovery-loop
+    tasks:
+      -
+        task_id: loop-074-agent-failure-recovery-loop-happy-path
+        type: happy_path
+        scenario: "Agent Failure Recovery Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-074-agent-failure-recovery-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Failure Recovery Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-074-agent-failure-recovery-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Failure Recovery Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-074-agent-failure-recovery-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Failure Recovery Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-074-agent-failure-recovery-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Failure Recovery Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-075-multi-agent-coordination-loop
+    golden_task_ref: golden-loop-075-multi-agent-coordination-loop
+    tasks:
+      -
+        task_id: loop-075-multi-agent-coordination-loop-happy-path
+        type: happy_path
+        scenario: "Multi-Agent Coordination Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-075-multi-agent-coordination-loop-missing-proof
+        type: failure_path
+        scenario: "Multi-Agent Coordination Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-075-multi-agent-coordination-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Multi-Agent Coordination Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-075-multi-agent-coordination-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Multi-Agent Coordination Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-075-multi-agent-coordination-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Multi-Agent Coordination Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-076-agent-delegation-and-accountability-loop
+    golden_task_ref: golden-loop-076-agent-delegation-and-accountability-loop
+    tasks:
+      -
+        task_id: loop-076-agent-delegation-and-accountability-loop-happy-path
+        type: happy_path
+        scenario: "Agent Delegation and Accountability Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-076-agent-delegation-and-accountability-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Delegation and Accountability Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-076-agent-delegation-and-accountability-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Delegation and Accountability Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-076-agent-delegation-and-accountability-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Delegation and Accountability Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-076-agent-delegation-and-accountability-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Delegation and Accountability Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-077-secure-sdlc-loop
+    golden_task_ref: golden-loop-077-secure-sdlc-loop
+    tasks:
+      -
+        task_id: loop-077-secure-sdlc-loop-happy-path
+        type: happy_path
+        scenario: "Secure SDLC Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-077-secure-sdlc-loop-missing-proof
+        type: failure_path
+        scenario: "Secure SDLC Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-077-secure-sdlc-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Secure SDLC Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-077-secure-sdlc-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Secure SDLC Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-077-secure-sdlc-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Secure SDLC Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-078-model-and-agent-interaction-security-loop
+    golden_task_ref: golden-loop-078-model-and-agent-interaction-security-loop
+    tasks:
+      -
+        task_id: loop-078-model-and-agent-interaction-security-loop-happy-path
+        type: happy_path
+        scenario: "Model and Agent Interaction Security Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-078-model-and-agent-interaction-security-loop-missing-proof
+        type: failure_path
+        scenario: "Model and Agent Interaction Security Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-078-model-and-agent-interaction-security-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Model and Agent Interaction Security Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-078-model-and-agent-interaction-security-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Model and Agent Interaction Security Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-078-model-and-agent-interaction-security-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Model and Agent Interaction Security Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-079-agent-guardrail-loop
+    golden_task_ref: golden-loop-079-agent-guardrail-loop
+    tasks:
+      -
+        task_id: loop-079-agent-guardrail-loop-happy-path
+        type: happy_path
+        scenario: "Agent Guardrail Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-079-agent-guardrail-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Guardrail Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-079-agent-guardrail-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Guardrail Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-079-agent-guardrail-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Guardrail Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-079-agent-guardrail-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Guardrail Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-080-agent-identity-and-credential-governance-loop
+    golden_task_ref: golden-loop-080-agent-identity-and-credential-governance-loop
+    tasks:
+      -
+        task_id: loop-080-agent-identity-and-credential-governance-loop-happy-path
+        type: happy_path
+        scenario: "Agent Identity and Credential Governance Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-080-agent-identity-and-credential-governance-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Identity and Credential Governance Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-080-agent-identity-and-credential-governance-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Identity and Credential Governance Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-080-agent-identity-and-credential-governance-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Identity and Credential Governance Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-080-agent-identity-and-credential-governance-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Identity and Credential Governance Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-081-access-governance-loop
+    golden_task_ref: golden-loop-081-access-governance-loop
+    tasks:
+      -
+        task_id: loop-081-access-governance-loop-happy-path
+        type: happy_path
+        scenario: "Access Governance Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-081-access-governance-loop-missing-proof
+        type: failure_path
+        scenario: "Access Governance Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-081-access-governance-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Access Governance Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-081-access-governance-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Access Governance Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-081-access-governance-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Access Governance Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-082-vulnerability-management-loop
+    golden_task_ref: golden-loop-082-vulnerability-management-loop
+    tasks:
+      -
+        task_id: loop-082-vulnerability-management-loop-happy-path
+        type: happy_path
+        scenario: "Vulnerability Management Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-082-vulnerability-management-loop-missing-proof
+        type: failure_path
+        scenario: "Vulnerability Management Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-082-vulnerability-management-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Vulnerability Management Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-082-vulnerability-management-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Vulnerability Management Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-082-vulnerability-management-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Vulnerability Management Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-083-security-operations-and-threat-detection-loop
+    golden_task_ref: golden-loop-083-security-operations-and-threat-detection-loop
+    tasks:
+      -
+        task_id: loop-083-security-operations-and-threat-detection-loop-happy-path
+        type: happy_path
+        scenario: "Security Operations and Threat Detection Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-083-security-operations-and-threat-detection-loop-missing-proof
+        type: failure_path
+        scenario: "Security Operations and Threat Detection Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-083-security-operations-and-threat-detection-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Security Operations and Threat Detection Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-083-security-operations-and-threat-detection-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Security Operations and Threat Detection Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-083-security-operations-and-threat-detection-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Security Operations and Threat Detection Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-084-ai-abuse-and-misuse-monitoring-loop
+    golden_task_ref: golden-loop-084-ai-abuse-and-misuse-monitoring-loop
+    tasks:
+      -
+        task_id: loop-084-ai-abuse-and-misuse-monitoring-loop-happy-path
+        type: happy_path
+        scenario: "AI Abuse and Misuse Monitoring Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-084-ai-abuse-and-misuse-monitoring-loop-missing-proof
+        type: failure_path
+        scenario: "AI Abuse and Misuse Monitoring Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-084-ai-abuse-and-misuse-monitoring-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AI Abuse and Misuse Monitoring Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-084-ai-abuse-and-misuse-monitoring-loop-authorization-denied
+        type: authorization_denied
+        scenario: "AI Abuse and Misuse Monitoring Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-084-ai-abuse-and-misuse-monitoring-loop-adversarial-evidence
+        type: adversarial
+        scenario: "AI Abuse and Misuse Monitoring Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-085-frontier-cyber-defense-loop
+    golden_task_ref: golden-loop-085-frontier-cyber-defense-loop
+    tasks:
+      -
+        task_id: loop-085-frontier-cyber-defense-loop-happy-path
+        type: happy_path
+        scenario: "Frontier Cyber Defense Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-085-frontier-cyber-defense-loop-missing-proof
+        type: failure_path
+        scenario: "Frontier Cyber Defense Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-085-frontier-cyber-defense-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Frontier Cyber Defense Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-085-frontier-cyber-defense-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Frontier Cyber Defense Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-085-frontier-cyber-defense-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Frontier Cyber Defense Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-086-software-supply-chain-and-build-integrity-loop
+    golden_task_ref: golden-loop-086-software-supply-chain-and-build-integrity-loop
+    tasks:
+      -
+        task_id: loop-086-software-supply-chain-and-build-integrity-loop-happy-path
+        type: happy_path
+        scenario: "Software Supply-Chain and Build Integrity Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-086-software-supply-chain-and-build-integrity-loop-missing-proof
+        type: failure_path
+        scenario: "Software Supply-Chain and Build Integrity Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-086-software-supply-chain-and-build-integrity-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Software Supply-Chain and Build Integrity Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-086-software-supply-chain-and-build-integrity-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Software Supply-Chain and Build Integrity Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-086-software-supply-chain-and-build-integrity-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Software Supply-Chain and Build Integrity Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-087-ai-supply-chain-security-loop
+    golden_task_ref: golden-loop-087-ai-supply-chain-security-loop
+    tasks:
+      -
+        task_id: loop-087-ai-supply-chain-security-loop-happy-path
+        type: happy_path
+        scenario: "AI Supply-Chain Security Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-087-ai-supply-chain-security-loop-missing-proof
+        type: failure_path
+        scenario: "AI Supply-Chain Security Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-087-ai-supply-chain-security-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AI Supply-Chain Security Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-087-ai-supply-chain-security-loop-authorization-denied
+        type: authorization_denied
+        scenario: "AI Supply-Chain Security Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-087-ai-supply-chain-security-loop-adversarial-evidence
+        type: adversarial
+        scenario: "AI Supply-Chain Security Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-088-privacy-engineering-and-data-protection-loop
+    golden_task_ref: golden-loop-088-privacy-engineering-and-data-protection-loop
+    tasks:
+      -
+        task_id: loop-088-privacy-engineering-and-data-protection-loop-happy-path
+        type: happy_path
+        scenario: "Privacy Engineering and Data Protection Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-088-privacy-engineering-and-data-protection-loop-missing-proof
+        type: failure_path
+        scenario: "Privacy Engineering and Data Protection Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-088-privacy-engineering-and-data-protection-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Privacy Engineering and Data Protection Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-088-privacy-engineering-and-data-protection-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Privacy Engineering and Data Protection Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-088-privacy-engineering-and-data-protection-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Privacy Engineering and Data Protection Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-089-audit-logging-and-forensic-readiness-loop
+    golden_task_ref: golden-loop-089-audit-logging-and-forensic-readiness-loop
+    tasks:
+      -
+        task_id: loop-089-audit-logging-and-forensic-readiness-loop-happy-path
+        type: happy_path
+        scenario: "Audit Logging and Forensic Readiness Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-089-audit-logging-and-forensic-readiness-loop-missing-proof
+        type: failure_path
+        scenario: "Audit Logging and Forensic Readiness Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-089-audit-logging-and-forensic-readiness-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Audit Logging and Forensic Readiness Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-089-audit-logging-and-forensic-readiness-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Audit Logging and Forensic Readiness Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-089-audit-logging-and-forensic-readiness-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Audit Logging and Forensic Readiness Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-090-ai-red-team-evolution-loop
+    golden_task_ref: golden-loop-090-ai-red-team-evolution-loop
+    tasks:
+      -
+        task_id: loop-090-ai-red-team-evolution-loop-happy-path
+        type: happy_path
+        scenario: "AI Red-Team Evolution Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-090-ai-red-team-evolution-loop-missing-proof
+        type: failure_path
+        scenario: "AI Red-Team Evolution Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-090-ai-red-team-evolution-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AI Red-Team Evolution Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-090-ai-red-team-evolution-loop-authorization-denied
+        type: authorization_denied
+        scenario: "AI Red-Team Evolution Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-090-ai-red-team-evolution-loop-adversarial-evidence
+        type: adversarial
+        scenario: "AI Red-Team Evolution Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-091-frontier-model-advancement-loop
+    golden_task_ref: golden-loop-091-frontier-model-advancement-loop
+    tasks:
+      -
+        task_id: loop-091-frontier-model-advancement-loop-happy-path
+        type: happy_path
+        scenario: "Frontier Model Advancement Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-091-frontier-model-advancement-loop-missing-proof
+        type: failure_path
+        scenario: "Frontier Model Advancement Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-091-frontier-model-advancement-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Frontier Model Advancement Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-091-frontier-model-advancement-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Frontier Model Advancement Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-091-frontier-model-advancement-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Frontier Model Advancement Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-092-model-portability-and-exit-loop
+    golden_task_ref: golden-loop-092-model-portability-and-exit-loop
+    tasks:
+      -
+        task_id: loop-092-model-portability-and-exit-loop-happy-path
+        type: happy_path
+        scenario: "Model Portability and Exit Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-092-model-portability-and-exit-loop-missing-proof
+        type: failure_path
+        scenario: "Model Portability and Exit Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-092-model-portability-and-exit-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Model Portability and Exit Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-092-model-portability-and-exit-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Model Portability and Exit Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-092-model-portability-and-exit-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Model Portability and Exit Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-093-capability-absorption-loop
+    golden_task_ref: golden-loop-093-capability-absorption-loop
+    tasks:
+      -
+        task_id: loop-093-capability-absorption-loop-happy-path
+        type: happy_path
+        scenario: "Capability Absorption Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-093-capability-absorption-loop-missing-proof
+        type: failure_path
+        scenario: "Capability Absorption Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-093-capability-absorption-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Capability Absorption Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-093-capability-absorption-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Capability Absorption Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-093-capability-absorption-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Capability Absorption Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-094-product-obsolescence-detection-loop
+    golden_task_ref: golden-loop-094-product-obsolescence-detection-loop
+    tasks:
+      -
+        task_id: loop-094-product-obsolescence-detection-loop-happy-path
+        type: happy_path
+        scenario: "Product Obsolescence Detection Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-094-product-obsolescence-detection-loop-missing-proof
+        type: failure_path
+        scenario: "Product Obsolescence Detection Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-094-product-obsolescence-detection-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Product Obsolescence Detection Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-094-product-obsolescence-detection-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Product Obsolescence Detection Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-094-product-obsolescence-detection-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Product Obsolescence Detection Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-095-agi-readiness-and-capability-escalation-loop
+    golden_task_ref: golden-loop-095-agi-readiness-and-capability-escalation-loop
+    tasks:
+      -
+        task_id: loop-095-agi-readiness-and-capability-escalation-loop-happy-path
+        type: happy_path
+        scenario: "AGI Readiness and Capability Escalation Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-095-agi-readiness-and-capability-escalation-loop-missing-proof
+        type: failure_path
+        scenario: "AGI Readiness and Capability Escalation Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-095-agi-readiness-and-capability-escalation-loop-conditional-expiry
+        type: conditional_path
+        scenario: "AGI Readiness and Capability Escalation Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-095-agi-readiness-and-capability-escalation-loop-authorization-denied
+        type: authorization_denied
+        scenario: "AGI Readiness and Capability Escalation Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-095-agi-readiness-and-capability-escalation-loop-adversarial-evidence
+        type: adversarial
+        scenario: "AGI Readiness and Capability Escalation Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop
+    golden_task_ref: golden-loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop
+    tasks:
+      -
+        task_id: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop-happy-path
+        type: happy_path
+        scenario: "Post-Quantum Cryptography, Crypto-Agility and Long-Lived Data Protection Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop-missing-proof
+        type: failure_path
+        scenario: "Post-Quantum Cryptography, Crypto-Agility and Long-Lived Data Protection Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Post-Quantum Cryptography, Crypto-Agility and Long-Lived Data Protection Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Post-Quantum Cryptography, Crypto-Agility and Long-Lived Data Protection Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-096-post-quantum-cryptography-crypto-agility-and-long-lived-data-protection-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Post-Quantum Cryptography, Crypto-Agility and Long-Lived Data Protection Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-097-catastrophic-failure-and-containment-loop
+    golden_task_ref: golden-loop-097-catastrophic-failure-and-containment-loop
+    tasks:
+      -
+        task_id: loop-097-catastrophic-failure-and-containment-loop-happy-path
+        type: happy_path
+        scenario: "Catastrophic Failure and Containment Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-097-catastrophic-failure-and-containment-loop-missing-proof
+        type: failure_path
+        scenario: "Catastrophic Failure and Containment Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-097-catastrophic-failure-and-containment-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Catastrophic Failure and Containment Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-097-catastrophic-failure-and-containment-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Catastrophic Failure and Containment Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-097-catastrophic-failure-and-containment-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Catastrophic Failure and Containment Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-098-quantum-computing-opportunity-scouting-loop
+    golden_task_ref: golden-loop-098-quantum-computing-opportunity-scouting-loop
+    tasks:
+      -
+        task_id: loop-098-quantum-computing-opportunity-scouting-loop-happy-path
+        type: happy_path
+        scenario: "Quantum Computing Opportunity Scouting Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-098-quantum-computing-opportunity-scouting-loop-missing-proof
+        type: failure_path
+        scenario: "Quantum Computing Opportunity Scouting Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-098-quantum-computing-opportunity-scouting-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Quantum Computing Opportunity Scouting Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-098-quantum-computing-opportunity-scouting-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Quantum Computing Opportunity Scouting Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-098-quantum-computing-opportunity-scouting-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Quantum Computing Opportunity Scouting Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-099-adoption-loop
+    golden_task_ref: golden-loop-099-adoption-loop
+    tasks:
+      -
+        task_id: loop-099-adoption-loop-happy-path
+        type: happy_path
+        scenario: "Adoption Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-099-adoption-loop-missing-proof
+        type: failure_path
+        scenario: "Adoption Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-099-adoption-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Adoption Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-100-human-oversight-approval-and-calibration-loop
+    golden_task_ref: golden-loop-100-human-oversight-approval-and-calibration-loop
+    tasks:
+      -
+        task_id: loop-100-human-oversight-approval-and-calibration-loop-happy-path
+        type: happy_path
+        scenario: "Human Oversight, Approval and Calibration Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-100-human-oversight-approval-and-calibration-loop-missing-proof
+        type: failure_path
+        scenario: "Human Oversight, Approval and Calibration Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-100-human-oversight-approval-and-calibration-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Human Oversight, Approval and Calibration Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-101-agent-autonomy-calibration-loop
+    golden_task_ref: golden-loop-101-agent-autonomy-calibration-loop
+    tasks:
+      -
+        task_id: loop-101-agent-autonomy-calibration-loop-happy-path
+        type: happy_path
+        scenario: "Agent Autonomy Calibration Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-101-agent-autonomy-calibration-loop-missing-proof
+        type: failure_path
+        scenario: "Agent Autonomy Calibration Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-101-agent-autonomy-calibration-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Agent Autonomy Calibration Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-101-agent-autonomy-calibration-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Agent Autonomy Calibration Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-101-agent-autonomy-calibration-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Agent Autonomy Calibration Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-102-autonomy-boundary-review-loop
+    golden_task_ref: golden-loop-102-autonomy-boundary-review-loop
+    tasks:
+      -
+        task_id: loop-102-autonomy-boundary-review-loop-happy-path
+        type: happy_path
+        scenario: "Autonomy Boundary Review Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-102-autonomy-boundary-review-loop-missing-proof
+        type: failure_path
+        scenario: "Autonomy Boundary Review Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-102-autonomy-boundary-review-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Autonomy Boundary Review Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-102-autonomy-boundary-review-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Autonomy Boundary Review Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-102-autonomy-boundary-review-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Autonomy Boundary Review Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-103-capability-based-governance-loop
+    golden_task_ref: golden-loop-103-capability-based-governance-loop
+    tasks:
+      -
+        task_id: loop-103-capability-based-governance-loop-happy-path
+        type: happy_path
+        scenario: "Capability-Based Governance Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-103-capability-based-governance-loop-missing-proof
+        type: failure_path
+        scenario: "Capability-Based Governance Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-103-capability-based-governance-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Capability-Based Governance Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-104-compliance-evidence-loop
+    golden_task_ref: golden-loop-104-compliance-evidence-loop
+    tasks:
+      -
+        task_id: loop-104-compliance-evidence-loop-happy-path
+        type: happy_path
+        scenario: "Compliance Evidence Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-104-compliance-evidence-loop-missing-proof
+        type: failure_path
+        scenario: "Compliance Evidence Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-104-compliance-evidence-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Compliance Evidence Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-104-compliance-evidence-loop-authorization-denied
+        type: authorization_denied
+        scenario: "Compliance Evidence Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-104-compliance-evidence-loop-adversarial-evidence
+        type: adversarial
+        scenario: "Compliance Evidence Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-105-legal-regulatory-and-standards-watch-loop
+    golden_task_ref: golden-loop-105-legal-regulatory-and-standards-watch-loop
+    tasks:
+      -
+        task_id: loop-105-legal-regulatory-and-standards-watch-loop-happy-path
+        type: happy_path
+        scenario: "Legal, Regulatory and Standards Watch Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-105-legal-regulatory-and-standards-watch-loop-missing-proof
+        type: failure_path
+        scenario: "Legal, Regulatory and Standards Watch Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-105-legal-regulatory-and-standards-watch-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Legal, Regulatory and Standards Watch Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-106-vendor-and-third-party-risk-and-sla-loop
+    golden_task_ref: golden-loop-106-vendor-and-third-party-risk-and-sla-loop
+    tasks:
+      -
+        task_id: loop-106-vendor-and-third-party-risk-and-sla-loop-happy-path
+        type: happy_path
+        scenario: "Vendor and Third-Party Risk and SLA Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-106-vendor-and-third-party-risk-and-sla-loop-missing-proof
+        type: failure_path
+        scenario: "Vendor and Third-Party Risk and SLA Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-106-vendor-and-third-party-risk-and-sla-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Vendor and Third-Party Risk and SLA Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+  -
+    loop_id: loop-107-ip-copyright-and-license-compliance-loop
+    golden_task_ref: golden-loop-107-ip-copyright-and-license-compliance-loop
+    tasks:
+      -
+        task_id: loop-107-ip-copyright-and-license-compliance-loop-happy-path
+        type: happy_path
+        scenario: "IP, Copyright and License Compliance Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-107-ip-copyright-and-license-compliance-loop-missing-proof
+        type: failure_path
+        scenario: "IP, Copyright and License Compliance Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-107-ip-copyright-and-license-compliance-loop-conditional-expiry
+        type: conditional_path
+        scenario: "IP, Copyright and License Compliance Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
+      -
+        task_id: loop-107-ip-copyright-and-license-compliance-loop-authorization-denied
+        type: authorization_denied
+        scenario: "IP, Copyright and License Compliance Loop is attempted by an actor without gate authority."
+        expected: "Unauthorized action is blocked and audited."
+      -
+        task_id: loop-107-ip-copyright-and-license-compliance-loop-adversarial-evidence
+        type: adversarial
+        scenario: "IP, Copyright and License Compliance Loop receives stale, conflicted, or untrusted evidence."
+        expected: "Input quality failure blocks or escalates."
+  -
+    loop_id: loop-108-workforce-skills-and-operating-model-readiness-loop
+    golden_task_ref: golden-loop-108-workforce-skills-and-operating-model-readiness-loop
+    tasks:
+      -
+        task_id: loop-108-workforce-skills-and-operating-model-readiness-loop-happy-path
+        type: happy_path
+        scenario: "Workforce Skills and Operating Model Readiness Loop receives sufficient fresh evidence and the correct owner is resolved."
+        expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
+      -
+        task_id: loop-108-workforce-skills-and-operating-model-readiness-loop-missing-proof
+        type: failure_path
+        scenario: "Workforce Skills and Operating Model Readiness Loop has declared or implemented control but no current executed proof."
+        expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
+      -
+        task_id: loop-108-workforce-skills-and-operating-model-readiness-loop-conditional-expiry
+        type: conditional_path
+        scenario: "Workforce Skills and Operating Model Readiness Loop receives temporary approval with missing evidence and compensating controls."
+        expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."

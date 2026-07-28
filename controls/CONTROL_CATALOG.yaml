@@ -1,0 +1,983 @@
+version: 1.0
+controls:
+  -
+    control_id: LC-001
+    control_name: "Loop ID"
+    section_key: A
+    section_name: Identity
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "STATIC: unique, stable ID appears in descriptor, logs, evidence, and verdicts."
+    proof_required: STATIC
+  -
+    control_id: LC-002
+    control_name: "Loop name"
+    section_key: A
+    section_name: Identity
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "STATIC: unique human-readable name matches the canonical catalog."
+    proof_required: STATIC
+  -
+    control_id: LC-003
+    control_name: Category
+    section_key: A
+    section_name: Identity
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "STATIC: category is declared and used consistently in portfolio views."
+    proof_required: STATIC
+  -
+    control_id: LC-004
+    control_name: Version
+    section_key: A
+    section_name: Identity
+    minimum_risk_tier: R1
+    applies_when: "The loop is reused, governed, automated, or deployed."
+    minimum_proof: "STATIC plus change test: version changes are recorded and referenced by executions."
+    proof_required: "STATIC plus change test"
+  -
+    control_id: LC-005
+    control_name: "Lifecycle status"
+    section_key: A
+    section_name: Identity
+    minimum_risk_tier: R1
+    applies_when: "The loop can be piloted, restricted, paused, deprecated, or retired."
+    minimum_proof: "STATIC plus transition evidence: status changes follow the authoritative lifecycle rule."
+    proof_required: "STATIC plus transition evidence"
+  -
+    control_id: LC-006
+    control_name: "Effective date"
+    section_key: A
+    section_name: Identity
+    minimum_risk_tier: R1
+    applies_when: "A version or policy change becomes operational."
+    minimum_proof: "STATIC: effective date is recorded and prior proof is invalidated when required."
+    proof_required: STATIC
+  -
+    control_id: LC-007
+    control_name: Purpose
+    section_key: B
+    section_name: "Purpose and Boundaries"
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "STATIC: concise statement explains why the loop exists."
+    proof_required: STATIC
+  -
+    control_id: LC-008
+    control_name: "Outcome to improve"
+    section_key: B
+    section_name: "Purpose and Boundaries"
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "STATIC plus metric link: one primary measurable outcome is named."
+    proof_required: "STATIC plus metric link"
+  -
+    control_id: LC-009
+    control_name: "Business value"
+    section_key: B
+    section_name: "Purpose and Boundaries"
+    minimum_risk_tier: R0
+    applies_when: "The loop consumes material time, cost, or authority."
+    minimum_proof: "STATIC: value or avoided loss is stated and reviewable."
+    proof_required: STATIC
+  -
+    control_id: LC-010
+    control_name: "Risk reduced"
+    section_key: B
+    section_name: "Purpose and Boundaries"
+    minimum_risk_tier: R1
+    applies_when: "The loop is a control or gate."
+    minimum_proof: "STATIC: risk statement maps to the risk register or control objective."
+    proof_required: STATIC
+  -
+    control_id: LC-011
+    control_name: Scope
+    section_key: B
+    section_name: "Purpose and Boundaries"
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "STATIC plus qualification probe: included products, systems, environments, users, and actions are identifiable."
+    proof_required: "STATIC plus qualification probe"
+  -
+    control_id: LC-012
+    control_name: Exclusions
+    section_key: B
+    section_name: "Purpose and Boundaries"
+    minimum_risk_tier: R0
+    applies_when: "Adjacent loops or skills exist."
+    minimum_proof: "STATIC plus routing probe: out-of-scope cases are rejected or routed correctly."
+    proof_required: "STATIC plus routing probe"
+  -
+    control_id: LC-013
+    control_name: Stakeholders
+    section_key: B
+    section_name: "Purpose and Boundaries"
+    minimum_risk_tier: R1
+    applies_when: "The loop affects teams, users, customers, or governance authorities."
+    minimum_proof: "STATIC: accountable and informed parties are mapped."
+    proof_required: STATIC
+  -
+    control_id: LC-014
+    control_name: "Systems and data covered"
+    section_key: B
+    section_name: "Purpose and Boundaries"
+    minimum_risk_tier: R1
+    applies_when: "The loop reads, writes, validates, or governs systems or data."
+    minimum_proof: "STATIC plus inventory reconciliation: covered assets match authoritative inventories."
+    proof_required: "STATIC plus inventory reconciliation"
+  -
+    control_id: LC-015
+    control_name: "Event triggers"
+    section_key: C
+    section_name: "Trigger and Qualification"
+    minimum_risk_tier: R0
+    applies_when: "The loop reacts to events or changes."
+    minimum_proof: "INTEGRATION_PROBE: each required event starts one qualified execution."
+    proof_required: INTEGRATION_PROBE
+  -
+    control_id: LC-016
+    control_name: "Scheduled cadence"
+    section_key: C
+    section_name: "Trigger and Qualification"
+    minimum_risk_tier: R0
+    applies_when: "The loop has periodic obligations."
+    minimum_proof: "SCHEDULE_PROBE: scheduled execution occurs within the permitted window."
+    proof_required: SCHEDULE_PROBE
+  -
+    control_id: LC-017
+    control_name: "Threshold triggers"
+    section_key: C
+    section_name: "Trigger and Qualification"
+    minimum_risk_tier: R1
+    applies_when: "Metrics or risk thresholds start the loop."
+    minimum_proof: "BOUNDARY_PROBE: below-threshold events do not start it and above-threshold events do."
+    proof_required: BOUNDARY_PROBE
+  -
+    control_id: LC-018
+    control_name: "Emergency trigger"
+    section_key: C
+    section_name: "Trigger and Qualification"
+    minimum_risk_tier: R2
+    applies_when: "Delay could materially increase loss, outage, or harm."
+    minimum_proof: "NEGATIVE_PROBE or drill: emergency conditions bypass normal cadence and invoke the correct authority."
+    proof_required: "NEGATIVE_PROBE or drill"
+  -
+    control_id: LC-019
+    control_name: "Applicability rules"
+    section_key: C
+    section_name: "Trigger and Qualification"
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "DECISION_PROBE: in-scope and out-of-scope examples are classified correctly."
+    proof_required: DECISION_PROBE
+  -
+    control_id: LC-020
+    control_name: "Deduplication rules"
+    section_key: C
+    section_name: "Trigger and Qualification"
+    minimum_risk_tier: R1
+    applies_when: "The same event can arrive more than once."
+    minimum_proof: "REPLAY_PROBE: duplicate triggers create one logical execution or return the prior result."
+    proof_required: REPLAY_PROBE
+  -
+    control_id: LC-021
+    control_name: "Entry criteria"
+    section_key: C
+    section_name: "Trigger and Qualification"
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "BOUNDARY_PROBE: the loop starts only when minimum conditions are met."
+    proof_required: BOUNDARY_PROBE
+  -
+    control_id: LC-022
+    control_name: Preconditions
+    section_key: C
+    section_name: "Trigger and Qualification"
+    minimum_risk_tier: R1
+    applies_when: "The loop performs state-changing or dependency-sensitive work."
+    minimum_proof: "NEGATIVE_PROBE: missing permission, backup, dependency, or environment blocks execution safely."
+    proof_required: NEGATIVE_PROBE
+  -
+    control_id: LC-023
+    control_name: "Required inputs"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "SCHEMA_PROBE: missing or malformed required input is rejected with a named failure."
+    proof_required: SCHEMA_PROBE
+  -
+    control_id: LC-024
+    control_name: "Optional inputs"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R0
+    applies_when: "Optional context can improve the decision."
+    minimum_proof: "UNIT_PROBE: absence does not break the loop and presence is handled predictably."
+    proof_required: UNIT_PROBE
+  -
+    control_id: LC-025
+    control_name: "Authoritative sources"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R1
+    applies_when: "More than one source or system can supply evidence."
+    minimum_proof: "SOURCE-PRIORITY_PROBE: authoritative source wins or material conflict escalates."
+    proof_required: SOURCE-PRIORITY_PROBE
+  -
+    control_id: LC-026
+    control_name: "Input-quality checks"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R1
+    applies_when: "Decisions depend on external, user, model, or operational data."
+    minimum_proof: "NEGATIVE_PROBE: incomplete, stale, corrupted, or untrusted input is detected."
+    proof_required: NEGATIVE_PROBE
+  -
+    control_id: LC-027
+    control_name: "Freshness requirements"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R1
+    applies_when: "Input can become stale."
+    minimum_proof: "TIME-BOUNDARY_PROBE: current input passes and expired input is rejected or escalated."
+    proof_required: TIME-BOUNDARY_PROBE
+  -
+    control_id: LC-028
+    control_name: "Data lineage"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R2
+    applies_when: "Data influences production, regulated, financial, AI, or audit decisions."
+    minimum_proof: "REPRODUCTION_RUN: source, transformations, versions, and consumers can be traced."
+    proof_required: REPRODUCTION_RUN
+  -
+    control_id: LC-029
+    control_name: "Upstream dependencies"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R1
+    applies_when: "Other skills, services, approvals, or data feeds are required."
+    minimum_proof: "FAULT_INJECTION: unavailable or delayed upstream dependencies trigger the approved fallback or block."
+    proof_required: FAULT_INJECTION
+  -
+    control_id: LC-030
+    control_name: "Downstream consumers"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R1
+    applies_when: "Other loops or systems consume the output."
+    minimum_proof: "CONTRACT_PROBE: downstream receives the expected schema, status, and evidence reference."
+    proof_required: CONTRACT_PROBE
+  -
+    control_id: LC-031
+    control_name: "Interface contracts"
+    section_key: D
+    section_name: "Inputs and Dependencies"
+    minimum_risk_tier: R1
+    applies_when: "The loop exchanges machine-readable data or tool calls."
+    minimum_proof: "INTEGRATION_PROBE: valid contracts pass and incompatible versions fail safely."
+    proof_required: INTEGRATION_PROBE
+  -
+    control_id: LC-032
+    control_name: Baseline
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R1
+    applies_when: "The loop claims improvement."
+    minimum_proof: "STATIC plus reproducibility: the starting metric and source can be recalculated."
+    proof_required: "STATIC plus reproducibility"
+  -
+    control_id: LC-033
+    control_name: Target
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R1
+    applies_when: "The loop claims success or readiness."
+    minimum_proof: "STATIC: target, time horizon, population, and owner are explicit."
+    proof_required: STATIC
+  -
+    control_id: LC-034
+    control_name: "Leading metrics"
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R1
+    applies_when: "Early process signals are useful."
+    minimum_proof: "METRIC_RECALCULATION: formula and source reproduce the reported value."
+    proof_required: METRIC_RECALCULATION
+  -
+    control_id: LC-035
+    control_name: "Lagging metrics"
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R1
+    applies_when: "The final outcome can be measured."
+    minimum_proof: "SUSTAINED_MONITORING: outcome is measured over the required period."
+    proof_required: SUSTAINED_MONITORING
+  -
+    control_id: LC-036
+    control_name: "Guardrail metrics"
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R2
+    applies_when: "Improving one outcome could harm another."
+    minimum_proof: "CANARY or regression proof: primary improvement does not breach guardrails."
+    proof_required: "CANARY or regression proof"
+  -
+    control_id: LC-037
+    control_name: "Metric formulas"
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R1
+    applies_when: "A metric is used by a gate, target, or report."
+    minimum_proof: "RECALCULATION_PROBE: independent calculation matches within tolerance."
+    proof_required: RECALCULATION_PROBE
+  -
+    control_id: LC-038
+    control_name: "Observation window"
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R2
+    applies_when: "The outcome is not immediately observable."
+    minimum_proof: "TIME-WINDOW_PROBE: early closure is blocked and the final review occurs by deadline."
+    proof_required: TIME-WINDOW_PROBE
+  -
+    control_id: LC-039
+    control_name: "Minimum sample size"
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R2
+    applies_when: "Statistical or traffic-based evidence is required."
+    minimum_proof: "STATISTICAL_OBSERVATION: pass is withheld until the floor is met or an explicit insufficient-evidence state occurs."
+    proof_required: STATISTICAL_OBSERVATION
+  -
+    control_id: LC-040
+    control_name: "Quality thresholds"
+    section_key: E
+    section_name: "Outcome and Measurement"
+    minimum_risk_tier: R1
+    applies_when: "The loop makes pass, block, or remediation decisions."
+    minimum_proof: "BOUNDARY_PROBE: values around each threshold produce the expected verdict."
+    proof_required: BOUNDARY_PROBE
+  -
+    control_id: LC-041
+    control_name: "Assessment rules"
+    section_key: F
+    section_name: "Decision Design"
+    minimum_risk_tier: R1
+    applies_when: "The loop classifies findings or evidence."
+    minimum_proof: "DECISION_TABLE_PROBE: representative cases produce expected classifications."
+    proof_required: DECISION_TABLE_PROBE
+  -
+    control_id: LC-042
+    control_name: "Risk classification"
+    section_key: F
+    section_name: "Decision Design"
+    minimum_risk_tier: R1
+    applies_when: "Control depth changes with execution risk."
+    minimum_proof: "SCENARIO_PROBE: changes in data, privilege, reversibility, or blast radius raise the tier correctly."
+    proof_required: SCENARIO_PROBE
+  -
+    control_id: LC-043
+    control_name: "Prioritization method"
+    section_key: F
+    section_name: "Decision Design"
+    minimum_risk_tier: R1
+    applies_when: "Multiple findings compete for action."
+    minimum_proof: "RECALCULATION_PROBE: ranking is reproducible and tie rules are applied."
+    proof_required: RECALCULATION_PROBE
+  -
+    control_id: LC-044
+    control_name: "Confidence threshold"
+    section_key: F
+    section_name: "Decision Design"
+    minimum_risk_tier: R2
+    applies_when: "Uncertain evidence could cause a consequential decision."
+    minimum_proof: "BOUNDARY_PROBE: low confidence defers or escalates and sufficient confidence permits the defined action."
+    proof_required: BOUNDARY_PROBE
+  -
+    control_id: LC-045
+    control_name: "Allowed decisions"
+    section_key: F
+    section_name: "Decision Design"
+    minimum_risk_tier: R1
+    applies_when: "The loop returns a verdict or action status."
+    minimum_proof: "SCHEMA_PROBE: only controlled outcomes are emitted."
+    proof_required: SCHEMA_PROBE
+  -
+    control_id: LC-046
+    control_name: "Decision authority"
+    section_key: F
+    section_name: "Decision Design"
+    minimum_risk_tier: R2
+    applies_when: "The loop can approve, block, promote, accept risk, or change production."
+    minimum_proof: "AUTHORIZATION_PROBE: unauthorized actors cannot issue the verdict and authorized decisions are attributable."
+    proof_required: AUTHORIZATION_PROBE
+  -
+    control_id: LC-047
+    control_name: "Exception process"
+    section_key: F
+    section_name: "Decision Design"
+    minimum_risk_tier: R2
+    applies_when: "A required control can be temporarily unmet."
+    minimum_proof: "EXPIRY_PROBE: exception requires authority, compensating controls, and a hard expiry."
+    proof_required: EXPIRY_PROBE
+  -
+    control_id: LC-048
+    control_name: "Residual-risk acceptance"
+    section_key: F
+    section_name: "Decision Design"
+    minimum_risk_tier: R3
+    applies_when: "Material risk remains after remediation."
+    minimum_proof: "AUTHORIZATION_PROBE: only the named risk owner can accept it and the acceptance expires or is reviewed."
+    proof_required: AUTHORIZATION_PROBE
+  -
+    control_id: LC-049
+    control_name: "Execution plan"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R1
+    applies_when: "The loop performs more than one step or changes state."
+    minimum_proof: "STATIC plus dry run: sequence, owners, expected states, validation, and recovery are complete."
+    proof_required: "STATIC plus dry run"
+  -
+    control_id: LC-050
+    control_name: "Actions permitted"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R0
+    applies_when: "Every action-capable loop."
+    minimum_proof: "ALLOWLIST_PROBE: approved actions succeed within scope."
+    proof_required: ALLOWLIST_PROBE
+  -
+    control_id: LC-051
+    control_name: "Actions prohibited"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R0
+    applies_when: "Every action-capable loop."
+    minimum_proof: "NEGATIVE_PROBE: prohibited actions are blocked and audited."
+    proof_required: NEGATIVE_PROBE
+  -
+    control_id: LC-052
+    control_name: "Required permissions"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R1
+    applies_when: "The loop accesses systems, data, models, or tools."
+    minimum_proof: "AUTHORIZATION_PROBE: least privilege is sufficient and excess or missing authority is detected."
+    proof_required: AUTHORIZATION_PROBE
+  -
+    control_id: LC-053
+    control_name: "Durable lifecycle events"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R1
+    applies_when: "Execution can pause, resume, fail, or span an observation period."
+    minimum_proof: "RECOVERY_PROBE: state can be reconstructed and resumed without false completion."
+    proof_required: RECOVERY_PROBE
+  -
+    control_id: LC-054
+    control_name: Checkpoints
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R1
+    applies_when: "Execution is long-running, multi-step, or partially reversible."
+    minimum_proof: "FAULT_INJECTION: interruption resumes from the correct checkpoint without duplicate effects."
+    proof_required: FAULT_INJECTION
+  -
+    control_id: LC-055
+    control_name: Idempotency
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R1
+    applies_when: "Actions can be retried, replayed, or duplicated."
+    minimum_proof: "REPLAY_PROBE: repeated operation produces one logical effect."
+    proof_required: REPLAY_PROBE
+  -
+    control_id: LC-056
+    control_name: "Concurrency control"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R2
+    applies_when: "Parallel executions can touch shared state or conflicting resources."
+    minimum_proof: "CONCURRENCY_PROBE: races, deadlocks, and conflicting writes are prevented or resolved."
+    proof_required: CONCURRENCY_PROBE
+  -
+    control_id: LC-057
+    control_name: "Resource budget"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R1
+    applies_when: "The loop consumes time, money, tokens, compute, calls, records, or human effort."
+    minimum_proof: "LIMIT_PROBE: the loop stops or escalates before exceeding each bound."
+    proof_required: LIMIT_PROBE
+  -
+    control_id: LC-058
+    control_name: Timeouts
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R1
+    applies_when: "External calls or steps can hang."
+    minimum_proof: "FAULT_INJECTION: timeout cancels or isolates the step and preserves known state."
+    proof_required: FAULT_INJECTION
+  -
+    control_id: LC-059
+    control_name: "Retry and backoff"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R1
+    applies_when: "Transient failures are possible."
+    minimum_proof: "FAULT_INJECTION: transient errors retry within policy and deterministic errors do not."
+    proof_required: FAULT_INJECTION
+  -
+    control_id: LC-060
+    control_name: "Circuit breaker"
+    section_key: G
+    section_name: Execution
+    minimum_risk_tier: R2
+    applies_when: "Repeated failure could amplify harm or load."
+    minimum_proof: "FAULT_INJECTION: breaker opens, cools down, and recovers according to the authoritative contract."
+    proof_required: FAULT_INJECTION
+  -
+    control_id: LC-061
+    control_name: "Human approval points"
+    section_key: H
+    section_name: "Human Control"
+    minimum_risk_tier: R3
+    applies_when: "The action is consequential, privileged, regulated, externally visible, or hard to reverse."
+    minimum_proof: "AUTHORIZATION_PROBE: action cannot proceed without current approval."
+    proof_required: AUTHORIZATION_PROBE
+  -
+    control_id: LC-062
+    control_name: "Separation of duties"
+    section_key: H
+    section_name: "Human Control"
+    minimum_risk_tier: R3
+    applies_when: "One actor should not propose, approve, execute, validate, and accept risk."
+    minimum_proof: "ROLE-CONFLICT_PROBE: prohibited role combinations are blocked."
+    proof_required: ROLE-CONFLICT_PROBE
+  -
+    control_id: LC-063
+    control_name: "Manual override"
+    section_key: H
+    section_name: "Human Control"
+    minimum_risk_tier: R2
+    applies_when: "Automation can make a wrong or unsafe decision."
+    minimum_proof: "OVERRIDE_DRILL: an authorized operator can pause or redirect the loop and the action is audited."
+    proof_required: OVERRIDE_DRILL
+  -
+    control_id: LC-064
+    control_name: "Kill switch"
+    section_key: H
+    section_name: "Human Control"
+    minimum_risk_tier: R3
+    applies_when: "The loop can cause fast, broad, or high-impact effects."
+    minimum_proof: "KILL_SWITCH_DRILL: active execution stops, credentials are revoked where required, and restart needs approval."
+    proof_required: KILL_SWITCH_DRILL
+  -
+    control_id: LC-065
+    control_name: "Escalation path"
+    section_key: H
+    section_name: "Human Control"
+    minimum_risk_tier: R1
+    applies_when: "The loop can block, fail, conflict, or exceed limits."
+    minimum_proof: "ROUTING_PROBE: each failure class reaches the correct authority within SLA."
+    proof_required: ROUTING_PROBE
+  -
+    control_id: LC-066
+    control_name: "Backup approver"
+    section_key: H
+    section_name: "Human Control"
+    minimum_risk_tier: R2
+    applies_when: "Approval delay could create operational or safety risk."
+    minimum_proof: "AVAILABILITY_DRILL: backup authority can act without violating separation of duties."
+    proof_required: AVAILABILITY_DRILL
+  -
+    control_id: LC-067
+    control_name: "Failure taxonomy"
+    section_key: I
+    section_name: Recovery
+    minimum_risk_tier: R1
+    applies_when: "The loop can fail in more than one way."
+    minimum_proof: "CLASSIFICATION_PROBE: representative failures map to named states and responses."
+    proof_required: CLASSIFICATION_PROBE
+  -
+    control_id: LC-068
+    control_name: "Safe failure state"
+    section_key: I
+    section_name: Recovery
+    minimum_risk_tier: R2
+    applies_when: "Failure could leave an unsafe, inconsistent, or externally harmful state."
+    minimum_proof: "FAULT_INJECTION: the loop reaches the defined safe state."
+    proof_required: FAULT_INJECTION
+  -
+    control_id: LC-069
+    control_name: Rollback
+    section_key: I
+    section_name: Recovery
+    minimum_risk_tier: R2
+    applies_when: "The action is reversible and changes persistent or production state."
+    minimum_proof: "ROLLBACK_DRILL: exact release or operation returns to an accepted prior state."
+    proof_required: ROLLBACK_DRILL
+  -
+    control_id: LC-070
+    control_name: Compensation
+    section_key: I
+    section_name: Recovery
+    minimum_risk_tier: R2
+    applies_when: "Direct rollback is impossible or incomplete."
+    minimum_proof: "COMPENSATION_DRILL: corrective action restores the business invariant and records residual impact."
+    proof_required: COMPENSATION_DRILL
+  -
+    control_id: LC-071
+    control_name: "Fallback mode"
+    section_key: I
+    section_name: Recovery
+    minimum_risk_tier: R2
+    applies_when: "The preferred provider, model, tool, system, or data source can be unavailable."
+    minimum_proof: "FAILOVER_DRILL: alternate or reduced mode works within declared limits."
+    proof_required: FAILOVER_DRILL
+  -
+    control_id: LC-072
+    control_name: "Recovery validation"
+    section_key: I
+    section_name: Recovery
+    minimum_risk_tier: R2
+    applies_when: "Rollback, compensation, or failover can itself be incomplete."
+    minimum_proof: "INDEPENDENT_PROBE: recovered state, data consistency, and service health meet acceptance criteria."
+    proof_required: INDEPENDENT_PROBE
+  -
+    control_id: LC-073
+    control_name: "Validation method"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R0
+    applies_when: "Every loop."
+    minimum_proof: "EXECUTED_PROBE: actual result is compared with explicit acceptance criteria."
+    proof_required: EXECUTED_PROBE
+  -
+    control_id: LC-074
+    control_name: "Independent validator"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R3
+    applies_when: "The executor could bias or conceal a consequential result."
+    minimum_proof: "INDEPENDENT_REVIEW: validator is separate and evidence is attributable."
+    proof_required: INDEPENDENT_REVIEW
+  -
+    control_id: LC-075
+    control_name: "Test oracle"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R1
+    applies_when: "Correctness is not self-evident."
+    minimum_proof: "ORACLE_PROBE: actual output is compared against the approved source of truth."
+    proof_required: ORACLE_PROBE
+  -
+    control_id: LC-076
+    control_name: "Evaluation dataset"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R1
+    applies_when: "AI, data, security, classification, or quality behavior is evaluated."
+    minimum_proof: "DATASET_AUDIT plus execution: version, labels, coverage, and expected results are verified."
+    proof_required: "DATASET_AUDIT plus execution"
+  -
+    control_id: LC-077
+    control_name: "False-positive controls"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R2
+    applies_when: "The loop can block legitimate work or create alert fatigue."
+    minimum_proof: "LABELED-SAMPLE_EVAL: precision or false-positive rate meets threshold."
+    proof_required: LABELED-SAMPLE_EVAL
+  -
+    control_id: LC-078
+    control_name: "False-negative controls"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R2
+    applies_when: "The loop can miss real failures or threats."
+    minimum_proof: "LABELED-SAMPLE_EVAL: recall or miss rate meets threshold."
+    proof_required: LABELED-SAMPLE_EVAL
+  -
+    control_id: LC-079
+    control_name: "Non-regression checks"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R1
+    applies_when: "A change could break existing behavior."
+    minimum_proof: "REGRESSION_PROBE: required existing behavior remains green."
+    proof_required: REGRESSION_PROBE
+  -
+    control_id: LC-080
+    control_name: "Side-effect checks"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R2
+    applies_when: "The action can affect downstream systems, users, cost, security, privacy, or accessibility."
+    minimum_proof: "IMPACT_PROBE or canary: unintended effects stay within guardrails."
+    proof_required: "IMPACT_PROBE or canary"
+  -
+    control_id: LC-081
+    control_name: "Security checks"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R1
+    applies_when: "The loop handles code, infrastructure, identities, tools, models, external input, or secrets."
+    minimum_proof: "STATIC and NEGATIVE_PROBES appropriate to the threat model."
+    proof_required: "STATIC and NEGATIVE_PROBES appropriate to the threat model."
+  -
+    control_id: LC-082
+    control_name: "Privacy checks"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R2
+    applies_when: "Personal, confidential, or regulated data is processed."
+    minimum_proof: "PRIVACY_PROBE: minimization, purpose, access, retention, and deletion controls hold."
+    proof_required: PRIVACY_PROBE
+  -
+    control_id: LC-083
+    control_name: "Compliance checks"
+    section_key: J
+    section_name: "Validation and Assurance"
+    minimum_risk_tier: R2
+    applies_when: "Law, policy, contract, standard, or audit control applies."
+    minimum_proof: "CONTROL_TEST: applicable obligation maps to current executed evidence."
+    proof_required: CONTROL_TEST
+  -
+    control_id: LC-084
+    control_name: "Required evidence"
+    section_key: K
+    section_name: "Evidence and Communication"
+    minimum_risk_tier: R1
+    applies_when: "The result is governed, reusable, or gate-relevant."
+    minimum_proof: "EVIDENCE_AUDIT: required artifacts exist, are complete, integrity-protected, and scope-bound."
+    proof_required: EVIDENCE_AUDIT
+  -
+    control_id: LC-085
+    control_name: Traceability
+    section_key: K
+    section_name: "Evidence and Communication"
+    minimum_risk_tier: R1
+    applies_when: "The loop makes decisions or changes state."
+    minimum_proof: "TRACE_PROBE: trigger, input, finding, decision, action, proof, outcome, and learning can be followed end to end."
+    proof_required: TRACE_PROBE
+  -
+    control_id: LC-086
+    control_name: Reproducibility
+    section_key: K
+    section_name: "Evidence and Communication"
+    minimum_risk_tier: R2
+    applies_when: "The result affects a release, model, regulated outcome, audit, or disputed decision."
+    minimum_proof: "REPRODUCTION_RUN: exact versions and inputs reproduce within tolerance."
+    proof_required: REPRODUCTION_RUN
+  -
+    control_id: LC-087
+    control_name: "Audit logs"
+    section_key: K
+    section_name: "Evidence and Communication"
+    minimum_risk_tier: R2
+    applies_when: "Actions are privileged, consequential, regulated, or security relevant."
+    minimum_proof: "FORENSIC_DRILL: an independent reviewer can reconstruct a sampled execution."
+    proof_required: FORENSIC_DRILL
+  -
+    control_id: LC-088
+    control_name: "Retention period"
+    section_key: K
+    section_name: "Evidence and Communication"
+    minimum_risk_tier: R1
+    applies_when: "Evidence has legal, operational, security, or learning value."
+    minimum_proof: "EXPIRY and retrieval probe: evidence is retained and disposed according to policy."
+    proof_required: "EXPIRY and retrieval probe"
+  -
+    control_id: LC-089
+    control_name: "Evidence access control"
+    section_key: K
+    section_name: "Evidence and Communication"
+    minimum_risk_tier: R2
+    applies_when: "Evidence contains sensitive data, secrets, privileged decisions, or customer information."
+    minimum_proof: "AUTHORIZATION_PROBE: unauthorized access is denied and authorized access is logged."
+    proof_required: AUTHORIZATION_PROBE
+  -
+    control_id: LC-090
+    control_name: "Notification rules"
+    section_key: K
+    section_name: "Evidence and Communication"
+    minimum_risk_tier: R1
+    applies_when: "A result requires action, awareness, or escalation."
+    minimum_proof: "ROUTING_PROBE: the right recipients receive actionable content and irrelevant parties do not."
+    proof_required: ROUTING_PROBE
+  -
+    control_id: LC-091
+    control_name: "Service-level expectations"
+    section_key: K
+    section_name: "Evidence and Communication"
+    minimum_risk_tier: R1
+    applies_when: "Delay changes impact or risk."
+    minimum_proof: "SLA_MONITORING: acknowledgement, decision, remediation, and escalation times are measured."
+    proof_required: SLA_MONITORING
+  -
+    control_id: LC-092
+    control_name: "Root-cause analysis"
+    section_key: L
+    section_name: "Learning and Improvement"
+    minimum_risk_tier: R1
+    applies_when: "A failure is material, repeated, or systemic."
+    minimum_proof: "REVIEW_PROOF: analysis identifies more than the visible symptom and names failed controls."
+    proof_required: REVIEW_PROOF
+  -
+    control_id: LC-093
+    control_name: "Corrective action"
+    section_key: L
+    section_name: "Learning and Improvement"
+    minimum_risk_tier: R0
+    applies_when: "A current gap or failure exists."
+    minimum_proof: "VALIDATION_PROBE: the immediate issue is corrected."
+    proof_required: VALIDATION_PROBE
+  -
+    control_id: LC-094
+    control_name: "Preventive action"
+    section_key: L
+    section_name: "Learning and Improvement"
+    minimum_risk_tier: R1
+    applies_when: "Recurrence is plausible or costly."
+    minimum_proof: "REGRESSION or control probe: the preventive control blocks the known failure pattern."
+    proof_required: "REGRESSION or control probe"
+  -
+    control_id: LC-095
+    control_name: "Learning destination"
+    section_key: L
+    section_name: "Learning and Improvement"
+    minimum_risk_tier: R1
+    applies_when: "The loop claims to learn."
+    minimum_proof: "ARTIFACT_PROBE: learning updates a test, policy, prompt, runbook, default, standard, or backlog item."
+    proof_required: ARTIFACT_PROBE
+  -
+    control_id: LC-096
+    control_name: "Effectiveness verification"
+    section_key: L
+    section_name: "Learning and Improvement"
+    minimum_risk_tier: R2
+    applies_when: "The action's intended outcome needs post-change observation."
+    minimum_proof: "SUSTAINED_MONITORING: target is met through the required window with guardrails intact."
+    proof_required: SUSTAINED_MONITORING
+  -
+    control_id: LC-097
+    control_name: "Causal-confidence method"
+    section_key: L
+    section_name: "Learning and Improvement"
+    minimum_risk_tier: R2
+    applies_when: "The loop attributes outcome change to its action."
+    minimum_proof: "EXPERIMENT or comparison evidence: the selected method supports the stated confidence."
+    proof_required: "EXPERIMENT or comparison evidence"
+  -
+    control_id: LC-098
+    control_name: "Regression-case creation"
+    section_key: L
+    section_name: "Learning and Improvement"
+    minimum_risk_tier: R1
+    applies_when: "A reproducible failure or edge case was found."
+    minimum_proof: "TEST-SUITE_PROBE: the new case fails before correction and passes after correction."
+    proof_required: TEST-SUITE_PROBE
+  -
+    control_id: LC-099
+    control_name: "Standard or policy update"
+    section_key: L
+    section_name: "Learning and Improvement"
+    minimum_risk_tier: R1
+    applies_when: "The correction should become normal behavior."
+    minimum_proof: "BASELINE_AUDIT: authoritative default, standard, policy, or operating baseline is updated."
+    proof_required: BASELINE_AUDIT
+  -
+    control_id: LC-100
+    control_name: "Drift monitoring"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R2
+    applies_when: "Inputs, models, policies, configurations, owners, or evidence can change over time."
+    minimum_proof: "MONITORING_PROBE: defined drift produces an alert and the correct response."
+    proof_required: MONITORING_PROBE
+  -
+    control_id: LC-101
+    control_name: "Assumption monitoring"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R2
+    applies_when: "The loop depends on material environmental or behavioral assumptions."
+    minimum_proof: "REVIEW_PROOF: assumptions are tested at cadence and invalid assumptions trigger re-evaluation."
+    proof_required: REVIEW_PROOF
+  -
+    control_id: LC-102
+    control_name: "Convergence criteria"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R1
+    applies_when: "The loop can run repeatedly."
+    minimum_proof: "BOUNDARY_PROBE: the loop stops iterating when improvement or no-value conditions are met."
+    proof_required: BOUNDARY_PROBE
+  -
+    control_id: LC-103
+    control_name: "Stop conditions"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R1
+    applies_when: "Continued execution can waste resources or increase risk."
+    minimum_proof: "NEGATIVE_PROBE: unsafe, blocked, budget-exceeded, or no-value conditions stop the loop."
+    proof_required: NEGATIVE_PROBE
+  -
+    control_id: LC-104
+    control_name: "Oscillation detection"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R2
+    applies_when: "The loop can reverse prior decisions."
+    minimum_proof: "OSCILLATION_PROBE: small alternating signals do not cause repeated reversal and genuine overrides still work."
+    proof_required: OSCILLATION_PROBE
+  -
+    control_id: LC-105
+    control_name: Portability
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R2
+    applies_when: "Vendor, model, framework, platform, or tool concentration creates continuity risk."
+    minimum_proof: "FAILOVER or migration drill: an alternate implementation works within declared loss."
+    proof_required: "FAILOVER or migration drill"
+  -
+    control_id: LC-106
+    control_name: "Owner succession"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R1
+    applies_when: "The loop must outlive an individual owner."
+    minimum_proof: "SUCCESSION_DRILL or access review: backup ownership and authority transfer are operable."
+    proof_required: "SUCCESSION_DRILL or access review"
+  -
+    control_id: LC-107
+    control_name: "Deprecation and retirement"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R1
+    applies_when: "The loop, product, control, or dependency can become obsolete."
+    minimum_proof: "RETIREMENT_DRILL or checklist: triggers, credentials, dependencies, and evidence are handled safely."
+    proof_required: "RETIREMENT_DRILL or checklist"
+  -
+    control_id: LC-108
+    control_name: "Loop-health metrics"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R1
+    applies_when: "The loop is active beyond a one-time execution."
+    minimum_proof: "METRIC_RECALCULATION: coverage, success, noise, cost, recurrence, and proof freshness are measurable."
+    proof_required: METRIC_RECALCULATION
+  -
+    control_id: LC-109
+    control_name: "Meta-review frequency"
+    section_key: M
+    section_name: "Lifecycle and Meta-Governance"
+    minimum_risk_tier: R1
+    applies_when: "The loop remains active or governed."
+    minimum_proof: "SCHEDULE and review evidence: the loop is assessed for value, noise, gaps, duplication, and retirement at cadence."
+    proof_required: "SCHEDULE and review evidence"

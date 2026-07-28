@@ -1,0 +1,299 @@
+version: 1.0
+enterprise_execution_policy:
+  filesystem_default: read_only
+  privilege_default: non_privileged
+  network_default: deny
+  egress_control: exact_host_allowlist_only
+  blocked_networks:
+    - private_address_ranges
+    - loopback_except_explicit_dev
+    - link_local
+    - multicast
+    - reserved
+    - cloud_metadata_endpoints
+  credential_handling:
+    source: KMS
+    injection: short_lived_server_side
+    trace_redaction_required: true
+  response_bounds:
+    json_object_only: true
+    max_response_bytes_ref: authority_settings.http_max_response_bytes
+  policy_decision_log_required: true
+contracts:
+  -
+    tool: evidence_reader
+    purpose: "Fetch authoritative evidence"
+    required_inputs:
+      - source_ref
+      - scope
+    expected_output: evidence_bundle
+    failure_modes:
+      - stale
+      - denied
+      - missing
+    timeout: 30s
+    retry: "no retry for denied"
+    verification_before_use: "freshness and lineage check"
+    fallback: escalate
+  -
+    tool: source_freshness_checker
+    purpose: "Validate evidence freshness"
+    required_inputs:
+      - evidence_ref
+      - freshness_policy_ref
+    expected_output: freshness_verdict
+    failure_modes:
+      - expired
+      - unknown_clock
+    timeout: 10s
+    retry: "one retry"
+    verification_before_use: "timestamp and source-owner check"
+    fallback: "mark evidence stale"
+  -
+    tool: owner_registry_lookup
+    purpose: "Resolve policy and gate authority"
+    required_inputs:
+      - owner_ref
+      - control_id
+    expected_output: owner_record
+    failure_modes:
+      - missing
+      - conflict
+    timeout: 10s
+    retry: "no retry for conflict"
+    verification_before_use: "one-authority rule check"
+    fallback: block
+  -
+    tool: risk_tier_calculator
+    purpose: "Calculate effective risk tier"
+    required_inputs:
+      - loop_id
+      - risk_dimensions
+    expected_output: risk_tier_verdict
+    failure_modes:
+      - missing_dimension
+    timeout: 10s
+    retry: "no retry"
+    verification_before_use: "highest applicable dimension check"
+    fallback: escalate
+  -
+    tool: control_applicability_resolver
+    purpose: "Map controls to loop execution"
+    required_inputs:
+      - loop_id
+      - risk_tier
+    expected_output: applicable_controls
+    failure_modes:
+      - missing_catalog
+    timeout: 10s
+    retry: "one retry"
+    verification_before_use: "control catalog checksum check"
+    fallback: block
+  -
+    tool: probe_runner
+    purpose: "Execute proof probe"
+    required_inputs:
+      - probe_id
+      - scope
+    expected_output: probe_result
+    failure_modes:
+      - timeout
+      - failed
+      - inconclusive
+    timeout: 120s
+    retry: policy-defined
+    verification_before_use: "acceptance criteria comparison"
+    fallback: "block or conditional"
+  -
+    tool: state_transition_writer
+    purpose: "Record lifecycle transition"
+    required_inputs:
+      - loop_id
+      - execution_id
+      - from_state
+      - to_state
+    expected_output: state_event
+    failure_modes:
+      - illegal_transition
+      - write_failed
+    timeout: 15s
+    retry: "idempotent retry"
+    verification_before_use: "state machine validation"
+    fallback: block
+  -
+    tool: result_envelope_writer
+    purpose: "Persist execution result"
+    required_inputs:
+      - result_envelope
+    expected_output: durable_result_ref
+    failure_modes:
+      - schema_invalid
+      - write_failed
+    timeout: 15s
+    retry: "idempotent retry"
+    verification_before_use: "schema validation"
+    fallback: block
+  -
+    tool: verdict_writer
+    purpose: "Record gate verdict"
+    required_inputs:
+      - loop_id
+      - execution_id
+      - verdict
+    expected_output: durable_verdict
+    failure_modes:
+      - conflict
+      - write_failed
+    timeout: 15s
+    retry: "idempotent retry"
+    verification_before_use: read-after-write
+    fallback: block
+  -
+    tool: notification_router
+    purpose: "Notify owners and downstream loops"
+    required_inputs:
+      - event
+      - recipient_refs
+    expected_output: notification_record
+    failure_modes:
+      - recipient_missing
+      - delivery_failed
+    timeout: 30s
+    retry: "retry delivery failures"
+    verification_before_use: "recipient scope check"
+    fallback: escalate
+  -
+    tool: memory_writer
+    purpose: "Persist approved learning"
+    required_inputs:
+      - learning_artifact
+      - classification
+    expected_output: memory_record
+    failure_modes:
+      - privacy_block
+      - retention_missing
+    timeout: 20s
+    retry: "no retry for privacy block"
+    verification_before_use: "privacy and retention check"
+    fallback: "route to backlog"
+  -
+    tool: corpus_validator
+    purpose: "Validate static loop corpus"
+    required_inputs:
+      - repo_root
+    expected_output: validation_report
+    failure_modes:
+      - schema_error
+      - missing_artifact
+    timeout: 60s
+    retry: "no retry"
+    verification_before_use: "all required checks pass"
+    fallback: "fail closed"
+  -
+    tool: sandbox_profile_resolver
+    purpose: "Select and prove the isolated execution profile for an agent or tool action"
+    required_inputs:
+      - loop_id
+      - action_class
+      - risk_tier
+      - sandbox_profile_ref
+    expected_output: sandbox_profile_verdict
+    failure_modes:
+      - missing_profile
+      - insufficient_isolation
+      - metadata_endpoint_reachable
+      - filesystem_not_read_only
+    timeout: 10s
+    retry: "no retry for insufficient isolation"
+    verification_before_use: "Firecracker or gVisor profile, non-privileged runtime, read-only default filesystem, and metadata endpoint block"
+    fallback: block
+  -
+    tool: egress_policy_checker
+    purpose: "Authorize connector network access before any outbound request"
+    required_inputs:
+      - endpoint
+      - tenant_id
+      - allowed_hosts_ref
+      - policy_decision_ref
+    expected_output: egress_verdict
+    failure_modes:
+      - host_not_allowlisted
+      - private_network_resolution
+      - embedded_credentials
+      - non_https
+      - policy_denied
+    timeout: 5s
+    retry: "one DNS retry only"
+    verification_before_use: "scheme, DNS, host allowlist, private IP block, and cloud metadata endpoint block"
+    fallback: block
+  -
+    tool: credential_injection_broker
+    purpose: "Issue scoped short-lived connector credentials without exposing secrets to model context"
+    required_inputs:
+      - workload_identity_ref
+      - tenant_id
+      - connector_ref
+      - action_class
+    expected_output: scoped_credential_ref
+    failure_modes:
+      - kms_unavailable
+      - identity_denied
+      - tenant_scope_conflict
+      - redaction_policy_missing
+    timeout: 10s
+    retry: "no retry for identity_denied or tenant_scope_conflict"
+    verification_before_use: "IdP claim, RBAC/ABAC context, KMS source, TTL, and trace-redaction policy"
+    fallback: block
+  -
+    tool: policy_decision_logger
+    purpose: "Persist allow, deny, modify, or escalate decisions from the policy decision point"
+    required_inputs:
+      - policy_ref
+      - input_hash
+      - decision
+      - actor_ref
+      - tenant_id
+    expected_output: policy_decision_record
+    failure_modes:
+      - policy_unavailable
+      - schema_invalid
+      - write_failed
+    timeout: 5s
+    retry: "idempotent retry"
+    verification_before_use: "OPA-compatible decision payload and immutable audit sink write"
+    fallback: block
+  -
+    tool: record_action
+    purpose: "Create or compensate a durable governed action artifact without an external side effect"
+    required_inputs:
+      - operation
+      - summary
+      - idempotency_key
+    expected_output: governed_action_artifact
+    failure_modes:
+      - invalid_input
+      - idempotency_conflict
+      - write_failed
+    timeout: 15s
+    retry: "idempotent retry with key"
+    verification_before_use: "payload hash, state, and approval checks"
+    fallback: block
+  -
+    tool: http_json_action
+    purpose: "Invoke an allowlisted enterprise JSON endpoint with a payload-bound idempotency key"
+    required_inputs:
+      - endpoint
+      - method
+      - body
+      - idempotency_key
+    expected_output: enterprise_action_result
+    failure_modes:
+      - endpoint_denied
+      - timeout
+      - retryable_dependency_failure
+      - terminal_dependency_failure
+      - response_invalid
+    timeout: 15s
+    retry: "bounded retry only for timeout, 429, and 5xx"
+    verification_before_use: "HTTPS, DNS, host allowlist, approval payload hash, and response bounds"
+    fallback: "compensate or block"

@@ -1,0 +1,77 @@
+version: 1.0
+purpose: "make each loop execution explainable, auditable, comparable, and improvable"
+required_event_fields:
+  - timestamp
+  - loop_id
+  - loop_version
+  - execution_id
+  - correlation_id
+  - trigger_type
+  - asset_scope
+  - risk_tier
+  - state_from
+  - state_to
+  - authority_ref
+  - evidence_refs
+  - controls_evaluated
+  - tools_called
+  - probe_ids
+  - proof_state
+  - verdict
+  - failure_reason
+  - handoff_id
+  - latency_ms
+  - cost_units
+  - retry_count
+  - standard_hash
+  - policy_decision_ref
+  - sandbox_profile_ref
+  - egress_policy_ref
+  - workload_identity_ref
+  - credential_redaction_proof_ref
+  - trace_redaction_proof_ref
+  - worm_siem_event_ref
+event_taxonomy:
+  - trigger_received
+  - qualification_completed
+  - evidence_collected
+  - diagnosis_recorded
+  - authorization_decided
+  - action_started
+  - action_applied
+  - validation_completed
+  - recovery_started
+  - result_recorded
+  - learning_standardized
+  - effectiveness_checked
+dashboards:
+  -
+    dashboard: loop_operational_health
+    questions:
+      - "which loops run most often"
+      - "which loops are blocked by missing evidence or authority"
+      - "which loops create the most downstream handoffs"
+      - "which fixes pass validation but fail effectiveness"
+  -
+    dashboard: moat_compounding
+    questions:
+      - "which playbooks saved manual effort"
+      - "which evidence packets were reused"
+      - "which failure cases became golden tasks"
+      - "which controls were strengthened from real incidents"
+alerts:
+  - illegal_state_transition
+  - expired_proof_used
+  - loop_storm_breaker_tripped
+  - R3_or_R4_action_without_handoff
+  - ACTIVE_loop_with_unassigned_owner_or_evidence
+  - repeated_validation_failure
+enterprise_evidence_requirements:
+  - worm_siem_audit_sink
+  - kms_backed_secret_source
+  - idp_issued_workload_identity
+  - opa_policy_decision_log
+  - trace_redaction_proof
+  - sandbox_escape_negative_probe
+  - egress_negative_probe
+minimum_retention: "retain execution, evidence, state, authorization, and proof records according to the risk-tier retention policy"

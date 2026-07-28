@@ -1,0 +1,269 @@
+version: 1.0
+playbooks:
+  -
+    playbook_id: pilot-sdlc-governance-os
+    title: "Validator-backed SDLC governance operating system"
+    impact_rank: 1
+    effort_saving: "eliminates repeated manual status chasing across requirements, review, release, deployment, and production evidence"
+    loops:
+      - loop-006-requirements-quality-loop
+      - loop-007-requirements-change-control-loop
+      - loop-008-requirements-traceability-loop
+      - loop-015-design-review-loop
+      - loop-016-architecture-fitness-and-future-compatibility-loop
+      - loop-022-code-quality-loop
+      - loop-023-pull-request-review-loop
+      - loop-025-ci-pipeline-loop
+      - loop-036-release-readiness-loop
+      - loop-038-deployment-validation-loop
+      - loop-014-retrospective-improvement-loop
+    pilot_scope: "one product, one release train, one evidence store"
+    setup:
+      - "assign category owners for product, delivery, architecture, engineering, quality, release, and operations"
+      - "map requirement, test, release, deployment, and production evidence locations"
+      - "choose three release-blocking controls from the control catalog"
+    operating_steps:
+      - "trigger the primary loop from a real work item"
+      - "qualify scope, authority, evidence, and risk tier"
+      - "collect proof from authoritative systems"
+      - "diagnose gaps and route dependent loops through the graph"
+      - "authorize only the minimum bounded action"
+      - "validate immediate correctness"
+      - "monitor effectiveness through the defined observation window"
+      - "standardize the learning into controls, probes, golden tasks, or runbooks"
+    proof_bundle:
+      - "result envelope"
+      - "state transition log"
+      - "control applicability profile"
+      - "evidence freshness verdict"
+      - "authorization verdict"
+      - "validation result"
+      - "effectiveness metric snapshot"
+    exit_criteria:
+      - "all selected loops have named owners"
+      - "all selected loops have authoritative evidence locations"
+      - "golden task pass rate is recorded"
+      - "at least one repeated manual task is replaced by a governed proof packet"
+  -
+    playbook_id: pilot-release-command-center
+    title: "Evidence-backed release and deployment command center"
+    impact_rank: 2
+    effort_saving: "replaces release meetings and manual gate collection with a current proof packet"
+    loops:
+      - loop-008-requirements-traceability-loop
+      - loop-030-regression-testing-loop
+      - loop-031-performance-testing-loop
+      - loop-077-secure-sdlc-loop
+      - loop-036-release-readiness-loop
+      - loop-037-operational-readiness-and-runbook-loop
+      - loop-038-deployment-validation-loop
+      - loop-039-environment-drift-loop
+      - loop-040-rollback-backup-and-recovery-loop
+      - loop-041-observability-improvement-loop
+      - loop-043-incident-management-loop
+    pilot_scope: "one critical service and one normal release"
+    setup:
+      - "declare release evidence packet fields"
+      - "connect CI, deployment, rollback, and observability evidence"
+      - "define ship, hold, conditional ship, and rollback verdicts"
+    operating_steps:
+      - "trigger the primary loop from a real work item"
+      - "qualify scope, authority, evidence, and risk tier"
+      - "collect proof from authoritative systems"
+      - "diagnose gaps and route dependent loops through the graph"
+      - "authorize only the minimum bounded action"
+      - "validate immediate correctness"
+      - "monitor effectiveness through the defined observation window"
+      - "standardize the learning into controls, probes, golden tasks, or runbooks"
+    proof_bundle:
+      - "result envelope"
+      - "state transition log"
+      - "control applicability profile"
+      - "evidence freshness verdict"
+      - "authorization verdict"
+      - "validation result"
+      - "effectiveness metric snapshot"
+    exit_criteria:
+      - "all selected loops have named owners"
+      - "all selected loops have authoritative evidence locations"
+      - "golden task pass rate is recorded"
+      - "at least one repeated manual task is replaced by a governed proof packet"
+  -
+    playbook_id: pilot-agentic-action-safety-plane
+    title: "Agentic action safety control plane"
+    impact_rank: 3
+    effort_saving: "prevents duplicated manual review of tool calls, delegation, memory, credentials, and recovery paths"
+    loops:
+      - loop-066-agent-goal-achievement-loop
+      - loop-067-agent-planning-quality-loop
+      - loop-068-tool-selection-loop
+      - loop-069-tool-execution-validation-loop
+      - loop-070-agent-context-management-loop
+      - loop-071-agent-memory-loop
+      - loop-072-agent-resource-budget-and-rate-limit-control-loop
+      - loop-073-agent-state-consistency-and-idempotency-loop
+      - loop-074-agent-failure-recovery-loop
+      - loop-075-multi-agent-coordination-loop
+      - loop-076-agent-delegation-and-accountability-loop
+      - loop-079-agent-guardrail-loop
+      - loop-080-agent-identity-and-credential-governance-loop
+      - loop-081-access-governance-loop
+      - loop-089-audit-logging-and-forensic-readiness-loop
+    pilot_scope: "one agent, three approved tools, one non-production workspace"
+    setup:
+      - "register tool contracts and idempotency rules"
+      - "define memory write classes and retention"
+      - "require authority checks for external, destructive, or privileged actions"
+    operating_steps:
+      - "trigger the primary loop from a real work item"
+      - "qualify scope, authority, evidence, and risk tier"
+      - "collect proof from authoritative systems"
+      - "diagnose gaps and route dependent loops through the graph"
+      - "authorize only the minimum bounded action"
+      - "validate immediate correctness"
+      - "monitor effectiveness through the defined observation window"
+      - "standardize the learning into controls, probes, golden tasks, or runbooks"
+    proof_bundle:
+      - "result envelope"
+      - "state transition log"
+      - "control applicability profile"
+      - "evidence freshness verdict"
+      - "authorization verdict"
+      - "validation result"
+      - "effectiveness metric snapshot"
+    exit_criteria:
+      - "all selected loops have named owners"
+      - "all selected loops have authoritative evidence locations"
+      - "golden task pass rate is recorded"
+      - "at least one repeated manual task is replaced by a governed proof packet"
+  -
+    playbook_id: pilot-ai-lifecycle-evaluation-flywheel
+    title: "AI model lifecycle and evaluation flywheel"
+    impact_rank: 4
+    effort_saving: "turns repeated prompt, model, RAG, safety, and drift review into reusable evidence and golden tasks"
+    loops:
+      - loop-002-ai-use-case-validation-loop
+      - loop-057-prompt-engineering-loop
+      - loop-058-model-evaluation-and-benchmarking-loop
+      - loop-059-rag-quality-loop
+      - loop-060-ai-safety-and-responsible-ai-loop
+      - loop-061-hallucination-reduction-loop
+      - loop-062-model-and-data-drift-monitoring-loop
+      - loop-063-ai-feedback-learning-loop
+      - loop-064-evaluation-dataset-evolution-loop
+      - loop-065-model-lifecycle-and-upgrade-safety-loop
+      - loop-092-model-portability-and-exit-loop
+      - loop-091-frontier-model-advancement-loop
+    pilot_scope: "one AI feature, one eval dataset, one model upgrade decision"
+    setup:
+      - "baseline model, prompt, retrieval, and safety evidence"
+      - "capture failed cases as candidate golden tasks"
+      - "define promote, rollback, and monitor verdicts"
+    operating_steps:
+      - "trigger the primary loop from a real work item"
+      - "qualify scope, authority, evidence, and risk tier"
+      - "collect proof from authoritative systems"
+      - "diagnose gaps and route dependent loops through the graph"
+      - "authorize only the minimum bounded action"
+      - "validate immediate correctness"
+      - "monitor effectiveness through the defined observation window"
+      - "standardize the learning into controls, probes, golden tasks, or runbooks"
+    proof_bundle:
+      - "result envelope"
+      - "state transition log"
+      - "control applicability profile"
+      - "evidence freshness verdict"
+      - "authorization verdict"
+      - "validation result"
+      - "effectiveness metric snapshot"
+    exit_criteria:
+      - "all selected loops have named owners"
+      - "all selected loops have authoritative evidence locations"
+      - "golden task pass rate is recorded"
+      - "at least one repeated manual task is replaced by a governed proof packet"
+  -
+    playbook_id: pilot-compliance-evidence-autopackager
+    title: "Audit-ready compliance evidence autopackager"
+    impact_rank: 5
+    effort_saving: "removes repeated audit preparation by continuously mapping controls to evidence and owners"
+    loops:
+      - loop-077-secure-sdlc-loop
+      - loop-088-privacy-engineering-and-data-protection-loop
+      - loop-089-audit-logging-and-forensic-readiness-loop
+      - loop-104-compliance-evidence-loop
+      - loop-105-legal-regulatory-and-standards-watch-loop
+      - loop-106-vendor-and-third-party-risk-and-sla-loop
+      - loop-107-ip-copyright-and-license-compliance-loop
+      - loop-081-access-governance-loop
+      - loop-086-software-supply-chain-and-build-integrity-loop
+      - loop-087-ai-supply-chain-security-loop
+    pilot_scope: "one audit domain and one evidence location per control family"
+    setup:
+      - "assign named evidence stewards"
+      - "map control catalog entries to authoritative systems"
+      - "define freshness and retention policies before ACTIVE status"
+    operating_steps:
+      - "trigger the primary loop from a real work item"
+      - "qualify scope, authority, evidence, and risk tier"
+      - "collect proof from authoritative systems"
+      - "diagnose gaps and route dependent loops through the graph"
+      - "authorize only the minimum bounded action"
+      - "validate immediate correctness"
+      - "monitor effectiveness through the defined observation window"
+      - "standardize the learning into controls, probes, golden tasks, or runbooks"
+    proof_bundle:
+      - "result envelope"
+      - "state transition log"
+      - "control applicability profile"
+      - "evidence freshness verdict"
+      - "authorization verdict"
+      - "validation result"
+      - "effectiveness metric snapshot"
+    exit_criteria:
+      - "all selected loops have named owners"
+      - "all selected loops have authoritative evidence locations"
+      - "golden task pass rate is recorded"
+      - "at least one repeated manual task is replaced by a governed proof packet"
+  -
+    playbook_id: pilot-incident-prevention-flywheel
+    title: "Incident-to-prevention learning flywheel"
+    impact_rank: 6
+    effort_saving: "converts incident review, bug fixing, alert tuning, regression creation, and backlog follow-up into one proof chain"
+    loops:
+      - loop-041-observability-improvement-loop
+      - loop-043-incident-management-loop
+      - loop-044-ai-incident-response-loop
+      - loop-045-problem-management-loop
+      - loop-034-defect-management-loop
+      - loop-030-regression-testing-loop
+      - loop-047-chaos-engineering-and-resilience-testing-loop
+      - loop-009-backlog-refinement-loop
+      - loop-011-risk-management-loop
+      - loop-014-retrospective-improvement-loop
+    pilot_scope: "three recent incidents or defects from one service"
+    setup:
+      - "link incident timelines to failed controls and missing probes"
+      - "add one regression or chaos proof per repeat failure"
+      - "route preventive work through backlog and risk loops"
+    operating_steps:
+      - "trigger the primary loop from a real work item"
+      - "qualify scope, authority, evidence, and risk tier"
+      - "collect proof from authoritative systems"
+      - "diagnose gaps and route dependent loops through the graph"
+      - "authorize only the minimum bounded action"
+      - "validate immediate correctness"
+      - "monitor effectiveness through the defined observation window"
+      - "standardize the learning into controls, probes, golden tasks, or runbooks"
+    proof_bundle:
+      - "result envelope"
+      - "state transition log"
+      - "control applicability profile"
+      - "evidence freshness verdict"
+      - "authorization verdict"
+      - "validation result"
+      - "effectiveness metric snapshot"
+    exit_criteria:
+      - "all selected loops have named owners"
+      - "all selected loops have authoritative evidence locations"
+      - "golden task pass rate is recorded"
+      - "at least one repeated manual task is replaced by a governed proof packet"

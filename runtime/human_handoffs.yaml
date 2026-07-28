@@ -1,0 +1,53 @@
+version: 1.0
+principle: "handoff before irreversible consequence, privileged access, external effect, or uncertain proof"
+handoff_rules:
+  -
+    handoff_id: missing_authority
+    trigger: "policy owner, gate owner, risk owner, executor, or validator cannot be resolved"
+    required_human: "category policy owner"
+    allowed_state: BLOCKED
+  -
+    handoff_id: missing_evidence_source
+    trigger: "authoritative evidence location is UNASSIGNED, stale, conflicted, or inaccessible"
+    required_human: "evidence steward"
+    allowed_state: INSUFFICIENT_EVIDENCE
+  -
+    handoff_id: r3_or_r4_action
+    trigger: "effective risk tier is R3 or R4 before execution"
+    required_human: "named gate owner and risk owner"
+    allowed_state: PLANNED
+  -
+    handoff_id: external_side_effect_or_destructive_action
+    trigger: "action changes production, customer-visible behavior, money, legal posture, identity, credentials, or data deletion"
+    required_human: "gate owner with separation of duties"
+    allowed_state: PLANNED
+  -
+    handoff_id: conditional_expired
+    trigger: "temporary approval reaches expiry without proof"
+    required_human: "gate owner"
+    allowed_state: CONDITIONAL_EXPIRED
+  -
+    handoff_id: repeated_oscillation
+    trigger: "same decision reverses more than twice inside the review window"
+    required_human: "risk owner"
+    allowed_state: BLOCKED
+  -
+    handoff_id: security_privacy_or_compliance_failure
+    trigger: "validation, probe, or evidence indicates security, privacy, compliance, forensic, or supply-chain failure"
+    required_human: "security, privacy, or compliance owner"
+    allowed_state: BLOCKED
+  -
+    handoff_id: tool_or_probe_inconclusive_after_retry
+    trigger: "tool or probe remains inconclusive after its contract retry policy"
+    required_human: "validator owner"
+    allowed_state: PROOF_FAILED
+  -
+    handoff_id: owner_conflict_or_separation_of_duties
+    trigger: "same actor attempts incompatible requester, executor, validator, or approver roles"
+    required_human: "policy owner"
+    allowed_state: BLOCKED
+  -
+    handoff_id: sensitive_memory_or_learning_write
+    trigger: "learning artifact may contain personal, confidential, credential, regulated, or customer data"
+    required_human: "privacy or data governance owner"
+    allowed_state: PLANNED
