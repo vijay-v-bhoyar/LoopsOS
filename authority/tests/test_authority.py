@@ -11,7 +11,7 @@ import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 from fastapi.testclient import TestClient
@@ -162,6 +162,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
             worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
+            execution_worker_mode="external",
         )
         store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
         with patch("loopos_authority.api.create_authority_store", return_value=store):
@@ -171,11 +172,20 @@ class ProductionIdentityApiTests(unittest.TestCase):
                     headers={"x-loopos-identity-token": "verified-identity-assertion"},
                 )
                 self.assertEqual(session.status_code, 200, session.text)
+                drain = client.post(
+                    "/v1/operations/jobs/drain",
+                    headers={"x-loopos-worker-token": settings.worker_token},
+                )
+                self.assertEqual(drain.status_code, 200, drain.text)
+                self.assertTrue(drain.json()["dispatch"]["verified"])
+                self.assertEqual(drain.json()["dispatch"]["source"], "external")
                 response = client.get("/health/ready")
 
         self.assertEqual(response.status_code, 200, response.text)
         self.assertTrue(response.json()["audit_anchor_delivery_verified"])
         self.assertIsNotNone(response.json()["audit_anchor_last_delivered_at"])
+        self.assertTrue(response.json()["execution_worker_dispatch"]["verified"])
+        self.assertEqual(response.json()["execution_worker_dispatch"]["source"], "external")
         self.assertEqual(response.json()["operational_bindings"], {
             "retention_verified": True,
             "support_verified": True,
@@ -211,6 +221,41 @@ class ProductionIdentityApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["detail"], "Production audit anchoring has not completed a verified delivery.")
+
+    def test_production_readiness_rejects_a_worker_token_without_a_dispatch_heartbeat(self) -> None:
+        settings = Settings(
+            repo_root=REPO_ROOT,
+            database_path=Path(self.tempdir.name) / "operations-unproven-worker.db",
+            session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
+            allow_dev_auth=False,
+            allowed_http_hosts=(),
+            cors_origins=(),
+            storage_backend="postgres",
+            postgres_dsn="postgresql://unused.example/loopos",
+            audit_anchor_url="https://audit.example.com/loopos/events",
+            audit_anchor_hmac_secret="audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+            audit_anchor_poll_seconds=3600,
+            retention_policy_url="https://policy.example.com/loopos-retention",
+            support_contact="loopos-operations@example.com",
+            outbound_policy_mode="deny_all",
+            backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
+            backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+            worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
+        )
+        store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
+        transport = httpx.MockTransport(lambda _request: httpx.Response(202))
+        with patch("loopos_authority.api.create_authority_store", return_value=store):
+            with patch("loopos_authority.api.ExecutionJobWorker.run_once", new=AsyncMock(return_value=0)):
+                with TestClient(create_app(settings, identity_verifier=self.IdentityVerifier(), transport=transport)) as client:
+                    session = client.post(
+                        "/v1/sessions",
+                        headers={"x-loopos-identity-token": "verified-identity-assertion"},
+                    )
+                    self.assertEqual(session.status_code, 200, session.text)
+                    response = client.get("/health/ready")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("worker_dispatch", response.json()["detail"])
 
 
 def enterprise_context() -> dict:
@@ -858,13 +903,53 @@ class StoreAndEngineTests(AuthorityHarness):
         self.store.queue_run(run.tenant_id, run.run_id, self.operator.user_id)
         worker = ExecutionJobWorker(self.store, self.engine, worker_id="worker-a", lease_seconds=30)
 
-        processed = asyncio.run(worker.run_once())
+        processed = asyncio.run(worker.run_once(dispatch_source="external"))
 
         self.assertEqual(processed, 1)
         self.assertEqual(self.store.execution_job_backlog(), 0)
+        dispatch = self.store.operational_signal_status(
+            "execution_worker_dispatch",
+            max_age_seconds=180,
+            required_source="external",
+        )
+        self.assertTrue(dispatch["verified"])
+        self.assertEqual(dispatch["detail"]["claimed_jobs"], 1)
         completed = self.store.get_run(run.tenant_id, run.run_id)
         self.assertEqual(completed.state, "EFFECTIVENESS_PROVEN")
         self.assertEqual(completed.runner_status, "completed")
+
+    def test_execution_worker_dispatch_heartbeat_expires_and_is_mode_specific(self) -> None:
+        worker = ExecutionJobWorker(self.store, self.engine, worker_id="heartbeat-worker", lease_seconds=30)
+        asyncio.run(worker.run_once(dispatch_source="external"))
+
+        self.assertTrue(
+            self.store.operational_signal_status(
+                "execution_worker_dispatch",
+                max_age_seconds=180,
+                required_source="external",
+            )["verified"]
+        )
+        self.assertFalse(
+            self.store.operational_signal_status(
+                "execution_worker_dispatch",
+                max_age_seconds=180,
+                required_source="internal",
+            )["verified"]
+        )
+        self.store.connection.execute(
+            """
+            UPDATE operational_signals
+            SET observed_at = '2000-01-01T00:00:00+00:00'
+            WHERE signal_name = 'execution_worker_dispatch' AND source = 'external'
+            """
+        )
+        self.assertFalse(
+            self.store.operational_signal_status(
+                "execution_worker_dispatch",
+                max_age_seconds=180,
+                required_source="external",
+            )["verified"]
+        )
 
     def test_execution_worker_reclaims_a_run_after_the_previous_worker_dies(self) -> None:
         run = self.store.create_run(self.operator, request(), "create-worker-recovery")
@@ -917,6 +1002,16 @@ class StorageBackendTests(unittest.TestCase):
 
         self.assertEqual(settings.storage_backend, "sqlite")
         self.assertIsNone(settings.postgres_dsn)
+
+    def test_vercel_defaults_to_external_worker_dispatch(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"LOOPOS_REPO_ROOT": str(REPO_ROOT), "VERCEL": "1"},
+            clear=True,
+        ):
+            settings = Settings.from_env()
+
+        self.assertEqual(settings.execution_worker_mode, "external")
 
     def test_invalid_storage_backend_is_rejected(self) -> None:
         with patch.dict("os.environ", {"LOOPOS_STORAGE_BACKEND": "browser"}, clear=True):
@@ -990,12 +1085,12 @@ class StorageBackendTests(unittest.TestCase):
     def test_supabase_migration_preserves_authority_tables_and_audit_controls(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")
 
-        for table in ["runs", "execution_jobs", "approvals", "evidence", "tool_invocations", "probe_results", "action_artifacts", "workspaces", "release_initiatives", "connector_events", "audit_events", "audit_anchor_outbox"]:
+        for table in ["runs", "execution_jobs", "operational_signals", "approvals", "evidence", "tool_invocations", "probe_results", "action_artifacts", "workspaces", "release_initiatives", "connector_events", "audit_events", "audit_anchor_outbox"]:
             self.assertIn(f"create table if not exists {table}", migration)
             self.assertIn(f"alter table {table} enable row level security", migration)
         self.assertIn("audit_events_no_update", migration)
         self.assertIn("audit_events_no_delete", migration)
-        self.assertIn("revoke all on runs, execution_jobs, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated", migration)
+        self.assertIn("revoke all on runs, execution_jobs, operational_signals, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated", migration)
 
     def test_postgres_migration_runner_preserves_dollar_quoted_functions(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")

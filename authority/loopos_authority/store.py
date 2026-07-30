@@ -151,6 +151,14 @@ class AuthorityStore:
                 CREATE INDEX IF NOT EXISTS idx_execution_jobs_run
                   ON execution_jobs(tenant_id, run_id, created_at);
 
+                CREATE TABLE IF NOT EXISTS operational_signals (
+                  signal_name TEXT NOT NULL,
+                  source TEXT NOT NULL,
+                  detail_json TEXT NOT NULL,
+                  observed_at TEXT NOT NULL,
+                  PRIMARY KEY(signal_name, source)
+                );
+
                 CREATE TABLE IF NOT EXISTS approvals (
                   approval_id TEXT PRIMARY KEY,
                   tenant_id TEXT NOT NULL,
@@ -1158,6 +1166,64 @@ class AuthorityStore:
                 "SELECT COUNT(*) AS count FROM execution_jobs WHERE status IN ('queued', 'running')"
             ).fetchone()
         return int(row["count"]) if row else 0
+
+    def record_operational_signal(self, signal_name: str, source: str, detail: dict[str, Any]) -> dict[str, Any]:
+        observed_at = utc_now()
+        with self.transaction() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO operational_signals(signal_name, source, detail_json, observed_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(signal_name, source) DO UPDATE SET
+                  detail_json = excluded.detail_json,
+                  observed_at = excluded.observed_at
+                """,
+                (signal_name, source, canonical_json(detail), observed_at),
+            )
+        return {
+            "signal_name": signal_name,
+            "source": source,
+            "detail": detail,
+            "observed_at": observed_at,
+        }
+
+    def operational_signal_status(
+        self,
+        signal_name: str,
+        max_age_seconds: float,
+        required_source: str | None = None,
+    ) -> dict[str, Any]:
+        query = "SELECT * FROM operational_signals WHERE signal_name = ?"
+        parameters: tuple[Any, ...] = (signal_name,)
+        if required_source is not None:
+            query += " AND source = ?"
+            parameters = (signal_name, required_source)
+        query += " ORDER BY observed_at DESC LIMIT 1"
+        with self.lock:
+            row = self.connection.execute(query, parameters).fetchone()
+        if not row:
+            return {
+                "verified": False,
+                "source": None,
+                "observed_at": None,
+                "age_seconds": None,
+                "detail": {},
+            }
+        now = datetime.now(timezone.utc)
+        observed_at = parse_iso_datetime(str(row["observed_at"]))
+        age_seconds = (now - observed_at).total_seconds() if observed_at else None
+        fresh = bool(
+            observed_at
+            and -300 <= float(age_seconds) <= max_age_seconds
+        )
+        source = str(row["source"])
+        return {
+            "verified": fresh and (required_source is None or source == required_source),
+            "source": source,
+            "observed_at": row["observed_at"],
+            "age_seconds": max(0.0, float(age_seconds)) if age_seconds is not None else None,
+            "detail": json.loads(row["detail_json"]),
+        }
 
     def _enqueue_execution_job_cursor(
         self,

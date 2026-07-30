@@ -30,6 +30,13 @@ export interface AuthorityReadiness {
   audit_anchor_backlog: number;
   audit_anchor_delivery_verified: boolean;
   audit_anchor_last_delivered_at: string | null;
+  execution_worker_dispatch: {
+    verified: boolean;
+    source: "internal" | "external" | null;
+    observed_at: string | null;
+    age_seconds: number | null;
+    detail: Record<string, unknown>;
+  };
   operational_bindings: {
     retention_verified: boolean;
     support_verified: boolean;

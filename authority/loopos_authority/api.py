@@ -69,9 +69,15 @@ def create_app(
         async def schedule_execution_jobs() -> None:
             while True:
                 store.queue_due_effectiveness()
-                await execution_worker.run_once()
+                await execution_worker.run_once(dispatch_source="internal")
                 await asyncio.sleep(settings.execution_worker_poll_seconds)
-        execution_worker_task = asyncio.create_task(schedule_execution_jobs())
+        execution_worker_task = (
+            asyncio.create_task(schedule_execution_jobs())
+            if settings.execution_worker_mode == "internal"
+            else None
+        )
+        if execution_worker_task:
+            await asyncio.sleep(0)
         async def schedule_audit_anchors() -> None:
             if audit_anchor is None:
                 return
@@ -80,10 +86,12 @@ def create_app(
                 await asyncio.sleep(settings.audit_anchor_poll_seconds)
         audit_anchor_task = asyncio.create_task(schedule_audit_anchors()) if audit_anchor else None
         yield
-        execution_worker_task.cancel()
+        if execution_worker_task:
+            execution_worker_task.cancel()
         if audit_anchor_task:
             audit_anchor_task.cancel()
-        await asyncio.gather(execution_worker_task, return_exceptions=True)
+        if execution_worker_task:
+            await asyncio.gather(execution_worker_task, return_exceptions=True)
         if audit_anchor_task:
             await asyncio.gather(audit_anchor_task, return_exceptions=True)
         if audit_anchor:
@@ -229,26 +237,34 @@ def create_app(
             raise HTTPException(status_code=503, detail="Production persistence must use Postgres.")
         if not settings.allow_dev_auth and audit_anchor is None:
             raise HTTPException(status_code=503, detail="Production audit anchoring is not configured.")
-        operational_bindings = operational_binding_status(settings)
-        operational_binding_names = {
-            "retention_verified": "retention_policy",
-            "support_verified": "support_contact",
-            "outbound_policy_verified": "outbound_policy",
-            "backup_restore_verified": "backup_restore",
-            "worker_dispatch_verified": "worker_dispatch",
-        }
-        missing_operational_bindings = [
-            operational_binding_names[name]
-            for name, verified in operational_bindings.items()
-            if not verified
-        ]
-        if not settings.allow_dev_auth and missing_operational_bindings:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Production operational bindings are incomplete: {', '.join(missing_operational_bindings)}.",
-            )
         try:
             store.connection.execute("SELECT 1").fetchone()
+            worker_dispatch = store.operational_signal_status(
+                "execution_worker_dispatch",
+                settings.execution_worker_heartbeat_max_age_seconds,
+                required_source=settings.execution_worker_mode,
+            )
+            operational_bindings = operational_binding_status(settings)
+            operational_bindings["worker_dispatch_verified"] = bool(
+                operational_bindings["worker_dispatch_verified"] and worker_dispatch["verified"]
+            )
+            operational_binding_names = {
+                "retention_verified": "retention_policy",
+                "support_verified": "support_contact",
+                "outbound_policy_verified": "outbound_policy",
+                "backup_restore_verified": "backup_restore",
+                "worker_dispatch_verified": "worker_dispatch",
+            }
+            missing_operational_bindings = [
+                operational_binding_names[name]
+                for name, verified in operational_bindings.items()
+                if not verified
+            ]
+            if not settings.allow_dev_auth and missing_operational_bindings:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Production operational bindings are incomplete: {', '.join(missing_operational_bindings)}.",
+                )
             anchor_backlog = store.audit_anchor_backlog()
             if not settings.allow_dev_auth and anchor_backlog:
                 raise HTTPException(status_code=503, detail=f"Production audit anchor backlog contains {anchor_backlog} event(s).")
@@ -268,6 +284,7 @@ def create_app(
                 "audit_anchor_delivery_verified": anchor_delivery["verified"],
                 "audit_anchor_last_delivered_at": anchor_delivery["last_delivered_at"],
                 "execution_job_backlog": store.execution_job_backlog(),
+                "execution_worker_dispatch": worker_dispatch,
                 "operational_bindings": operational_bindings,
             }
         except HTTPException:
@@ -641,16 +658,23 @@ def create_app(
         return {"delivered": delivered, "backlog": store.audit_anchor_backlog()}
 
     @app.get("/v1/operations/jobs/status")
-    async def execution_job_status(actor: Actor = Depends(current_actor)) -> dict[str, int]:
+    async def execution_job_status(actor: Actor = Depends(current_actor)) -> dict[str, object]:
         if actor.role not in {"Auditor", "Executive"}:
             raise HTTPException(status_code=403, detail="Execution job status requires Auditor or Executive role.")
-        return {"backlog": store.execution_job_backlog()}
+        return {
+            "backlog": store.execution_job_backlog(),
+            "dispatch": store.operational_signal_status(
+                "execution_worker_dispatch",
+                settings.execution_worker_heartbeat_max_age_seconds,
+                required_source=settings.execution_worker_mode,
+            ),
+        }
 
     @app.post("/v1/operations/jobs/drain")
     async def drain_execution_jobs(
         request: Request,
         credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
-    ) -> dict[str, int]:
+    ) -> dict[str, object]:
         supplied_worker_token = request.headers.get("x-loopos-worker-token")
         if not supplied_worker_token and credentials and credentials.scheme.lower() == "bearer":
             supplied_worker_token = credentials.credentials
@@ -669,11 +693,16 @@ def create_app(
             if actor.role != "Executive":
                 raise HTTPException(status_code=403, detail="Execution job drain requires Executive role.")
         store.queue_due_effectiveness()
-        processed = await execution_worker.run_once()
+        processed = await execution_worker.run_once(dispatch_source="external")
         audit_delivered = await audit_anchor.drain() if audit_anchor else 0
         return {
             "processed": processed,
             "backlog": store.execution_job_backlog(),
+            "dispatch": store.operational_signal_status(
+                "execution_worker_dispatch",
+                settings.execution_worker_heartbeat_max_age_seconds,
+                required_source=settings.execution_worker_mode,
+            ),
             "audit_delivered": audit_delivered,
             "audit_backlog": store.audit_anchor_backlog(),
         }

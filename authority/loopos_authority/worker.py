@@ -23,8 +23,13 @@ class ExecutionJobWorker:
         self.batch_size = max(1, min(batch_size, 100))
         self.max_attempts = max(1, max_attempts)
 
-    async def run_once(self) -> int:
+    async def run_once(self, dispatch_source: str = "internal") -> int:
         jobs = self.store.claim_execution_jobs(self.worker_id, self.lease_seconds, self.batch_size)
+        self.store.record_operational_signal(
+            "execution_worker_dispatch",
+            dispatch_source,
+            {"worker_id": self.worker_id, "claimed_jobs": len(jobs)},
+        )
         for job in jobs:
             owner_task = asyncio.current_task()
             heartbeat = asyncio.create_task(self._heartbeat(job["job_id"], owner_task))

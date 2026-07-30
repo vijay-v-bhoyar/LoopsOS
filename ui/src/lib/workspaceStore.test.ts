@@ -133,6 +133,13 @@ describe("workspaceStore", () => {
         audit_anchor_backlog: 0,
         audit_anchor_delivery_verified: true,
         audit_anchor_last_delivered_at: "2026-07-30T12:00:00+00:00",
+        execution_worker_dispatch: {
+          verified: true,
+          source: "external",
+          observed_at: "2026-07-30T12:00:00+00:00",
+          age_seconds: 5,
+          detail: { claimed_jobs: 0 },
+        },
         operational_bindings: {
           retention_verified: true,
           support_verified: true,
