@@ -286,6 +286,11 @@ def create_app(
                 "execution_job_backlog": store.execution_job_backlog(),
                 "execution_worker_dispatch": worker_dispatch,
                 "operational_bindings": operational_bindings,
+                "backup_restore_evidence": {
+                    "url": settings.backup_restore_evidence_url,
+                    "sha256": settings.backup_restore_evidence_sha256,
+                    "verified_at": settings.backup_restore_verified_at,
+                },
             }
         except HTTPException:
             raise

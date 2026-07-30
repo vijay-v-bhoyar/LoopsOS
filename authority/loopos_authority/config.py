@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import os
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
+
+
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _boolean(name: str, default: bool = False) -> bool:
@@ -51,6 +55,17 @@ def _secure_reference(url: str | None) -> bool:
     return bool(parsed.hostname and (parsed.scheme == "https" or (parsed.scheme == "http" and localhost)))
 
 
+def _secure_evidence_reference(url: str | None) -> bool:
+    if not url:
+        return False
+    parsed = urlparse(url)
+    return bool(
+        parsed.scheme == "https"
+        and parsed.hostname
+        and not any((parsed.username, parsed.password, parsed.query, parsed.fragment))
+    )
+
+
 def operational_binding_status(settings: "Settings") -> dict[str, bool]:
     try:
         verified_at = datetime.fromisoformat((settings.backup_restore_verified_at or "").replace("Z", "+00:00"))
@@ -68,7 +83,11 @@ def operational_binding_status(settings: "Settings") -> dict[str, bool]:
         "retention_verified": _secure_reference(settings.retention_policy_url),
         "support_verified": bool(settings.support_contact and settings.support_contact.strip()),
         "outbound_policy_verified": outbound_verified,
-        "backup_restore_verified": _secure_reference(settings.backup_restore_evidence_url) and backup_recent,
+        "backup_restore_verified": (
+            _secure_evidence_reference(settings.backup_restore_evidence_url)
+            and bool(SHA256_PATTERN.fullmatch(settings.backup_restore_evidence_sha256 or ""))
+            and backup_recent
+        ),
         "worker_dispatch_verified": bool(settings.worker_token and len(settings.worker_token.encode("utf-8")) >= 32),
     }
 
@@ -104,6 +123,7 @@ class Settings:
     support_contact: str | None = None
     outbound_policy_mode: str | None = None
     backup_restore_evidence_url: str | None = None
+    backup_restore_evidence_sha256: str | None = None
     backup_restore_verified_at: str | None = None
     backup_restore_max_age_days: float = 90.0
     worker_token: str | None = None
@@ -140,10 +160,15 @@ class Settings:
             raise ValueError("LOOPOS_OUTBOUND_POLICY_MODE must be 'allowlist' or 'deny_all'.")
         retention_policy_url = os.getenv("LOOPOS_RETENTION_POLICY_URL")
         backup_restore_evidence_url = os.getenv("LOOPOS_BACKUP_RESTORE_EVIDENCE_URL")
+        backup_restore_evidence_sha256 = os.getenv("LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256")
         if retention_policy_url and not _secure_reference(retention_policy_url):
             raise ValueError("LOOPOS_RETENTION_POLICY_URL must use HTTPS outside local development.")
-        if backup_restore_evidence_url and not _secure_reference(backup_restore_evidence_url):
-            raise ValueError("LOOPOS_BACKUP_RESTORE_EVIDENCE_URL must use HTTPS outside local development.")
+        if backup_restore_evidence_url and not _secure_evidence_reference(backup_restore_evidence_url):
+            raise ValueError(
+                "LOOPOS_BACKUP_RESTORE_EVIDENCE_URL must use a credential-free HTTPS URL outside local development."
+            )
+        if backup_restore_evidence_sha256 and not SHA256_PATTERN.fullmatch(backup_restore_evidence_sha256):
+            raise ValueError("LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256 must be a lowercase SHA-256 digest.")
         worker_token = os.getenv("LOOPOS_WORKER_TOKEN") or os.getenv("CRON_SECRET")
         if worker_token and len(worker_token.encode("utf-8")) < 32:
             raise ValueError("LOOPOS_WORKER_TOKEN must contain at least 32 bytes.")
@@ -177,6 +202,7 @@ class Settings:
             support_contact=os.getenv("LOOPOS_SUPPORT_CONTACT"),
             outbound_policy_mode=outbound_policy_mode,
             backup_restore_evidence_url=backup_restore_evidence_url,
+            backup_restore_evidence_sha256=backup_restore_evidence_sha256,
             backup_restore_verified_at=os.getenv("LOOPOS_BACKUP_RESTORE_VERIFIED_AT"),
             backup_restore_max_age_days=_positive_float("LOOPOS_BACKUP_RESTORE_MAX_AGE_DAYS", 90.0),
             worker_token=worker_token,

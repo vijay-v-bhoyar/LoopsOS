@@ -119,6 +119,11 @@ describe("authorityClient", () => {
         backup_restore_verified: true,
         worker_dispatch_verified: true,
       },
+      backup_restore_evidence: {
+        url: "https://evidence.example.com/loopos/postgres-restore.json",
+        sha256: "a".repeat(64),
+        verified_at: "2026-07-30T12:00:00+00:00",
+      },
     }), { status: 200, headers: { "content-type": "application/json" } }));
 
     const readiness = await getAuthorityReadiness();
@@ -131,6 +136,7 @@ describe("authorityClient", () => {
       audit_anchor_delivery_verified: true,
       execution_worker_dispatch: expect.objectContaining({ verified: true, source: "external" }),
       operational_bindings: expect.objectContaining({ backup_restore_verified: true }),
+      backup_restore_evidence: expect.objectContaining({ sha256: "a".repeat(64) }),
     });
     expect(fetchImpl).toHaveBeenCalledWith("/api/health/ready", expect.objectContaining({
       credentials: "omit",

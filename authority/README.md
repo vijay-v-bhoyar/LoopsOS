@@ -87,6 +87,7 @@ Local Supabase requires Docker or a compatible container runtime and is for deve
 | `LOOPOS_SUPPORT_CONTACT` | Accountable operational owner or escalation route |
 | `LOOPOS_OUTBOUND_POLICY_MODE` | Explicit `deny_all` or `allowlist`; allowlist mode requires allowed HTTP hosts |
 | `LOOPOS_BACKUP_RESTORE_EVIDENCE_URL` | HTTPS reference to the latest approved restore exercise evidence |
+| `LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256` | Lowercase SHA-256 of the exact restore evidence JSON |
 | `LOOPOS_BACKUP_RESTORE_VERIFIED_AT` | Timestamp of the reviewed restore exercise |
 | `LOOPOS_BACKUP_RESTORE_MAX_AGE_DAYS` | Maximum accepted age of restore evidence; defaults to 90 days |
 | `LOOPOS_WORKER_TOKEN` | Minimum-32-byte token protecting worker/cron dispatch; `CRON_SECRET` is accepted as a Vercel-compatible fallback |
@@ -104,7 +105,7 @@ Starting, rolling back, and delayed-effectiveness work is committed to `executio
 
 Every audit-event insert atomically creates an outbox envelope containing the chain hashes and canonical event fields. The worker signs the exact canonical request bytes with `x-loopos-signature-256`, supplies `x-loopos-event-id` for sink-side idempotency, marks only 2xx responses delivered, and retains bounded failure details with exponential retry timing. Auditors and executives can inspect `GET /v1/audit/anchors/status`; executives can request an immediate retry through `POST /v1/audit/anchors/drain`.
 
-The sink must verify the signature, deduplicate the event ID, and retain the envelope under the approved immutable retention policy. The database hash chain and outbox are not substitutes for that independently administered sink. Likewise, readiness validates the restore-evidence reference and timestamp; it does not perform or independently certify the restore exercise.
+The sink must verify the signature, deduplicate the event ID, and retain the envelope under the approved immutable retention policy. The database hash chain and outbox are not substitutes for that independently administered sink. Readiness requires a credential-free HTTPS restore-evidence reference, the lowercase SHA-256 of the exact evidence JSON, and a recent timestamp. The production handover verifier independently reads those bytes and requires the digest, timestamp, row-count parity, cleanup proof, and every restore check to match before returning `GO`.
 
 ## Tests
 

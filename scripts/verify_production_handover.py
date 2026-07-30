@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import sys
 import uuid
 from dataclasses import dataclass
@@ -15,6 +17,35 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 MAX_RESPONSE_BYTES = 1_000_000
+MAX_RESTORE_EVIDENCE_BYTES = 5_000_000
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+SHA256_REFERENCE_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+PINNED_IMAGE_PATTERN = re.compile(r"^.+@sha256:[0-9a-f]{64}$")
+REQUIRED_RESTORE_CHECKS = {
+    "backup_archive_created",
+    "schema_tables_match",
+    "row_counts_match",
+    "runs_match",
+    "audit_events_match",
+    "row_level_security_restored",
+    "audit_triggers_restored",
+    "audit_mutation_denied",
+}
+REQUIRED_RESTORE_TABLES = {
+    "action_artifacts",
+    "approvals",
+    "audit_anchor_outbox",
+    "audit_events",
+    "connector_events",
+    "evidence",
+    "execution_jobs",
+    "operational_signals",
+    "probe_results",
+    "release_initiatives",
+    "runs",
+    "tool_invocations",
+    "workspaces",
+}
 
 
 @dataclass(frozen=True)
@@ -182,6 +213,85 @@ def _readiness_failures(payload: Any) -> list[str]:
     return failures
 
 
+def _restore_evidence_failures(readiness: Any, evidence_bytes: bytes) -> list[str]:
+    if not evidence_bytes:
+        return ["restore evidence file is missing"]
+    if len(evidence_bytes) > MAX_RESTORE_EVIDENCE_BYTES:
+        return ["restore evidence exceeds the size limit"]
+    if not isinstance(readiness, dict):
+        return ["readiness response is not an object"]
+    descriptor = readiness.get("backup_restore_evidence")
+    if not isinstance(descriptor, dict):
+        return ["readiness has no restore evidence descriptor"]
+    expected_sha256 = descriptor.get("sha256")
+    if not isinstance(expected_sha256, str) or not SHA256_PATTERN.fullmatch(expected_sha256):
+        return ["readiness restore evidence digest is invalid"]
+    if hashlib.sha256(evidence_bytes).hexdigest() != expected_sha256:
+        return ["restore evidence digest does not match readiness"]
+
+    evidence_url = descriptor.get("url")
+    parsed_url = urlparse(evidence_url) if isinstance(evidence_url, str) else None
+    if (
+        parsed_url is None
+        or parsed_url.scheme != "https"
+        or not parsed_url.hostname
+        or parsed_url.username
+        or parsed_url.password
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        return ["readiness restore evidence URL is not a credential-free HTTPS reference"]
+    try:
+        evidence = json.loads(evidence_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return ["restore evidence is not valid JSON"]
+    if not isinstance(evidence, dict):
+        return ["restore evidence is not an object"]
+
+    failures: list[str] = []
+    if evidence.get("schema_version") != 1:
+        failures.append("schema_version")
+    if evidence.get("verified") is not True:
+        failures.append("verified")
+    if evidence.get("cleanup_verified") is not True:
+        failures.append("cleanup_verified")
+    if evidence.get("generated_at") != descriptor.get("verified_at"):
+        failures.append("verified_at")
+    backup_sha256 = evidence.get("backup_sha256")
+    if not isinstance(backup_sha256, str) or not SHA256_PATTERN.fullmatch(backup_sha256):
+        failures.append("backup_sha256")
+    checks = evidence.get("checks")
+    if (
+        not isinstance(checks, list)
+        or not checks
+        or any(
+            not isinstance(check, dict)
+            or not isinstance(check.get("name"), str)
+            or check.get("passed") is not True
+            for check in checks
+        )
+    ):
+        failures.append("checks")
+    elif not REQUIRED_RESTORE_CHECKS.issubset({check["name"] for check in checks}):
+        failures.append("required_checks")
+    source_counts = evidence.get("source_row_counts")
+    restored_counts = evidence.get("restored_row_counts")
+    valid_counts = bool(
+        isinstance(source_counts, dict)
+        and set(source_counts) == REQUIRED_RESTORE_TABLES
+        and all(isinstance(count, int) and not isinstance(count, bool) and count >= 0 for count in source_counts.values())
+    )
+    if not valid_counts or source_counts != restored_counts:
+        failures.append("row_counts")
+    container_image = evidence.get("container_image")
+    if not isinstance(container_image, str) or not PINNED_IMAGE_PATTERN.fullmatch(container_image):
+        failures.append("container_image")
+    container_image_id = evidence.get("container_image_id")
+    if not isinstance(container_image_id, str) or not SHA256_REFERENCE_PATTERN.fullmatch(container_image_id):
+        failures.append("container_image_id")
+    return failures
+
+
 def _safe_report_target(base_url: str) -> str:
     parsed = urlparse(base_url)
     if not parsed.scheme or not parsed.hostname:
@@ -203,6 +313,7 @@ def verify_production_handover(
     worker_token: str,
     expected_primary_tenant: str = "",
     expected_secondary_tenant: str = "",
+    backup_restore_evidence: bytes = b"",
 ) -> dict[str, Any]:
     checks: list[dict[str, object]] = []
     report_target = _safe_report_target(base_url)
@@ -341,6 +452,16 @@ def verify_production_handover(
         ready.status == 200 and not readiness_failures,
         f"Readiness returned HTTP {ready.status}; failing fields: {', '.join(readiness_failures) if readiness_failures else 'none'}.",
     )
+    restore_evidence_failures = _restore_evidence_failures(ready.payload, backup_restore_evidence)
+    record(
+        "backup_restore_evidence",
+        not restore_evidence_failures,
+        (
+            "Restore evidence bytes match the production readiness descriptor."
+            if not restore_evidence_failures
+            else f"Restore evidence failed: {', '.join(restore_evidence_failures)}."
+        ),
+    )
 
     workspace_reads_ok = False
     if primary_token and secondary_token:
@@ -372,6 +493,11 @@ def verify_production_handover(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "target": report_target,
         "verdict": "GO" if all(bool(check["passed"]) for check in checks) else "NO_GO",
+        "backup_restore_evidence_sha256": (
+            hashlib.sha256(backup_restore_evidence).hexdigest()
+            if backup_restore_evidence
+            else None
+        ),
         "checks": checks,
     }
 
@@ -392,6 +518,17 @@ def _missing_configuration_report(base_url: str, missing: list[str]) -> dict[str
     }
 
 
+def _read_restore_evidence(path: str) -> bytes:
+    try:
+        with Path(path).open("rb") as evidence_file:
+            evidence = evidence_file.read(MAX_RESTORE_EVIDENCE_BYTES + 1)
+    except OSError as error:
+        raise RuntimeError("The backup/restore evidence file could not be read.") from error
+    if len(evidence) > MAX_RESTORE_EVIDENCE_BYTES:
+        raise RuntimeError("The backup/restore evidence file exceeds the size limit.")
+    return evidence
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the reversible LoopOS production handover proof.")
     parser.add_argument("--base-url", default=os.getenv("LOOPOS_HANDOVER_BASE_URL", ""))
@@ -402,25 +539,36 @@ def main(argv: list[str] | None = None) -> int:
     primary_assertion = os.getenv("LOOPOS_HANDOVER_PRIMARY_IDENTITY_ASSERTION", "")
     secondary_assertion = os.getenv("LOOPOS_HANDOVER_SECONDARY_IDENTITY_ASSERTION", "")
     worker_token = os.getenv("LOOPOS_HANDOVER_WORKER_TOKEN", "")
+    restore_evidence_path = os.getenv("LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE", "")
     required = {
         "LOOPOS_HANDOVER_BASE_URL": args.base_url,
         "LOOPOS_HANDOVER_PRIMARY_IDENTITY_ASSERTION": primary_assertion,
         "LOOPOS_HANDOVER_SECONDARY_IDENTITY_ASSERTION": secondary_assertion,
         "LOOPOS_HANDOVER_WORKER_TOKEN": worker_token,
+        "LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE": restore_evidence_path,
     }
     missing = [name for name, value in required.items() if not value]
     if missing:
         report = _missing_configuration_report(args.base_url, missing)
     else:
-        report = verify_production_handover(
-            UrlJsonClient(args.base_url, timeout_seconds=args.timeout_seconds),
-            base_url=args.base_url,
-            primary_identity_assertion=primary_assertion,
-            secondary_identity_assertion=secondary_assertion,
-            worker_token=worker_token,
-            expected_primary_tenant=os.getenv("LOOPOS_HANDOVER_EXPECTED_PRIMARY_TENANT", ""),
-            expected_secondary_tenant=os.getenv("LOOPOS_HANDOVER_EXPECTED_SECONDARY_TENANT", ""),
-        )
+        try:
+            restore_evidence = _read_restore_evidence(restore_evidence_path)
+        except RuntimeError:
+            report = _missing_configuration_report(
+                args.base_url,
+                ["LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE (unreadable or oversized)"],
+            )
+        else:
+            report = verify_production_handover(
+                UrlJsonClient(args.base_url, timeout_seconds=args.timeout_seconds),
+                base_url=args.base_url,
+                primary_identity_assertion=primary_assertion,
+                secondary_identity_assertion=secondary_assertion,
+                worker_token=worker_token,
+                expected_primary_tenant=os.getenv("LOOPOS_HANDOVER_EXPECTED_PRIMARY_TENANT", ""),
+                expected_secondary_tenant=os.getenv("LOOPOS_HANDOVER_EXPECTED_SECONDARY_TENANT", ""),
+                backup_restore_evidence=restore_evidence,
+            )
 
     rendered = json.dumps(report, indent=2, sort_keys=True)
     if args.output:

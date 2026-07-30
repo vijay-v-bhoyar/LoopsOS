@@ -9,6 +9,7 @@ import sqlite3
 import tempfile
 import time
 import unittest
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -144,6 +145,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
         self.assertIn("worker_dispatch", detail)
 
     def test_production_readiness_accepts_complete_recent_operational_evidence(self) -> None:
+        restore_verified_at = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
         settings = Settings(
             repo_root=REPO_ROOT,
             database_path=Path(self.tempdir.name) / "operations-ready.db",
@@ -160,7 +162,8 @@ class ProductionIdentityApiTests(unittest.TestCase):
             support_contact="loopos-operations@example.com",
             outbound_policy_mode="allowlist",
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
-            backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+            backup_restore_evidence_sha256="a" * 64,
+            backup_restore_verified_at=restore_verified_at,
             worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
             execution_worker_mode="external",
         )
@@ -193,6 +196,11 @@ class ProductionIdentityApiTests(unittest.TestCase):
             "backup_restore_verified": True,
             "worker_dispatch_verified": True,
         })
+        self.assertEqual(response.json()["backup_restore_evidence"], {
+            "url": "https://evidence.example.com/loopos/restore-test",
+            "sha256": "a" * 64,
+            "verified_at": restore_verified_at,
+        })
 
     def test_production_readiness_rejects_an_audit_sink_without_a_verified_delivery(self) -> None:
         settings = Settings(
@@ -211,6 +219,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             support_contact="loopos-operations@example.com",
             outbound_policy_mode="deny_all",
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
+            backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
             worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
         )
@@ -239,6 +248,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             support_contact="loopos-operations@example.com",
             outbound_policy_mode="deny_all",
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
+            backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
             worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
         )
@@ -1062,7 +1072,23 @@ class StorageBackendTests(unittest.TestCase):
 
         self.assertEqual(settings.audit_anchor_url, "https://audit.example.com/events")
 
-    def test_operational_bindings_accept_deny_all_and_reject_stale_restore_evidence(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256": "NOT-A-SHA256"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "lowercase SHA-256"):
+                Settings.from_env()
+
+        with patch.dict(
+            "os.environ",
+            {"LOOPOS_BACKUP_RESTORE_EVIDENCE_URL": "https://evidence.example.com/restore.json?token=secret"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "credential-free HTTPS"):
+                Settings.from_env()
+
+    def test_operational_bindings_require_a_digest_and_reject_stale_restore_evidence(self) -> None:
         settings = Settings(
             repo_root=REPO_ROOT,
             database_path=Path("unused.db"),
@@ -1074,13 +1100,27 @@ class StorageBackendTests(unittest.TestCase):
             support_contact="loopos-operations@example.com",
             outbound_policy_mode="deny_all",
             backup_restore_evidence_url="https://evidence.example.com/restore-test",
-            backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=91)).isoformat(),
+            backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
         )
 
         bindings = operational_binding_status(settings)
 
         self.assertTrue(bindings["outbound_policy_verified"])
         self.assertFalse(bindings["backup_restore_verified"])
+        self.assertTrue(
+            operational_binding_status(replace(settings, backup_restore_evidence_sha256="a" * 64))[
+                "backup_restore_verified"
+            ]
+        )
+        self.assertFalse(
+            operational_binding_status(
+                replace(
+                    settings,
+                    backup_restore_evidence_sha256="a" * 64,
+                    backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=91)).isoformat(),
+                )
+            )["backup_restore_verified"]
+        )
 
     def test_supabase_migration_preserves_authority_tables_and_audit_controls(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")

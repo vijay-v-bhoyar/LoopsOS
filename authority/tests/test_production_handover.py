@@ -1,14 +1,64 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import unittest
 
 from scripts.verify_production_handover import HttpResult, verify_production_handover
 
 
+RESTORE_VERIFIED_AT = "2026-07-30T12:00:00+00:00"
+RESTORE_CHECKS = [
+    "backup_archive_created",
+    "schema_tables_match",
+    "row_counts_match",
+    "runs_match",
+    "audit_events_match",
+    "row_level_security_restored",
+    "audit_triggers_restored",
+    "audit_mutation_denied",
+]
+RESTORE_TABLES = [
+    "action_artifacts",
+    "approvals",
+    "audit_anchor_outbox",
+    "audit_events",
+    "connector_events",
+    "evidence",
+    "execution_jobs",
+    "operational_signals",
+    "probe_results",
+    "release_initiatives",
+    "runs",
+    "tool_invocations",
+    "workspaces",
+]
+RESTORE_COUNTS = {
+    table: 23 if table in {"audit_events", "audit_anchor_outbox"} else 1 if table == "runs" else 0
+    for table in RESTORE_TABLES
+}
+RESTORE_EVIDENCE = json.dumps(
+    {
+        "schema_version": 1,
+        "generated_at": RESTORE_VERIFIED_AT,
+        "verified": True,
+        "cleanup_verified": True,
+        "backup_sha256": "b" * 64,
+        "checks": [{"name": name, "passed": True} for name in RESTORE_CHECKS],
+        "source_row_counts": RESTORE_COUNTS,
+        "restored_row_counts": RESTORE_COUNTS,
+        "container_image": f"postgres:17.10-alpine3.24@sha256:{'a' * 64}",
+        "container_image_id": f"sha256:{'c' * 64}",
+    },
+    sort_keys=True,
+).encode("utf-8")
+RESTORE_EVIDENCE_SHA256 = hashlib.sha256(RESTORE_EVIDENCE).hexdigest()
+
+
 class FakeHandoverClient:
-    def __init__(self, *, worker_verified: bool = True):
+    def __init__(self, *, worker_verified: bool = True, restore_evidence_sha256: str = RESTORE_EVIDENCE_SHA256):
         self.worker_verified = worker_verified
+        self.restore_evidence_sha256 = restore_evidence_sha256
         self.calls: list[tuple[str, str, dict[str, str], dict[str, object] | None]] = []
         self.session_count = 0
 
@@ -87,6 +137,11 @@ class FakeHandoverClient:
                         "backup_restore_verified": True,
                         "worker_dispatch_verified": self.worker_verified,
                     },
+                    "backup_restore_evidence": {
+                        "url": "https://evidence.example.com/loopos/postgres-restore.json",
+                        "sha256": self.restore_evidence_sha256,
+                        "verified_at": RESTORE_VERIFIED_AT,
+                    },
                 },
             )
         if path == "/v1/workspaces":
@@ -106,6 +161,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             worker_token="worker-secret-token",
             expected_primary_tenant="tenant-primary",
             expected_secondary_tenant="tenant-secondary",
+            backup_restore_evidence=RESTORE_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "GO")
@@ -120,6 +176,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
         self.assertNotIn("secondary-secret-assertion", serialized)
         self.assertNotIn("worker-secret-token", serialized)
         self.assertNotIn("primary-session-token", serialized)
+        self.assertEqual(report["backup_restore_evidence_sha256"], RESTORE_EVIDENCE_SHA256)
 
     def test_fails_closed_when_worker_runtime_proof_is_missing(self) -> None:
         report = verify_production_handover(
@@ -128,6 +185,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             primary_identity_assertion="primary-secret-assertion",
             secondary_identity_assertion="secondary-secret-assertion",
             worker_token="worker-secret-token",
+            backup_restore_evidence=RESTORE_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "NO_GO")
@@ -143,6 +201,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             primary_identity_assertion="primary-secret-assertion",
             secondary_identity_assertion="",
             worker_token="worker-secret-token",
+            backup_restore_evidence=RESTORE_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "NO_GO")
@@ -159,6 +218,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             primary_identity_assertion="primary-secret-assertion",
             secondary_identity_assertion="secondary-secret-assertion",
             worker_token="worker-secret-token",
+            backup_restore_evidence=RESTORE_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "NO_GO")
@@ -177,6 +237,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
                     primary_identity_assertion="primary-secret-assertion",
                     secondary_identity_assertion="secondary-secret-assertion",
                     worker_token="worker-secret-token",
+                    backup_restore_evidence=RESTORE_EVIDENCE,
                 )
 
                 self.assertEqual(report["verdict"], "NO_GO")
@@ -184,3 +245,37 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
                 serialized = json.dumps(report)
                 self.assertNotIn("password", serialized)
                 self.assertNotIn("token=secret", serialized)
+
+    def test_fails_closed_when_restore_evidence_bytes_are_modified(self) -> None:
+        report = verify_production_handover(
+            FakeHandoverClient(),
+            base_url="https://loopos.example.com/api",
+            primary_identity_assertion="primary-secret-assertion",
+            secondary_identity_assertion="secondary-secret-assertion",
+            worker_token="worker-secret-token",
+            backup_restore_evidence=RESTORE_EVIDENCE + b"\n",
+        )
+
+        self.assertEqual(report["verdict"], "NO_GO")
+        failed = {check["name"] for check in report["checks"] if not check["passed"]}
+        self.assertIn("backup_restore_evidence", failed)
+
+    def test_fails_closed_when_hashed_restore_evidence_omits_a_required_control(self) -> None:
+        evidence = json.loads(RESTORE_EVIDENCE)
+        evidence["checks"] = [
+            check for check in evidence["checks"] if check["name"] != "audit_mutation_denied"
+        ]
+        evidence_bytes = json.dumps(evidence, sort_keys=True).encode("utf-8")
+        report = verify_production_handover(
+            FakeHandoverClient(restore_evidence_sha256=hashlib.sha256(evidence_bytes).hexdigest()),
+            base_url="https://loopos.example.com/api",
+            primary_identity_assertion="primary-secret-assertion",
+            secondary_identity_assertion="secondary-secret-assertion",
+            worker_token="worker-secret-token",
+            backup_restore_evidence=evidence_bytes,
+        )
+
+        self.assertEqual(report["verdict"], "NO_GO")
+        restore_check = next(check for check in report["checks"] if check["name"] == "backup_restore_evidence")
+        self.assertFalse(restore_check["passed"])
+        self.assertIn("required_checks", restore_check["detail"])

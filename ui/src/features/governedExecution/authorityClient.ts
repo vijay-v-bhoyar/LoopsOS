@@ -44,6 +44,11 @@ export interface AuthorityReadiness {
     backup_restore_verified: boolean;
     worker_dispatch_verified: boolean;
   };
+  backup_restore_evidence: {
+    url: string;
+    sha256: string;
+    verified_at: string;
+  };
 }
 
 async function request<T>(path: string, options: RequestInit = {}, timeoutMs = 15_000): Promise<T> {

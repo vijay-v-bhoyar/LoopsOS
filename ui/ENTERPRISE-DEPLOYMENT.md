@@ -14,7 +14,7 @@ LoopOS has two explicit postures: `evaluation` and `enterprise`. Evaluation mode
 | Retention | Approved retention and deletion policy URL | Legal/security owners approve the policy and deletion evidence path |
 | Operations | Named support contact and on-call route | Alert routing and incident exercise pass |
 | Outbound policy | Exact host allowlist for AI/transcription endpoints | Egress policy and endpoint data-processing terms are approved |
-| Backup and restore | Secure reference to a recent restore exercise | Authority validates the reference and freshness timestamp; an independent reviewer validates the exercise itself |
+| Backup and restore | Credential-free HTTPS reference, SHA-256, and timestamp for a recent restore exercise | Authority binds readiness to the immutable digest; the handover verifier independently validates the exact evidence bytes |
 
 The required `VITE_` values are documented in `.env.example`. They are public build configuration, never secrets. Tokens and service credentials belong only in the BFF or service runtime.
 
@@ -45,12 +45,13 @@ $env:LOOPOS_HANDOVER_BASE_URL="https://loopos.example.com/api"
 $env:LOOPOS_HANDOVER_PRIMARY_IDENTITY_ASSERTION="<short-lived-primary-assertion>"
 $env:LOOPOS_HANDOVER_SECONDARY_IDENTITY_ASSERTION="<short-lived-secondary-assertion>"
 $env:LOOPOS_HANDOVER_WORKER_TOKEN="<server-side-worker-token>"
+$env:LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE="<path-to-reviewed-postgres-restore.json>"
 $env:LOOPOS_HANDOVER_EXPECTED_PRIMARY_TENANT="<primary-tenant-id>"
 $env:LOOPOS_HANDOVER_EXPECTED_SECONDARY_TENANT="<secondary-tenant-id>"
 python scripts/verify_production_handover.py --output output/production-handover-report.json
 ```
 
-`GO` requires every check to pass. Any missing credential, insecure target, failed cleanup, cross-tenant visibility, stale worker heartbeat, audit backlog, development authentication, non-Postgres storage, or incomplete operational binding produces `NO_GO` and a nonzero exit code. If the verifier is interrupted, search the primary tenant for the `handover-probe-` prefix and delete any residual marker before repeating the gate.
+`GO` requires every check to pass. The restore evidence file must be the exact JSON whose SHA-256 and `generated_at` are configured as `LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256` and `LOOPOS_BACKUP_RESTORE_VERIFIED_AT`. Any missing credential, modified evidence byte, insecure target, failed cleanup, cross-tenant visibility, stale worker heartbeat, audit backlog, development authentication, non-Postgres storage, or incomplete operational binding produces `NO_GO` and a nonzero exit code. If the verifier is interrupted, search the primary tenant for the `handover-probe-` prefix and delete any residual marker before repeating the gate.
 
 ## Current Boundary
 

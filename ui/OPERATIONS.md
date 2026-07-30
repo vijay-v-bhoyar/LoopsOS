@@ -42,4 +42,4 @@ A rollback is complete only when the prior digest is serving, new writes are aut
 
 ## Handover Evidence
 
-The production handover packet must include the JSON output from `scripts/verify_production_handover.py`. A report is valid only for the exact target named in the report, must have verdict `GO`, and must be generated after the deployed image, database migration, IdP mapping, worker schedule, audit sink, retention policy, support route, egress policy, and restore evidence are finalized.
+The production handover packet must include the reviewed restore evidence JSON and the JSON output from `scripts/verify_production_handover.py`. The restore evidence bytes must match the SHA-256 and timestamp published by production readiness. A handover report is valid only for the exact target named in the report, must have verdict `GO`, and must be generated after the deployed image, database migration, IdP mapping, worker schedule, audit sink, retention policy, support route, egress policy, and restore evidence are finalized.
