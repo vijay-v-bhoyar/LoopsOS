@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import os
+import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -47,14 +48,6 @@ def _validate_audit_anchor(url: str | None, secret: str | None) -> tuple[str | N
         raise ValueError("LOOPOS_AUDIT_ANCHOR_HMAC_SECRET must contain at least 32 bytes.")
     return url, secret
 
-def _secure_reference(url: str | None) -> bool:
-    if not url:
-        return False
-    parsed = urlparse(url)
-    localhost = parsed.hostname in {"localhost", "127.0.0.1", "::1"}
-    return bool(parsed.hostname and (parsed.scheme == "https" or (parsed.scheme == "http" and localhost)))
-
-
 def _secure_evidence_reference(url: str | None) -> bool:
     if not url:
         return False
@@ -66,23 +59,55 @@ def _secure_evidence_reference(url: str | None) -> bool:
     )
 
 
-def operational_binding_status(settings: "Settings") -> dict[str, bool]:
+def _recent_evidence(verified_at_value: str | None, max_age_days: float) -> bool:
     try:
-        verified_at = datetime.fromisoformat((settings.backup_restore_verified_at or "").replace("Z", "+00:00"))
+        verified_at = datetime.fromisoformat((verified_at_value or "").replace("Z", "+00:00"))
         if verified_at.tzinfo is None:
             verified_at = verified_at.replace(tzinfo=timezone.utc)
         verified_at = verified_at.astimezone(timezone.utc)
     except ValueError:
-        verified_at = datetime.min.replace(tzinfo=timezone.utc)
+        return False
     now = datetime.now(timezone.utc)
-    backup_recent = now - timedelta(days=settings.backup_restore_max_age_days) <= verified_at <= now + timedelta(minutes=5)
+    return now - timedelta(days=max_age_days) <= verified_at <= now + timedelta(minutes=5)
+
+
+def operational_binding_fingerprint(settings: "Settings") -> str:
+    binding = {
+        "allowed_http_hosts": sorted(set(settings.allowed_http_hosts)),
+        "outbound_policy_mode": settings.outbound_policy_mode,
+        "retention_policy_url": settings.retention_policy_url,
+        "support_contact": settings.support_contact,
+    }
+    canonical = json.dumps(binding, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def operational_binding_status(settings: "Settings") -> dict[str, bool]:
+    backup_recent = _recent_evidence(
+        settings.backup_restore_verified_at,
+        settings.backup_restore_max_age_days,
+    )
+    operational_evidence_verified = (
+        _secure_evidence_reference(settings.operational_evidence_url)
+        and bool(SHA256_PATTERN.fullmatch(settings.operational_evidence_sha256 or ""))
+        and _recent_evidence(
+            settings.operational_evidence_verified_at,
+            settings.operational_evidence_max_age_days,
+        )
+    )
     outbound_verified = settings.outbound_policy_mode == "deny_all" or (
         settings.outbound_policy_mode == "allowlist" and bool(settings.allowed_http_hosts)
     )
     return {
-        "retention_verified": _secure_reference(settings.retention_policy_url),
-        "support_verified": bool(settings.support_contact and settings.support_contact.strip()),
-        "outbound_policy_verified": outbound_verified,
+        "retention_verified": bool(
+            _secure_evidence_reference(settings.retention_policy_url) and operational_evidence_verified
+        ),
+        "support_verified": bool(
+            settings.support_contact
+            and settings.support_contact.strip()
+            and operational_evidence_verified
+        ),
+        "outbound_policy_verified": bool(outbound_verified and operational_evidence_verified),
         "backup_restore_verified": (
             _secure_evidence_reference(settings.backup_restore_evidence_url)
             and bool(SHA256_PATTERN.fullmatch(settings.backup_restore_evidence_sha256 or ""))
@@ -126,6 +151,10 @@ class Settings:
     backup_restore_evidence_sha256: str | None = None
     backup_restore_verified_at: str | None = None
     backup_restore_max_age_days: float = 90.0
+    operational_evidence_url: str | None = None
+    operational_evidence_sha256: str | None = None
+    operational_evidence_verified_at: str | None = None
+    operational_evidence_max_age_days: float = 90.0
     worker_token: str | None = None
     execution_worker_poll_seconds: float = 0.25
     execution_job_lease_seconds: int = 120
@@ -161,14 +190,22 @@ class Settings:
         retention_policy_url = os.getenv("LOOPOS_RETENTION_POLICY_URL")
         backup_restore_evidence_url = os.getenv("LOOPOS_BACKUP_RESTORE_EVIDENCE_URL")
         backup_restore_evidence_sha256 = os.getenv("LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256")
-        if retention_policy_url and not _secure_reference(retention_policy_url):
-            raise ValueError("LOOPOS_RETENTION_POLICY_URL must use HTTPS outside local development.")
+        operational_evidence_url = os.getenv("LOOPOS_OPERATIONAL_EVIDENCE_URL")
+        operational_evidence_sha256 = os.getenv("LOOPOS_OPERATIONAL_EVIDENCE_SHA256")
+        if retention_policy_url and not _secure_evidence_reference(retention_policy_url):
+            raise ValueError("LOOPOS_RETENTION_POLICY_URL must use a credential-free HTTPS URL.")
         if backup_restore_evidence_url and not _secure_evidence_reference(backup_restore_evidence_url):
             raise ValueError(
                 "LOOPOS_BACKUP_RESTORE_EVIDENCE_URL must use a credential-free HTTPS URL outside local development."
             )
         if backup_restore_evidence_sha256 and not SHA256_PATTERN.fullmatch(backup_restore_evidence_sha256):
             raise ValueError("LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256 must be a lowercase SHA-256 digest.")
+        if operational_evidence_url and not _secure_evidence_reference(operational_evidence_url):
+            raise ValueError(
+                "LOOPOS_OPERATIONAL_EVIDENCE_URL must use a credential-free HTTPS URL outside local development."
+            )
+        if operational_evidence_sha256 and not SHA256_PATTERN.fullmatch(operational_evidence_sha256):
+            raise ValueError("LOOPOS_OPERATIONAL_EVIDENCE_SHA256 must be a lowercase SHA-256 digest.")
         worker_token = os.getenv("LOOPOS_WORKER_TOKEN") or os.getenv("CRON_SECRET")
         if worker_token and len(worker_token.encode("utf-8")) < 32:
             raise ValueError("LOOPOS_WORKER_TOKEN must contain at least 32 bytes.")
@@ -205,6 +242,10 @@ class Settings:
             backup_restore_evidence_sha256=backup_restore_evidence_sha256,
             backup_restore_verified_at=os.getenv("LOOPOS_BACKUP_RESTORE_VERIFIED_AT"),
             backup_restore_max_age_days=_positive_float("LOOPOS_BACKUP_RESTORE_MAX_AGE_DAYS", 90.0),
+            operational_evidence_url=operational_evidence_url,
+            operational_evidence_sha256=operational_evidence_sha256,
+            operational_evidence_verified_at=os.getenv("LOOPOS_OPERATIONAL_EVIDENCE_VERIFIED_AT"),
+            operational_evidence_max_age_days=_positive_float("LOOPOS_OPERATIONAL_EVIDENCE_MAX_AGE_DAYS", 90.0),
             worker_token=worker_token,
             execution_worker_poll_seconds=_positive_float("LOOPOS_EXECUTION_WORKER_POLL_SECONDS", 0.25),
             execution_job_lease_seconds=int(_positive_float("LOOPOS_EXECUTION_JOB_LEASE_SECONDS", 120)),

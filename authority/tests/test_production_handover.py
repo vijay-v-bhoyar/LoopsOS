@@ -53,12 +53,40 @@ RESTORE_EVIDENCE = json.dumps(
     sort_keys=True,
 ).encode("utf-8")
 RESTORE_EVIDENCE_SHA256 = hashlib.sha256(RESTORE_EVIDENCE).hexdigest()
+OPERATIONAL_VERIFIED_AT = "2026-07-30T12:00:00+00:00"
+OPERATIONAL_BINDING_FINGERPRINT = "d" * 64
+OPERATIONAL_CHECKS = [
+    "retention_policy_approved",
+    "retention_deletion_test_passed",
+    "support_route_tested",
+    "support_escalation_test_passed",
+    "outbound_policy_enforced",
+    "outbound_denial_test_passed",
+]
+OPERATIONAL_EVIDENCE = json.dumps(
+    {
+        "schema_version": 1,
+        "generated_at": OPERATIONAL_VERIFIED_AT,
+        "verified": True,
+        "binding_fingerprint": OPERATIONAL_BINDING_FINGERPRINT,
+        "checks": [{"name": name, "passed": True} for name in OPERATIONAL_CHECKS],
+    },
+    sort_keys=True,
+).encode("utf-8")
+OPERATIONAL_EVIDENCE_SHA256 = hashlib.sha256(OPERATIONAL_EVIDENCE).hexdigest()
 
 
 class FakeHandoverClient:
-    def __init__(self, *, worker_verified: bool = True, restore_evidence_sha256: str = RESTORE_EVIDENCE_SHA256):
+    def __init__(
+        self,
+        *,
+        worker_verified: bool = True,
+        restore_evidence_sha256: str = RESTORE_EVIDENCE_SHA256,
+        operational_evidence_sha256: str = OPERATIONAL_EVIDENCE_SHA256,
+    ):
         self.worker_verified = worker_verified
         self.restore_evidence_sha256 = restore_evidence_sha256
+        self.operational_evidence_sha256 = operational_evidence_sha256
         self.calls: list[tuple[str, str, dict[str, str], dict[str, object] | None]] = []
         self.session_count = 0
 
@@ -180,6 +208,12 @@ class FakeHandoverClient:
                         "sha256": self.restore_evidence_sha256,
                         "verified_at": RESTORE_VERIFIED_AT,
                     },
+                    "operational_evidence": {
+                        "url": "https://evidence.example.com/loopos/operational-controls.json",
+                        "sha256": self.operational_evidence_sha256,
+                        "verified_at": OPERATIONAL_VERIFIED_AT,
+                        "binding_fingerprint": OPERATIONAL_BINDING_FINGERPRINT,
+                    },
                 },
             )
         if path == "/v1/workspaces":
@@ -200,6 +234,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             expected_primary_tenant="tenant-primary",
             expected_secondary_tenant="tenant-secondary",
             backup_restore_evidence=RESTORE_EVIDENCE,
+            operational_evidence=OPERATIONAL_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "GO")
@@ -222,6 +257,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
         self.assertNotIn("worker-secret-token", serialized)
         self.assertNotIn("primary-session-token", serialized)
         self.assertEqual(report["backup_restore_evidence_sha256"], RESTORE_EVIDENCE_SHA256)
+        self.assertEqual(report["operational_evidence_sha256"], OPERATIONAL_EVIDENCE_SHA256)
 
     def test_fails_closed_when_worker_runtime_proof_is_missing(self) -> None:
         report = verify_production_handover(
@@ -231,6 +267,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             secondary_identity_assertion="secondary-secret-assertion",
             worker_token="worker-secret-token",
             backup_restore_evidence=RESTORE_EVIDENCE,
+            operational_evidence=OPERATIONAL_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "NO_GO")
@@ -247,6 +284,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             secondary_identity_assertion="",
             worker_token="worker-secret-token",
             backup_restore_evidence=RESTORE_EVIDENCE,
+            operational_evidence=OPERATIONAL_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "NO_GO")
@@ -264,6 +302,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             secondary_identity_assertion="secondary-secret-assertion",
             worker_token="worker-secret-token",
             backup_restore_evidence=RESTORE_EVIDENCE,
+            operational_evidence=OPERATIONAL_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "NO_GO")
@@ -283,6 +322,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
                     secondary_identity_assertion="secondary-secret-assertion",
                     worker_token="worker-secret-token",
                     backup_restore_evidence=RESTORE_EVIDENCE,
+                    operational_evidence=OPERATIONAL_EVIDENCE,
                 )
 
                 self.assertEqual(report["verdict"], "NO_GO")
@@ -299,6 +339,7 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             secondary_identity_assertion="secondary-secret-assertion",
             worker_token="worker-secret-token",
             backup_restore_evidence=RESTORE_EVIDENCE + b"\n",
+            operational_evidence=OPERATIONAL_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "NO_GO")
@@ -318,9 +359,58 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
             secondary_identity_assertion="secondary-secret-assertion",
             worker_token="worker-secret-token",
             backup_restore_evidence=evidence_bytes,
+            operational_evidence=OPERATIONAL_EVIDENCE,
         )
 
         self.assertEqual(report["verdict"], "NO_GO")
         restore_check = next(check for check in report["checks"] if check["name"] == "backup_restore_evidence")
         self.assertFalse(restore_check["passed"])
         self.assertIn("required_checks", restore_check["detail"])
+
+    def test_fails_closed_when_hashed_operational_evidence_omits_a_required_control(self) -> None:
+        evidence = json.loads(OPERATIONAL_EVIDENCE)
+        evidence["checks"] = [
+            check for check in evidence["checks"] if check["name"] != "outbound_denial_test_passed"
+        ]
+        evidence_bytes = json.dumps(evidence, sort_keys=True).encode("utf-8")
+        report = verify_production_handover(
+            FakeHandoverClient(
+                operational_evidence_sha256=hashlib.sha256(evidence_bytes).hexdigest()
+            ),
+            base_url="https://loopos.example.com/api",
+            primary_identity_assertion="primary-secret-assertion",
+            secondary_identity_assertion="secondary-secret-assertion",
+            worker_token="worker-secret-token",
+            backup_restore_evidence=RESTORE_EVIDENCE,
+            operational_evidence=evidence_bytes,
+        )
+
+        self.assertEqual(report["verdict"], "NO_GO")
+        operational_check = next(
+            check for check in report["checks"] if check["name"] == "operational_evidence"
+        )
+        self.assertFalse(operational_check["passed"])
+        self.assertIn("required_checks", operational_check["detail"])
+
+    def test_fails_closed_when_operational_evidence_targets_different_bindings(self) -> None:
+        evidence = json.loads(OPERATIONAL_EVIDENCE)
+        evidence["binding_fingerprint"] = "c" * 64
+        evidence_bytes = json.dumps(evidence, sort_keys=True).encode("utf-8")
+        report = verify_production_handover(
+            FakeHandoverClient(
+                operational_evidence_sha256=hashlib.sha256(evidence_bytes).hexdigest()
+            ),
+            base_url="https://loopos.example.com/api",
+            primary_identity_assertion="primary-secret-assertion",
+            secondary_identity_assertion="secondary-secret-assertion",
+            worker_token="worker-secret-token",
+            backup_restore_evidence=RESTORE_EVIDENCE,
+            operational_evidence=evidence_bytes,
+        )
+
+        self.assertEqual(report["verdict"], "NO_GO")
+        operational_check = next(
+            check for check in report["checks"] if check["name"] == "operational_evidence"
+        )
+        self.assertFalse(operational_check["passed"])
+        self.assertIn("binding_fingerprint", operational_check["detail"])

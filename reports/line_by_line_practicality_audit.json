@@ -1,7 +1,7 @@
 {
   "summary": {
-    "files_scanned": 268,
-    "lines_scanned": 230062,
+    "files_scanned": 269,
+    "lines_scanned": 230258,
     "by_severity": {
       "warning": 715,
       "action_required": 1577

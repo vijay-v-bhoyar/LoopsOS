@@ -164,6 +164,9 @@ class ProductionIdentityApiTests(unittest.TestCase):
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=restore_verified_at,
+            operational_evidence_url="https://evidence.example.com/loopos/operational-controls.json",
+            operational_evidence_sha256="b" * 64,
+            operational_evidence_verified_at=restore_verified_at,
             worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
             execution_worker_mode="external",
         )
@@ -201,6 +204,11 @@ class ProductionIdentityApiTests(unittest.TestCase):
             "sha256": "a" * 64,
             "verified_at": restore_verified_at,
         })
+        self.assertEqual(
+            response.json()["operational_evidence"]["url"],
+            "https://evidence.example.com/loopos/operational-controls.json",
+        )
+        self.assertRegex(response.json()["operational_evidence"]["binding_fingerprint"], r"^[0-9a-f]{64}$")
 
     def test_production_readiness_rejects_an_audit_sink_without_a_verified_delivery(self) -> None:
         settings = Settings(
@@ -221,6 +229,9 @@ class ProductionIdentityApiTests(unittest.TestCase):
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+            operational_evidence_url="https://evidence.example.com/loopos/operational-controls.json",
+            operational_evidence_sha256="b" * 64,
+            operational_evidence_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
             worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
         )
         store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
@@ -250,6 +261,9 @@ class ProductionIdentityApiTests(unittest.TestCase):
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+            operational_evidence_url="https://evidence.example.com/loopos/operational-controls.json",
+            operational_evidence_sha256="b" * 64,
+            operational_evidence_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
             worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
         )
         store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
@@ -1088,6 +1102,22 @@ class StorageBackendTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "credential-free HTTPS"):
                 Settings.from_env()
 
+        with patch.dict(
+            "os.environ",
+            {"LOOPOS_OPERATIONAL_EVIDENCE_SHA256": "NOT-A-SHA256"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "lowercase SHA-256"):
+                Settings.from_env()
+
+        with patch.dict(
+            "os.environ",
+            {"LOOPOS_RETENTION_POLICY_URL": "https://policy.example.com/retention?token=secret"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "credential-free HTTPS"):
+                Settings.from_env()
+
     def test_operational_bindings_require_a_digest_and_reject_stale_restore_evidence(self) -> None:
         settings = Settings(
             repo_root=REPO_ROOT,
@@ -1105,10 +1135,30 @@ class StorageBackendTests(unittest.TestCase):
 
         bindings = operational_binding_status(settings)
 
-        self.assertTrue(bindings["outbound_policy_verified"])
+        self.assertFalse(bindings["retention_verified"])
+        self.assertFalse(bindings["support_verified"])
+        self.assertFalse(bindings["outbound_policy_verified"])
         self.assertFalse(bindings["backup_restore_verified"])
+        operational_verified_at = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        proven_settings = replace(
+            settings,
+            operational_evidence_url="https://evidence.example.com/operational-controls.json",
+            operational_evidence_sha256="b" * 64,
+            operational_evidence_verified_at=operational_verified_at,
+        )
+        proven_bindings = operational_binding_status(proven_settings)
+        self.assertTrue(proven_bindings["retention_verified"])
+        self.assertTrue(proven_bindings["support_verified"])
+        self.assertTrue(proven_bindings["outbound_policy_verified"])
+        stale_operational = replace(
+            proven_settings,
+            operational_evidence_verified_at=(datetime.now(timezone.utc) - timedelta(days=91)).isoformat(),
+        )
+        self.assertFalse(operational_binding_status(stale_operational)["retention_verified"])
+        self.assertFalse(operational_binding_status(stale_operational)["support_verified"])
+        self.assertFalse(operational_binding_status(stale_operational)["outbound_policy_verified"])
         self.assertTrue(
-            operational_binding_status(replace(settings, backup_restore_evidence_sha256="a" * 64))[
+            operational_binding_status(replace(proven_settings, backup_restore_evidence_sha256="a" * 64))[
                 "backup_restore_verified"
             ]
         )

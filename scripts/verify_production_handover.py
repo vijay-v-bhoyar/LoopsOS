@@ -18,6 +18,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 MAX_RESPONSE_BYTES = 1_000_000
 MAX_RESTORE_EVIDENCE_BYTES = 5_000_000
+MAX_OPERATIONAL_EVIDENCE_BYTES = 1_000_000
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 SHA256_REFERENCE_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 PINNED_IMAGE_PATTERN = re.compile(r"^.+@sha256:[0-9a-f]{64}$")
@@ -45,6 +46,14 @@ REQUIRED_RESTORE_TABLES = {
     "runs",
     "tool_invocations",
     "workspaces",
+}
+REQUIRED_OPERATIONAL_CHECKS = {
+    "retention_policy_approved",
+    "retention_deletion_test_passed",
+    "support_route_tested",
+    "support_escalation_test_passed",
+    "outbound_policy_enforced",
+    "outbound_denial_test_passed",
 }
 
 
@@ -292,6 +301,72 @@ def _restore_evidence_failures(readiness: Any, evidence_bytes: bytes) -> list[st
     return failures
 
 
+def _operational_evidence_failures(readiness: Any, evidence_bytes: bytes) -> list[str]:
+    if not evidence_bytes:
+        return ["operational evidence file is missing"]
+    if len(evidence_bytes) > MAX_OPERATIONAL_EVIDENCE_BYTES:
+        return ["operational evidence exceeds the size limit"]
+    if not isinstance(readiness, dict):
+        return ["readiness response is not an object"]
+    descriptor = readiness.get("operational_evidence")
+    if not isinstance(descriptor, dict):
+        return ["readiness has no operational evidence descriptor"]
+    expected_sha256 = descriptor.get("sha256")
+    if not isinstance(expected_sha256, str) or not SHA256_PATTERN.fullmatch(expected_sha256):
+        return ["readiness operational evidence digest is invalid"]
+    if hashlib.sha256(evidence_bytes).hexdigest() != expected_sha256:
+        return ["operational evidence digest does not match readiness"]
+
+    evidence_url = descriptor.get("url")
+    parsed_url = urlparse(evidence_url) if isinstance(evidence_url, str) else None
+    if (
+        parsed_url is None
+        or parsed_url.scheme != "https"
+        or not parsed_url.hostname
+        or parsed_url.username
+        or parsed_url.password
+        or parsed_url.query
+        or parsed_url.fragment
+    ):
+        return ["readiness operational evidence URL is not a credential-free HTTPS reference"]
+    try:
+        evidence = json.loads(evidence_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return ["operational evidence is not valid JSON"]
+    if not isinstance(evidence, dict):
+        return ["operational evidence is not an object"]
+
+    failures: list[str] = []
+    if evidence.get("schema_version") != 1:
+        failures.append("schema_version")
+    if evidence.get("verified") is not True:
+        failures.append("verified")
+    if evidence.get("generated_at") != descriptor.get("verified_at"):
+        failures.append("verified_at")
+    binding_fingerprint = evidence.get("binding_fingerprint")
+    if (
+        not isinstance(binding_fingerprint, str)
+        or not SHA256_PATTERN.fullmatch(binding_fingerprint)
+        or binding_fingerprint != descriptor.get("binding_fingerprint")
+    ):
+        failures.append("binding_fingerprint")
+    checks = evidence.get("checks")
+    if (
+        not isinstance(checks, list)
+        or not checks
+        or any(
+            not isinstance(check, dict)
+            or not isinstance(check.get("name"), str)
+            or check.get("passed") is not True
+            for check in checks
+        )
+    ):
+        failures.append("checks")
+    elif not REQUIRED_OPERATIONAL_CHECKS.issubset({check["name"] for check in checks}):
+        failures.append("required_checks")
+    return failures
+
+
 def _safe_report_target(base_url: str) -> str:
     parsed = urlparse(base_url)
     if not parsed.scheme or not parsed.hostname:
@@ -314,6 +389,7 @@ def verify_production_handover(
     expected_primary_tenant: str = "",
     expected_secondary_tenant: str = "",
     backup_restore_evidence: bytes = b"",
+    operational_evidence: bytes = b"",
 ) -> dict[str, Any]:
     checks: list[dict[str, object]] = []
     report_target = _safe_report_target(base_url)
@@ -536,6 +612,16 @@ def verify_production_handover(
             else f"Restore evidence failed: {', '.join(restore_evidence_failures)}."
         ),
     )
+    operational_evidence_failures = _operational_evidence_failures(ready.payload, operational_evidence)
+    record(
+        "operational_evidence",
+        not operational_evidence_failures,
+        (
+            "Operational evidence bytes match the production readiness descriptor and deployed binding fingerprint."
+            if not operational_evidence_failures
+            else f"Operational evidence failed: {', '.join(operational_evidence_failures)}."
+        ),
+    )
 
     workspace_reads_ok = False
     if primary_token and secondary_token:
@@ -572,6 +658,11 @@ def verify_production_handover(
             if backup_restore_evidence
             else None
         ),
+        "operational_evidence_sha256": (
+            hashlib.sha256(operational_evidence).hexdigest()
+            if operational_evidence
+            else None
+        ),
         "checks": checks,
     }
 
@@ -603,6 +694,17 @@ def _read_restore_evidence(path: str) -> bytes:
     return evidence
 
 
+def _read_operational_evidence(path: str) -> bytes:
+    try:
+        with Path(path).open("rb") as evidence_file:
+            evidence = evidence_file.read(MAX_OPERATIONAL_EVIDENCE_BYTES + 1)
+    except OSError as error:
+        raise RuntimeError("The operational evidence file could not be read.") from error
+    if len(evidence) > MAX_OPERATIONAL_EVIDENCE_BYTES:
+        raise RuntimeError("The operational evidence file exceeds the size limit.")
+    return evidence
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the reversible LoopOS production handover proof.")
     parser.add_argument("--base-url", default=os.getenv("LOOPOS_HANDOVER_BASE_URL", ""))
@@ -614,12 +716,14 @@ def main(argv: list[str] | None = None) -> int:
     secondary_assertion = os.getenv("LOOPOS_HANDOVER_SECONDARY_IDENTITY_ASSERTION", "")
     worker_token = os.getenv("LOOPOS_HANDOVER_WORKER_TOKEN", "")
     restore_evidence_path = os.getenv("LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE", "")
+    operational_evidence_path = os.getenv("LOOPOS_HANDOVER_OPERATIONAL_EVIDENCE_FILE", "")
     required = {
         "LOOPOS_HANDOVER_BASE_URL": args.base_url,
         "LOOPOS_HANDOVER_PRIMARY_IDENTITY_ASSERTION": primary_assertion,
         "LOOPOS_HANDOVER_SECONDARY_IDENTITY_ASSERTION": secondary_assertion,
         "LOOPOS_HANDOVER_WORKER_TOKEN": worker_token,
         "LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE": restore_evidence_path,
+        "LOOPOS_HANDOVER_OPERATIONAL_EVIDENCE_FILE": operational_evidence_path,
     }
     missing = [name for name, value in required.items() if not value]
     if missing:
@@ -633,16 +737,25 @@ def main(argv: list[str] | None = None) -> int:
                 ["LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE (unreadable or oversized)"],
             )
         else:
-            report = verify_production_handover(
-                UrlJsonClient(args.base_url, timeout_seconds=args.timeout_seconds),
-                base_url=args.base_url,
-                primary_identity_assertion=primary_assertion,
-                secondary_identity_assertion=secondary_assertion,
-                worker_token=worker_token,
-                expected_primary_tenant=os.getenv("LOOPOS_HANDOVER_EXPECTED_PRIMARY_TENANT", ""),
-                expected_secondary_tenant=os.getenv("LOOPOS_HANDOVER_EXPECTED_SECONDARY_TENANT", ""),
-                backup_restore_evidence=restore_evidence,
-            )
+            try:
+                operational_evidence = _read_operational_evidence(operational_evidence_path)
+            except RuntimeError:
+                report = _missing_configuration_report(
+                    args.base_url,
+                    ["LOOPOS_HANDOVER_OPERATIONAL_EVIDENCE_FILE (unreadable or oversized)"],
+                )
+            else:
+                report = verify_production_handover(
+                    UrlJsonClient(args.base_url, timeout_seconds=args.timeout_seconds),
+                    base_url=args.base_url,
+                    primary_identity_assertion=primary_assertion,
+                    secondary_identity_assertion=secondary_assertion,
+                    worker_token=worker_token,
+                    expected_primary_tenant=os.getenv("LOOPOS_HANDOVER_EXPECTED_PRIMARY_TENANT", ""),
+                    expected_secondary_tenant=os.getenv("LOOPOS_HANDOVER_EXPECTED_SECONDARY_TENANT", ""),
+                    backup_restore_evidence=restore_evidence,
+                    operational_evidence=operational_evidence,
+                )
 
     rendered = json.dumps(report, indent=2, sort_keys=True)
     if args.output:

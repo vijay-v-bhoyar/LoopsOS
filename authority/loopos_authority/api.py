@@ -16,7 +16,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .auth import IdentityVerifier, InvalidSession, SessionSigner
 from .audit_anchor import AuditAnchorDispatcher
-from .config import Settings, operational_binding_status
+from .config import Settings, operational_binding_fingerprint, operational_binding_status
 from .corpus import Corpus
 from .engine import ExecutionEngine
 from .identity import OIDCIdentityVerifier
@@ -290,6 +290,12 @@ def create_app(
                     "url": settings.backup_restore_evidence_url,
                     "sha256": settings.backup_restore_evidence_sha256,
                     "verified_at": settings.backup_restore_verified_at,
+                },
+                "operational_evidence": {
+                    "url": settings.operational_evidence_url,
+                    "sha256": settings.operational_evidence_sha256,
+                    "verified_at": settings.operational_evidence_verified_at,
+                    "binding_fingerprint": operational_binding_fingerprint(settings),
                 },
             }
         except HTTPException:

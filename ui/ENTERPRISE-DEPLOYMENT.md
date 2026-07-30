@@ -46,12 +46,20 @@ $env:LOOPOS_HANDOVER_PRIMARY_IDENTITY_ASSERTION="<short-lived-primary-assertion>
 $env:LOOPOS_HANDOVER_SECONDARY_IDENTITY_ASSERTION="<short-lived-secondary-assertion>"
 $env:LOOPOS_HANDOVER_WORKER_TOKEN="<server-side-worker-token>"
 $env:LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE="<path-to-reviewed-postgres-restore.json>"
+$env:LOOPOS_HANDOVER_OPERATIONAL_EVIDENCE_FILE="<path-to-reviewed-operational-controls.json>"
 $env:LOOPOS_HANDOVER_EXPECTED_PRIMARY_TENANT="<primary-tenant-id>"
 $env:LOOPOS_HANDOVER_EXPECTED_SECONDARY_TENANT="<secondary-tenant-id>"
 python scripts/verify_production_handover.py --output output/production-handover-report.json
 ```
 
-`GO` requires every check to pass. The restore evidence file must be the exact JSON whose SHA-256 and `generated_at` are configured as `LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256` and `LOOPOS_BACKUP_RESTORE_VERIFIED_AT`. Any missing credential, modified evidence byte, insecure target, failed cleanup, cross-tenant visibility, stale worker heartbeat, audit backlog, development authentication, non-Postgres storage, or incomplete operational binding produces `NO_GO` and a nonzero exit code. If the verifier is interrupted, search the primary tenant for the `handover-probe-` prefix and delete any residual marker before repeating the gate.
+`GO` requires every check to pass. Restore and operational evidence files must be the exact JSON bytes named by production readiness. The operational packet must use schema version 1, match the deployed binding fingerprint and timestamp, and pass `retention_policy_approved`, `retention_deletion_test_passed`, `support_route_tested`, `support_escalation_test_passed`, `outbound_policy_enforced`, and `outbound_denial_test_passed`. Any missing credential, modified evidence byte, insecure target, failed cleanup, cross-tenant visibility, stale evidence or worker heartbeat, audit backlog, development authentication, non-Postgres storage, or incomplete operational binding produces `NO_GO` and a nonzero exit code. If the verifier is interrupted, search the primary tenant for the `handover-probe-` prefix and delete any residual marker before repeating the gate.
+
+The packet must validate against `schemas/operational-evidence.schema.json`. Generate its `binding_fingerprint` only after the production retention URL, support route, outbound mode, and allowlist are final:
+
+```powershell
+$env:PYTHONPATH="authority"
+python -c "from loopos_authority.config import Settings, operational_binding_fingerprint; print(operational_binding_fingerprint(Settings.from_env()))"
+```
 
 ## Current Boundary
 

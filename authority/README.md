@@ -90,6 +90,10 @@ Local Supabase requires Docker or a compatible container runtime and is for deve
 | `LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256` | Lowercase SHA-256 of the exact restore evidence JSON |
 | `LOOPOS_BACKUP_RESTORE_VERIFIED_AT` | Timestamp of the reviewed restore exercise |
 | `LOOPOS_BACKUP_RESTORE_MAX_AGE_DAYS` | Maximum accepted age of restore evidence; defaults to 90 days |
+| `LOOPOS_OPERATIONAL_EVIDENCE_URL` | Credential-free HTTPS reference to the reviewed retention, support, and outbound-control packet |
+| `LOOPOS_OPERATIONAL_EVIDENCE_SHA256` | Lowercase SHA-256 of the exact operational evidence JSON |
+| `LOOPOS_OPERATIONAL_EVIDENCE_VERIFIED_AT` | Timestamp matching the operational evidence packet `generated_at` |
+| `LOOPOS_OPERATIONAL_EVIDENCE_MAX_AGE_DAYS` | Maximum accepted age of operational evidence; defaults to 90 days |
 | `LOOPOS_WORKER_TOKEN` | Minimum-32-byte token protecting worker/cron dispatch; `CRON_SECRET` is accepted as a Vercel-compatible fallback |
 | `LOOPOS_EXECUTION_WORKER_MODE` | `internal` for a long-lived worker loop or `external` for protected cron dispatch; defaults to `external` on Vercel |
 | `LOOPOS_EXECUTION_WORKER_POLL_SECONDS` | Poll interval for long-lived authority workers; defaults to 0.25 seconds |
@@ -105,7 +109,7 @@ Starting, rolling back, and delayed-effectiveness work is committed to `executio
 
 Every audit-event insert atomically creates an outbox envelope containing the chain hashes and canonical event fields. The worker signs the exact canonical request bytes with `x-loopos-signature-256`, supplies `x-loopos-event-id` for sink-side idempotency, marks only 2xx responses delivered, and retains bounded failure details with exponential retry timing. Auditors and executives can inspect `GET /v1/audit/anchors/status`; executives can request an immediate retry through `POST /v1/audit/anchors/drain`.
 
-The sink must verify the signature, deduplicate the event ID, and retain the envelope under the approved immutable retention policy. The database hash chain and outbox are not substitutes for that independently administered sink. Readiness requires a credential-free HTTPS restore-evidence reference, the lowercase SHA-256 of the exact evidence JSON, and a recent timestamp. The production handover verifier independently reads those bytes and requires the digest, timestamp, row-count parity, cleanup proof, and every restore check to match before returning `GO`.
+The sink must verify the signature, deduplicate the event ID, and retain the envelope under the approved immutable retention policy. The database hash chain and outbox are not substitutes for that independently administered sink. Readiness requires credential-free HTTPS references, lowercase SHA-256 digests, and recent timestamps for both restore and operational evidence. The operational packet is bound to a deterministic fingerprint of the deployed retention URL, support route, outbound mode, and host allowlist. The production handover verifier independently reads both artifacts and requires exact digest, timestamp, fingerprint, and semantic control coverage before returning `GO`.
 
 ## Tests
 

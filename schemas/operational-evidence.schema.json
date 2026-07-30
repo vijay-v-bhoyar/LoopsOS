@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loopos.example/schemas/operational-evidence.schema.json",
+  "title": "LoopOS Operational Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "verified",
+    "binding_fingerprint",
+    "checks"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verified": {
+      "const": true
+    },
+    "binding_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "passed"
+        ],
+        "properties": {
+          "name": {
+            "enum": [
+              "retention_policy_approved",
+              "retention_deletion_test_passed",
+              "support_route_tested",
+              "support_escalation_test_passed",
+              "outbound_policy_enforced",
+              "outbound_denial_test_passed"
+            ]
+          },
+          "passed": {
+            "const": true
+          }
+        }
+      }
+    }
+  }
+}

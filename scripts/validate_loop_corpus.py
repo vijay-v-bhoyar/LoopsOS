@@ -30,6 +30,7 @@ REQUIRED_FILES = [
     "schemas/loop-descriptor.schema.json",
     "schemas/result-envelope.schema.json",
     "schemas/control-coverage.schema.json",
+    "schemas/operational-evidence.schema.json",
     "runtime/loops.catalog.yaml",
     "runtime/control-applicability.yaml",
     "runtime/architecture_stack.yaml",
