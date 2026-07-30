@@ -38,3 +38,7 @@ The authoritative service must define encrypted backup cadence, recovery point o
 ## Rollback Gate
 
 A rollback is complete only when the prior digest is serving, new writes are authoritative, audit events are retrievable by correlation ID, client errors return to baseline, and the incident commander records the decision evidence.
+
+## Handover Evidence
+
+The production handover packet must include the JSON output from `scripts/verify_production_handover.py`. A report is valid only for the exact target named in the report, must have verdict `GO`, and must be generated after the deployed image, database migration, IdP mapping, worker schedule, audit sink, retention policy, support route, egress policy, and restore evidence are finalized.

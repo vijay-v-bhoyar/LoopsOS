@@ -36,6 +36,22 @@ Terminate TLS at the enterprise ingress, keep the supplied security headers, and
 5. Record security, privacy, legal, product, and operations approval references.
 6. Canary to an internal cohort; promote only when errors, latency, persistence, and audit delivery meet the runbook thresholds.
 
+## Live Handover Proof
+
+Run the verifier from a controlled release workstation after staging or production bindings are provisioned. The two assertions must resolve to different expected tenants, and the primary identity must be allowed to create and delete a workspace. The verifier creates a uniquely named marker, proves the secondary tenant receives `404`, deletes the marker, invokes protected worker dispatch, and then validates the complete readiness payload. Assertions, worker tokens, and application session tokens are never included in the JSON report.
+
+```powershell
+$env:LOOPOS_HANDOVER_BASE_URL="https://loopos.example.com/api"
+$env:LOOPOS_HANDOVER_PRIMARY_IDENTITY_ASSERTION="<short-lived-primary-assertion>"
+$env:LOOPOS_HANDOVER_SECONDARY_IDENTITY_ASSERTION="<short-lived-secondary-assertion>"
+$env:LOOPOS_HANDOVER_WORKER_TOKEN="<server-side-worker-token>"
+$env:LOOPOS_HANDOVER_EXPECTED_PRIMARY_TENANT="<primary-tenant-id>"
+$env:LOOPOS_HANDOVER_EXPECTED_SECONDARY_TENANT="<secondary-tenant-id>"
+python scripts/verify_production_handover.py --output output/production-handover-report.json
+```
+
+`GO` requires every check to pass. Any missing credential, insecure target, failed cleanup, cross-tenant visibility, stale worker heartbeat, audit backlog, development authentication, non-Postgres storage, or incomplete operational binding produces `NO_GO` and a nonzero exit code. If the verifier is interrupted, search the primary tenant for the `handover-probe-` prefix and delete any residual marker before repeating the gate.
+
 ## Current Boundary
 
 This repository supplies the portal, deterministic recommendation engine, governed execution authority, tenant-scoped SQLite/Postgres store contract, authoritative workspace revisions, database-leased execution jobs, protected worker/cron dispatch, tool/probe runtime, audit chain with a durable external-anchor outbox, and hardened containers. It does not supply the organization IdP/BFF, a provisioned managed Postgres instance, the independently administered WORM/SIEM sink, secrets manager, or organization-specific retention/backup implementation. Production activation remains blocked until those bindings are provisioned and verified.
