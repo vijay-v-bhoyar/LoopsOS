@@ -139,6 +139,9 @@ class SupplyChainEvidenceTests(unittest.TestCase):
     def test_ci_builds_and_retains_attested_oci_archives(self) -> None:
         workflow = (REPO_ROOT / ".github" / "workflows" / "loopos-ui.yml").read_text(encoding="utf-8")
 
+        self.assertIn("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", workflow)
+        self.assertIn("actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97", workflow)
+        self.assertIn("actions/setup-node@820762786026740c76f36085b0efc47a31fe5020", workflow)
         self.assertIn("docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd", workflow)
         self.assertGreaterEqual(workflow.count("--provenance=mode=max"), 2)
         self.assertGreaterEqual(workflow.count("--sbom=true"), 2)
@@ -151,7 +154,7 @@ class SupplyChainEvidenceTests(unittest.TestCase):
         self.assertEqual(workflow.count("severity-cutoff: high"), 2)
         self.assertIn(".release-evidence/loopos-ui.vulnerabilities.json", workflow)
         self.assertIn(".release-evidence/loopos-authority.vulnerabilities.json", workflow)
-        self.assertIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflow)
+        self.assertIn("actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a", workflow)
         self.assertIn("if: always()", workflow)
         self.assertIn("include-hidden-files: true", workflow)
         self.assertIn("vex: security/authority-python-3.14.6.openvex.json", workflow)
