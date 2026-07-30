@@ -12,6 +12,10 @@ from typing import Any
 
 DIGEST_PATTERN = re.compile(r"^sha256:([0-9a-f]{64})$")
 ATTESTATION_TYPE = "attestation-manifest"
+INDEX_MEDIA_TYPES = {
+    "application/vnd.docker.distribution.manifest.list.v2+json",
+    "application/vnd.oci.image.index.v1+json",
+}
 
 
 class EvidenceError(RuntimeError):
@@ -76,6 +80,37 @@ def _is_attestation(descriptor: dict[str, Any]) -> bool:
     )
 
 
+def _leaf_descriptors(
+    archive: tarfile.TarFile,
+    descriptors: list[Any],
+    *,
+    visited: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    if visited is None:
+        visited = set()
+    leaves: list[dict[str, Any]] = []
+    for descriptor in descriptors:
+        if not isinstance(descriptor, dict):
+            raise EvidenceError("OCI index descriptors must be JSON objects.")
+        digest = descriptor.get("digest")
+        if not isinstance(digest, str):
+            raise EvidenceError("OCI descriptor is missing its digest.")
+        if digest in visited:
+            raise EvidenceError(f"OCI descriptor graph contains a cycle at {digest}.")
+        content = _blob(archive, digest)
+        media_type = descriptor.get("mediaType")
+        nested = content.get("manifests")
+        if media_type in INDEX_MEDIA_TYPES or isinstance(nested, list):
+            if not isinstance(nested, list):
+                raise EvidenceError(f"OCI index {digest} must contain a manifests array.")
+            visited.add(digest)
+            leaves.extend(_leaf_descriptors(archive, nested, visited=visited))
+            visited.remove(digest)
+        else:
+            leaves.append(descriptor)
+    return leaves
+
+
 def verify_oci_archive(path: Path) -> dict[str, Any]:
     archive_sha256 = _file_sha256(path)
     try:
@@ -90,15 +125,16 @@ def verify_oci_archive(path: Path) -> dict[str, Any]:
         manifests = index.get("manifests")
         if not isinstance(manifests, list):
             raise EvidenceError("OCI index must contain a manifests array.")
+        leaf_descriptors = _leaf_descriptors(archive, manifests)
         image_descriptors = [
             descriptor
-            for descriptor in manifests
-            if isinstance(descriptor, dict) and not _is_attestation(descriptor)
+            for descriptor in leaf_descriptors
+            if not _is_attestation(descriptor)
         ]
         attestation_descriptors = [
             descriptor
-            for descriptor in manifests
-            if isinstance(descriptor, dict) and _is_attestation(descriptor)
+            for descriptor in leaf_descriptors
+            if _is_attestation(descriptor)
         ]
         if len(image_descriptors) != 1:
             raise EvidenceError(f"Expected one image manifest, found {len(image_descriptors)}.")

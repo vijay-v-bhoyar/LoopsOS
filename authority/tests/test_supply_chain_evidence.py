@@ -70,7 +70,7 @@ class SupplyChainEvidenceTests(unittest.TestCase):
             },
             "layers": layers,
         })
-        index = {
+        manifest_list = {
             "schemaVersion": 2,
             "mediaType": "application/vnd.oci.image.index.v1+json",
             "manifests": [
@@ -90,6 +90,18 @@ class SupplyChainEvidenceTests(unittest.TestCase):
                         "vnd.docker.reference.type": "attestation-manifest",
                     },
                 },
+            ],
+        }
+        manifest_list_digest = blob(manifest_list)
+        index = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": [
+                {
+                    "mediaType": "application/vnd.oci.image.index.v1+json",
+                    "digest": manifest_list_digest,
+                    "size": 1,
+                }
             ],
         }
         (layout / "index.json").write_text(json.dumps(index), encoding="utf-8")
@@ -133,6 +145,7 @@ class SupplyChainEvidenceTests(unittest.TestCase):
         self.assertIn(".release-evidence/loopos-ui.vulnerabilities.json", workflow)
         self.assertIn(".release-evidence/loopos-authority.vulnerabilities.json", workflow)
         self.assertIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflow)
+        self.assertIn("if: always()", workflow)
 
 
 if __name__ == "__main__":

@@ -97,9 +97,10 @@ jobs:
           output-format: json
           output-file: .release-evidence/loopos-authority.vulnerabilities.json
       - name: Retain OCI release evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: loopos-release-evidence-${{ github.sha }}
           path: .release-evidence
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
