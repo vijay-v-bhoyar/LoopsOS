@@ -56,7 +56,7 @@ def _json_bytes(content: bytes, label: str) -> dict[str, Any]:
     return value
 
 
-def _blob(archive: tarfile.TarFile, digest: str) -> dict[str, Any]:
+def _blob_content(archive: tarfile.TarFile, digest: str) -> bytes:
     match = DIGEST_PATTERN.fullmatch(digest)
     if not match:
         raise EvidenceError(f"OCI descriptor has an invalid digest: {digest}.")
@@ -64,7 +64,11 @@ def _blob(archive: tarfile.TarFile, digest: str) -> dict[str, Any]:
     actual = hashlib.sha256(content).hexdigest()
     if actual != match.group(1):
         raise EvidenceError(f"OCI blob digest mismatch for {digest}.")
-    return _json_bytes(content, digest)
+    return content
+
+
+def _blob(archive: tarfile.TarFile, digest: str) -> dict[str, Any]:
+    return _json_bytes(_blob_content(archive, digest), digest)
 
 
 def _is_attestation(descriptor: dict[str, Any]) -> bool:
@@ -141,7 +145,19 @@ def verify_oci_archive(path: Path, *, sbom_output: Path | None = None) -> dict[s
         image_digest = image_descriptors[0].get("digest")
         if not isinstance(image_digest, str):
             raise EvidenceError("Image manifest descriptor is missing its digest.")
-        _blob(archive, image_digest)
+        image_manifest = _blob(archive, image_digest)
+        config_descriptor = image_manifest.get("config")
+        if not isinstance(config_descriptor, dict) or not isinstance(config_descriptor.get("digest"), str):
+            raise EvidenceError("Image manifest is missing its config digest.")
+        config_digest = config_descriptor["digest"]
+        _blob(archive, config_digest)
+        image_layers = image_manifest.get("layers")
+        if not isinstance(image_layers, list):
+            raise EvidenceError("Image manifest must contain a layers array.")
+        for layer in image_layers:
+            if not isinstance(layer, dict) or not isinstance(layer.get("digest"), str):
+                raise EvidenceError("Image manifest contains a layer without a digest.")
+            _blob_content(archive, layer["digest"])
         if not attestation_descriptors:
             raise EvidenceError("OCI archive does not contain an attestation manifest.")
 
@@ -201,6 +217,7 @@ def verify_oci_archive(path: Path, *, sbom_output: Path | None = None) -> dict[s
     return {
         "archive": path.name,
         "archive_sha256": archive_sha256,
+        "config_digest": config_digest,
         "image_digest": image_digest,
         "sbom_file": sbom_output.name if sbom_output is not None else None,
         "sbom_predicate": sbom_predicates[0],

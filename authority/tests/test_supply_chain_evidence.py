@@ -122,6 +122,7 @@ class SupplyChainEvidenceTests(unittest.TestCase):
 
         self.assertTrue(report["verified"])
         self.assertTrue(report["image_digest"].startswith("sha256:"))
+        self.assertTrue(report["config_digest"].startswith("sha256:"))
         self.assertEqual(report["sbom_file"], "loopos.sbom.spdx.json")
         self.assertEqual(sbom["spdxVersion"], "SPDX-2.3")
         self.assertEqual(report["sbom_predicate"], "https://spdx.dev/Document")

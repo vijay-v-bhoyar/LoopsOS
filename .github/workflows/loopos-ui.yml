@@ -63,7 +63,6 @@ jobs:
             --tag loopos-ui:${{ github.sha }} \
             --provenance=mode=max \
             --sbom=true \
-            --load \
             --output type=oci,dest=.release-evidence/loopos-ui.oci.tar \
             .
       - name: Build attested authority OCI image
@@ -73,15 +72,8 @@ jobs:
             --tag loopos-authority:${{ github.sha }} \
             --provenance=mode=max \
             --sbom=true \
-            --load \
             --output type=oci,dest=.release-evidence/loopos-authority.oci.tar \
             .
-      - name: Exercise hardened container runtime
-        run: |
-          python scripts/verify_container_runtime.py \
-            --ui-image loopos-ui:${{ github.sha }} \
-            --authority-image loopos-authority:${{ github.sha }} \
-            --output .release-evidence/container-runtime-smoke.json
       - name: Verify OCI release evidence
         run: |
           python scripts/verify_oci_attestations.py \
@@ -89,6 +81,29 @@ jobs:
             .release-evidence/loopos-authority.oci.tar \
             --output .release-evidence/manifest.json
           cp security/authority-python-3.14.6.openvex.json .release-evidence/
+      - name: Load release-equivalent runtime images
+        run: |
+          docker buildx build \
+            --file ui/Dockerfile \
+            --tag loopos-ui:${{ github.sha }} \
+            --provenance=false \
+            --sbom=false \
+            --load \
+            .
+          docker buildx build \
+            --file authority/Dockerfile \
+            --tag loopos-authority:${{ github.sha }} \
+            --provenance=false \
+            --sbom=false \
+            --load \
+            .
+      - name: Exercise hardened container runtime
+        run: |
+          python scripts/verify_container_runtime.py \
+            --ui-image loopos-ui:${{ github.sha }} \
+            --authority-image loopos-authority:${{ github.sha }} \
+            --oci-manifest .release-evidence/manifest.json \
+            --output .release-evidence/container-runtime-smoke.json
       - name: Scan UI image vulnerabilities
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:

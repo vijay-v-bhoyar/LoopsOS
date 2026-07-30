@@ -20,6 +20,7 @@ class ContainerRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertGreaterEqual(workflow.count("--load"), 2)
         self.assertIn("scripts/verify_container_runtime.py", workflow)
+        self.assertIn("--oci-manifest .release-evidence/manifest.json", workflow)
         self.assertIn(".release-evidence/container-runtime-smoke.json", workflow)
 
     def test_runtime_verifier_enforces_hardened_container_boundaries(self) -> None:
@@ -35,6 +36,9 @@ class ContainerRuntimeEvidenceTests(unittest.TestCase):
         ]:
             self.assertIn(required_flag, verifier)
         self.assertIn("runtime_uid", verifier)
+        self.assertIn("release_config_digest", verifier)
+        self.assertIn("authority_release_identity", verifier)
+        self.assertIn("ui_release_identity", verifier)
         self.assertIn("/api/health/live", verifier)
         self.assertIn("/api/health/ready", verifier)
         self.assertIn("content-security-policy", verifier)
@@ -45,11 +49,22 @@ class ContainerRuntimeEvidenceTests(unittest.TestCase):
     def test_missing_docker_emits_a_fail_closed_report(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             output = Path(temporary_directory) / "runtime.json"
+            manifest = Path(temporary_directory) / "manifest.json"
+            manifest.write_text(
+                json.dumps({
+                    "verified": True,
+                    "artifacts": [
+                        {"archive": "loopos-ui.oci.tar", "config_digest": f"sha256:{'1' * 64}"},
+                        {"archive": "loopos-authority.oci.tar", "config_digest": f"sha256:{'2' * 64}"},
+                    ],
+                }),
+                encoding="utf-8",
+            )
             with patch(
                 "scripts.verify_container_runtime.subprocess.run",
                 side_effect=FileNotFoundError("docker is unavailable"),
             ), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-                result = verify_runtime("loopos-ui:test", "loopos-authority:test", output)
+                result = verify_runtime("loopos-ui:test", "loopos-authority:test", manifest, output)
             report = json.loads(output.read_text(encoding="utf-8"))
 
         self.assertEqual(result, 1)

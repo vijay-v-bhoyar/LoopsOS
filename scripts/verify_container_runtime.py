@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -15,6 +16,9 @@ from typing import Any
 
 class RuntimeEvidenceError(RuntimeError):
     pass
+
+
+SHA256_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 def _run(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -85,7 +89,31 @@ def _mapped_port(container: str) -> int:
         raise RuntimeEvidenceError(f"{container} has no valid host mapping for port 8080.") from error
 
 
-def verify_runtime(ui_image: str, authority_image: str, output: Path) -> int:
+def _release_config_digests(manifest_path: Path) -> dict[str, str]:
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeEvidenceError("The verified OCI evidence manifest could not be read.") from error
+    if not isinstance(manifest, dict) or manifest.get("verified") is not True:
+        raise RuntimeEvidenceError("The OCI evidence manifest is not verified.")
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list) or len(artifacts) != 2:
+        raise RuntimeEvidenceError("The OCI evidence manifest has no artifacts array.")
+    digests = {
+        artifact.get("archive"): artifact.get("config_digest")
+        for artifact in artifacts
+        if isinstance(artifact, dict)
+    }
+    required = {"loopos-ui.oci.tar", "loopos-authority.oci.tar"}
+    if set(digests) != required or not all(
+        isinstance(digest, str) and SHA256_PATTERN.fullmatch(digest)
+        for digest in digests.values()
+    ):
+        raise RuntimeEvidenceError("The OCI evidence manifest does not identify both release config digests.")
+    return digests  # type: ignore[return-value]
+
+
+def verify_runtime(ui_image: str, authority_image: str, oci_manifest: Path, output: Path) -> int:
     suffix = uuid.uuid4().hex[:10]
     network = f"loopos-smoke-{suffix}"
     authority = f"loopos-authority-{suffix}"
@@ -98,6 +126,7 @@ def verify_runtime(ui_image: str, authority_image: str, output: Path) -> int:
         "containers": [],
     }
     try:
+        release_digests = _release_config_digests(oci_manifest)
         _run(["docker", "network", "create", "--internal", network])
         _run([
             "docker", "run", "--detach",
@@ -150,6 +179,10 @@ def verify_runtime(ui_image: str, authority_image: str, output: Path) -> int:
             raise RuntimeEvidenceError("The proxied authority health response was not valid JSON.") from error
 
         checks = {
+            "authority_release_identity": (
+                authority_inspection.get("Image") == release_digests["loopos-authority.oci.tar"]
+            ),
+            "ui_release_identity": ui_inspection.get("Image") == release_digests["loopos-ui.oci.tar"],
             "ui_health": health_status == 200 and health_body == b"ok\n",
             "authority_liveness_through_proxy": live_status == 200 and live_payload == {"status": "live"},
             "authority_readiness_through_proxy": (
@@ -174,6 +207,7 @@ def verify_runtime(ui_image: str, authority_image: str, output: Path) -> int:
                 "name": "authority",
                 "image": authority_image,
                 "image_id": authority_inspection.get("Image"),
+                "release_config_digest": release_digests["loopos-authority.oci.tar"],
                 "configured_user": authority_inspection.get("Config", {}).get("User"),
                 "runtime_uid": authority_uid,
                 "health": authority_inspection.get("State", {}).get("Health", {}).get("Status"),
@@ -182,6 +216,7 @@ def verify_runtime(ui_image: str, authority_image: str, output: Path) -> int:
                 "name": "ui",
                 "image": ui_image,
                 "image_id": ui_inspection.get("Image"),
+                "release_config_digest": release_digests["loopos-ui.oci.tar"],
                 "configured_user": ui_inspection.get("Config", {}).get("User"),
                 "runtime_uid": ui_uid,
                 "health": ui_inspection.get("State", {}).get("Health", {}).get("Status"),
@@ -210,9 +245,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exercise the hardened LoopOS release containers together.")
     parser.add_argument("--ui-image", required=True)
     parser.add_argument("--authority-image", required=True)
+    parser.add_argument("--oci-manifest", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    return verify_runtime(args.ui_image, args.authority_image, args.output)
+    return verify_runtime(args.ui_image, args.authority_image, args.oci_manifest, args.output)
 
 
 if __name__ == "__main__":
