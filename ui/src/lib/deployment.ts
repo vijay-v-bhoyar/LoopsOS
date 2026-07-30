@@ -7,10 +7,14 @@ export interface DeploymentRuntimeEvidence {
   sessionVerified?: boolean;
   persistenceVerified?: boolean;
   auditVerified?: boolean;
+  retentionVerified?: boolean;
+  supportVerified?: boolean;
+  outboundPolicyVerified?: boolean;
+  backupRestoreVerified?: boolean;
 }
 
 export interface DeploymentBinding {
-  id: "identity" | "persistence" | "audit" | "transport" | "retention" | "support" | "outbound_policy";
+  id: "identity" | "persistence" | "audit" | "transport" | "retention" | "support" | "outbound_policy" | "backup_restore";
   label: string;
   status: BindingStatus;
   detail: string;
@@ -69,12 +73,14 @@ function binding(
 
 export function evaluateDeploymentPosture(env: Environment, runtime: DeploymentRuntimeEvidence = {}): DeploymentPosture {
   const mode: DeploymentMode = value(env, "VITE_LOOPOS_DEPLOYMENT_MODE").toLowerCase() === "enterprise" ? "enterprise" : "evaluation";
-  const apiBaseUrl = value(env, "VITE_LOOPOS_API_BASE_URL");
+  const apiBaseUrl = value(env, "VITE_LOOPOS_AUTHORITY_URL") || value(env, "VITE_LOOPOS_API_BASE_URL");
   const authMode = value(env, "VITE_LOOPOS_AUTH_MODE");
   const persistenceMode = value(env, "VITE_LOOPOS_PERSISTENCE_MODE");
   const auditMode = value(env, "VITE_LOOPOS_AUDIT_MODE");
   const retentionPolicy = value(env, "VITE_LOOPOS_RETENTION_POLICY_URL");
   const supportContact = value(env, "VITE_LOOPOS_SUPPORT_CONTACT");
+  const outboundPolicyMode = value(env, "VITE_LOOPOS_OUTBOUND_POLICY_MODE");
+  const backupRestoreEvidence = value(env, "VITE_LOOPOS_BACKUP_RESTORE_EVIDENCE_URL");
   const allowedEndpointHosts = value(env, "VITE_LOOPOS_ALLOWED_ENDPOINT_HOSTS")
     .split(",")
     .map((host) => host.trim().toLowerCase())
@@ -120,28 +126,47 @@ export function evaluateDeploymentPosture(env: Environment, runtime: DeploymentR
           : "The API origin is secure, but runtime reachability has not been proven."
         : "Use HTTPS for every non-local authoritative API origin.",
     },
-    {
-      id: "retention",
-      label: "Retention policy",
-      status: enterpriseDeclared && isSecureLocation(retentionPolicy) ? "bound" : "blocked",
-      detail: enterpriseDeclared && isSecureLocation(retentionPolicy)
-        ? "A secure enterprise retention-policy reference is configured."
-        : "Configure the approved retention and deletion policy URL.",
-    },
-    {
-      id: "support",
-      label: "Operational ownership",
-      status: enterpriseDeclared && Boolean(supportContact) ? "bound" : "blocked",
-      detail: enterpriseDeclared && supportContact ? `Operational contact: ${supportContact}.` : "Configure the accountable operational support contact.",
-    },
-    {
-      id: "outbound_policy",
-      label: "Outbound endpoint policy",
-      status: enterpriseDeclared && allowedEndpointHosts.length ? "bound" : "blocked",
-      detail: enterpriseDeclared && allowedEndpointHosts.length
-        ? `${allowedEndpointHosts.length} external endpoint host${allowedEndpointHosts.length === 1 ? " is" : "s are"} allowlisted.`
-        : "Configure an explicit host allowlist for AI and transcription endpoints.",
-    },
+    binding(
+      "retention",
+      "Retention policy",
+      enterpriseDeclared && isSecureLocation(retentionPolicy),
+      runtime.retentionVerified,
+      "Configure the approved retention and deletion policy URL.",
+      "Retention is declared but the authority has not verified its server-side binding.",
+      "The authority verified the server-side retention-policy binding.",
+    ),
+    binding(
+      "support",
+      "Operational ownership",
+      enterpriseDeclared && Boolean(supportContact),
+      runtime.supportVerified,
+      "Configure the accountable operational support contact.",
+      "Operational ownership is declared but the authority has not verified its server-side binding.",
+      `The authority verified operational ownership for ${supportContact}.`,
+    ),
+    binding(
+      "outbound_policy",
+      "Outbound endpoint policy",
+      enterpriseDeclared && (
+        outboundPolicyMode === "deny_all"
+        || (outboundPolicyMode === "allowlist" && allowedEndpointHosts.length > 0)
+      ),
+      runtime.outboundPolicyVerified,
+      "Configure deny-all or an explicit host allowlist for outbound services.",
+      "Outbound policy is declared but the authority has not verified its server-side enforcement.",
+      outboundPolicyMode === "deny_all"
+        ? "The authority verified a deny-all outbound policy."
+        : `The authority verified an allowlist with ${allowedEndpointHosts.length} host${allowedEndpointHosts.length === 1 ? "" : "s"}.`,
+    ),
+    binding(
+      "backup_restore",
+      "Backup and restore",
+      enterpriseDeclared && isSecureLocation(backupRestoreEvidence),
+      runtime.backupRestoreVerified,
+      "Configure a secure reference to the latest approved backup/restore exercise.",
+      "Restore evidence is declared but is missing, invalid, or older than the server freshness policy.",
+      "The authority verified a recent backup/restore evidence binding.",
+    ),
   ];
 
   const blockers = bindings.filter((item) => item.status === "blocked").map((item) => item.id);
@@ -168,3 +193,7 @@ export function evaluateDeploymentPosture(env: Environment, runtime: DeploymentR
 }
 
 export const deploymentPosture = evaluateDeploymentPosture(import.meta.env as Environment);
+
+export function deploymentPostureForRuntime(runtime: DeploymentRuntimeEvidence): DeploymentPosture {
+  return evaluateDeploymentPosture(import.meta.env as Environment, runtime);
+}

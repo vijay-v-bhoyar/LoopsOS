@@ -7,6 +7,7 @@ import { validateUseCase } from "./lib/validation";
 import { buildEnterpriseActionPlan } from "./lib/actionPlan";
 import { buildProofPackMarkdown, completeNextRunStep, createInitiativeFromWorkspace, refreshInitiative } from "./lib/sdlcProductivity";
 import { consumeCrashAuthenticatedView } from "./lib/runtimeConfig";
+import { deploymentPostureForRuntime } from "./lib/deployment";
 import { createExecution, EMPTY_WORKSPACE_USE_CASE, useWorkspaceStore } from "./lib/workspaceStore";
 import { downloadMarkdown } from "./lib/workspaceExport";
 import { Dashboard } from "./screens/Dashboard";
@@ -36,6 +37,7 @@ export default function App() {
   const [selectedLoop, setSelectedLoop] = useState<LoopDetail | null>(looposData.loops[0] ?? null);
   const [plan, setPlan] = useState<EnterpriseActionPlan | null>(null);
   const workspace = useWorkspaceStore();
+  const posture = useMemo(() => deploymentPostureForRuntime(workspace.runtimeEvidence), [workspace.runtimeEvidence]);
   const input = workspace.activeWorkspace?.use_case ?? EMPTY_WORKSPACE_USE_CASE;
   const inputSources = workspace.activeWorkspace?.input_sources ?? [];
 
@@ -222,6 +224,7 @@ export default function App() {
           onCreateInitiative={createSdlcInitiative}
           onCompleteRunStep={completeSdlcRunStep}
           onExportProofPack={exportSdlcProofPack}
+          posture={posture}
         />
       );
     }
@@ -268,7 +271,7 @@ export default function App() {
       return <ValidationStudio data={looposData} input={input} validation={validation} />;
     }
     if (activeView === "readiness") {
-      return <ReadinessWorkbench data={looposData} />;
+      return <ReadinessWorkbench data={looposData} posture={posture} />;
     }
     return <ImplementationPlan plan={plan ?? buildEnterpriseActionPlan(input, recommendations, validation)} />;
   };
@@ -280,6 +283,7 @@ export default function App() {
       onSignIn={workspace.signIn}
       enterpriseSession={workspace.enterpriseSession}
       onEnterpriseSignIn={workspace.retryEnterpriseSignIn}
+      posture={posture}
     >
       {currentUser ? (
         <Shell
@@ -294,6 +298,7 @@ export default function App() {
           onSignOut={workspace.signOut}
           canGoBack={activeView !== "dashboard"}
           onBack={goBack}
+          posture={posture}
         >
           {renderView(currentUser)}
         </Shell>

@@ -22,6 +22,20 @@ export interface AuthorityWorkspaceRecord {
   updated_at: string;
 }
 
+export interface AuthorityReadiness {
+  status: "ready";
+  storage_backend: string;
+  production_identity: boolean;
+  audit_anchor_configured: boolean;
+  audit_anchor_backlog: number;
+  operational_bindings: {
+    retention_verified: boolean;
+    support_verified: boolean;
+    outbound_policy_verified: boolean;
+    backup_restore_verified: boolean;
+  };
+}
+
 async function request<T>(path: string, options: RequestInit = {}, timeoutMs = 15_000): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -69,6 +83,10 @@ export async function createAuthoritySession(
   mode: DeploymentMode = deploymentPosture.mode,
 ): Promise<AuthoritySession> {
   return mode === "enterprise" ? createEnterpriseSession() : createDevelopmentSession(user);
+}
+
+export async function getAuthorityReadiness(): Promise<AuthorityReadiness> {
+  return request<AuthorityReadiness>("/health/ready");
 }
 
 export async function listAuthorityWorkspaces(token: string): Promise<AuthorityWorkspaceRecord[]> {

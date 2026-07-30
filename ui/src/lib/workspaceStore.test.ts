@@ -125,6 +125,19 @@ describe("workspaceStore", () => {
     const localUser = createUser("Local", "local@example.local", "Operator");
     const authoritativeWorkspace = createWorkspace(localUser, "Authoritative claims", DEFAULT_WORKSPACE_USE_CASE);
     const authority = {
+      checkReadiness: vi.fn().mockResolvedValue({
+        status: "ready",
+        storage_backend: "postgres",
+        production_identity: true,
+        audit_anchor_configured: true,
+        audit_anchor_backlog: 0,
+        operational_bindings: {
+          retention_verified: true,
+          support_verified: true,
+          outbound_policy_verified: true,
+          backup_restore_verified: true,
+        },
+      }),
       createSession: vi.fn().mockResolvedValue({
         access_token: "enterprise-token",
         token_type: "bearer",
@@ -171,6 +184,16 @@ describe("workspaceStore", () => {
     }));
 
     await waitFor(() => expect(result.current.enterpriseSession.status).toBe("ready"));
+    expect(result.current.runtimeEvidence).toEqual({
+      apiReachable: true,
+      sessionVerified: true,
+      persistenceVerified: true,
+      auditVerified: true,
+      retentionVerified: true,
+      supportVerified: true,
+      outboundPolicyVerified: true,
+      backupRestoreVerified: true,
+    });
     expect(result.current.state.current_user).toMatchObject({
       user_id: "oidc-user-42",
       role: "Approver",

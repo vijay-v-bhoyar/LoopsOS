@@ -4,12 +4,14 @@ import {
   createAuthorityWorkspace,
   createEnterpriseSession,
   deleteAuthorityWorkspace,
+  getAuthorityReadiness,
   listAuthorityWorkspaces,
   updateAuthorityWorkspace,
+  type AuthorityReadiness,
   type AuthorityWorkspaceRecord,
 } from "../features/governedExecution/authorityClient";
 import type { AuthoritySession } from "../features/governedExecution/types";
-import { deploymentPosture, type DeploymentMode } from "./deployment";
+import { deploymentPosture, type DeploymentMode, type DeploymentRuntimeEvidence } from "./deployment";
 import type {
   ApprovalRecord,
   EnterpriseActionPlan,
@@ -50,6 +52,7 @@ export interface EnterpriseSessionState {
 }
 
 export interface WorkspaceAuthorityAdapter {
+  checkReadiness?: () => Promise<AuthorityReadiness>;
   createSession: () => Promise<AuthoritySession>;
   listWorkspaces: (token: string) => Promise<AuthorityWorkspaceRecord[]>;
   createWorkspace: (token: string, workspace: SavedWorkspace) => Promise<AuthorityWorkspaceRecord>;
@@ -64,6 +67,7 @@ export interface WorkspaceStoreOptions {
 }
 
 const DEFAULT_AUTHORITY_ADAPTER: WorkspaceAuthorityAdapter = {
+  checkReadiness: getAuthorityReadiness,
   createSession: createEnterpriseSession,
   listWorkspaces: listAuthorityWorkspaces,
   createWorkspace: createAuthorityWorkspace,
@@ -250,6 +254,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
   const [enterpriseSession, setEnterpriseSession] = useState<EnterpriseSessionState>({
     status: mode === "enterprise" ? "loading" : "idle",
   });
+  const [runtimeEvidence, setRuntimeEvidence] = useState<DeploymentRuntimeEvidence>({});
   const [sessionAttempt, setSessionAttempt] = useState(0);
   const tokenRef = useRef<string | null>(null);
   const revisionsRef = useRef(new Map<string, number>());
@@ -327,7 +332,33 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
     setPersistence({ status: "skipped", bytes: 0, location: "authority", message: "Verifying enterprise identity and loading authoritative workspaces." });
 
     void (async () => {
+      let readinessEvidence: DeploymentRuntimeEvidence = {};
       try {
+        if (authority.checkReadiness) {
+          try {
+            const readiness = await authority.checkReadiness();
+            readinessEvidence = {
+              apiReachable: true,
+              persistenceVerified: readiness.storage_backend === "postgres",
+              auditVerified: readiness.audit_anchor_configured && readiness.audit_anchor_backlog === 0,
+              retentionVerified: readiness.operational_bindings.retention_verified,
+              supportVerified: readiness.operational_bindings.support_verified,
+              outboundPolicyVerified: readiness.operational_bindings.outbound_policy_verified,
+              backupRestoreVerified: readiness.operational_bindings.backup_restore_verified,
+            };
+          } catch (error) {
+            readinessEvidence = {
+              apiReachable: error instanceof AuthorityError && error.status !== undefined,
+              persistenceVerified: false,
+              auditVerified: false,
+              retentionVerified: false,
+              supportVerified: false,
+              outboundPolicyVerified: false,
+              backupRestoreVerified: false,
+            };
+          }
+          if (!cancelled) setRuntimeEvidence(readinessEvidence);
+        }
         const session = await authority.createSession();
         const records = await authority.listWorkspaces(session.access_token);
         const user: EnterpriseUser = {
@@ -355,10 +386,25 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
           active_workspace_id: normalized[0]?.workspace_id ?? null,
           workspaces: normalized,
         });
+        setRuntimeEvidence({
+          ...readinessEvidence,
+          apiReachable: true,
+          sessionVerified: true,
+          persistenceVerified: readinessEvidence.persistenceVerified === true,
+          auditVerified: readinessEvidence.auditVerified === true,
+          retentionVerified: readinessEvidence.retentionVerified === true,
+          supportVerified: readinessEvidence.supportVerified === true,
+          outboundPolicyVerified: readinessEvidence.outboundPolicyVerified === true,
+          backupRestoreVerified: readinessEvidence.backupRestoreVerified === true,
+        });
         setEnterpriseSession({ status: "ready" });
       } catch (error) {
         if (cancelled) return;
         setState(EMPTY_STATE);
+        setRuntimeEvidence({
+          ...readinessEvidence,
+          sessionVerified: false,
+        });
         setEnterpriseSession({
           status: "error",
           error: error instanceof Error ? error.message : "Enterprise identity verification failed.",
@@ -476,6 +522,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
     state,
     persistence,
     enterpriseSession,
+    runtimeEvidence,
     activeWorkspace,
     signIn,
     signOut,

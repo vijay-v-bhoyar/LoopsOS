@@ -8,7 +8,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -18,7 +18,7 @@ from pydantic import ValidationError
 
 from loopos_authority.api import create_app
 from loopos_authority.audit_anchor import AuditAnchorDispatcher
-from loopos_authority.config import Settings
+from loopos_authority.config import Settings, operational_binding_status
 from loopos_authority.corpus import Corpus
 from loopos_authority.engine import ExecutionEngine
 from loopos_authority.models import Actor, ApprovalRequest, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, EvidenceRequest, ExecutionPlan, ProbeSpec
@@ -105,6 +105,64 @@ class ProductionIdentityApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["detail"], "Production persistence must use Postgres.")
+
+    def test_production_readiness_requires_server_side_operational_bindings(self) -> None:
+        settings = Settings(
+            repo_root=REPO_ROOT,
+            database_path=Path(self.tempdir.name) / "operations.db",
+            session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
+            allow_dev_auth=False,
+            allowed_http_hosts=(),
+            cors_origins=(),
+            storage_backend="postgres",
+            postgres_dsn="postgresql://unused.example/loopos",
+            audit_anchor_url="https://audit.example.com/loopos/events",
+            audit_anchor_hmac_secret="audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+            audit_anchor_poll_seconds=3600,
+        )
+        store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
+        with patch("loopos_authority.api.create_authority_store", return_value=store):
+            with TestClient(create_app(settings, identity_verifier=self.IdentityVerifier(), transport=httpx.MockTransport(lambda _request: httpx.Response(202)))) as client:
+                response = client.get("/health/ready")
+
+        self.assertEqual(response.status_code, 503)
+        detail = response.json()["detail"]
+        self.assertIn("retention_policy", detail)
+        self.assertIn("support_contact", detail)
+        self.assertIn("outbound_policy", detail)
+        self.assertIn("backup_restore", detail)
+
+    def test_production_readiness_accepts_complete_recent_operational_evidence(self) -> None:
+        settings = Settings(
+            repo_root=REPO_ROOT,
+            database_path=Path(self.tempdir.name) / "operations-ready.db",
+            session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
+            allow_dev_auth=False,
+            allowed_http_hosts=("api.example.com",),
+            cors_origins=(),
+            storage_backend="postgres",
+            postgres_dsn="postgresql://unused.example/loopos",
+            audit_anchor_url="https://audit.example.com/loopos/events",
+            audit_anchor_hmac_secret="audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+            audit_anchor_poll_seconds=3600,
+            retention_policy_url="https://policy.example.com/loopos-retention",
+            support_contact="loopos-operations@example.com",
+            outbound_policy_mode="allowlist",
+            backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
+            backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+        )
+        store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
+        with patch("loopos_authority.api.create_authority_store", return_value=store):
+            with TestClient(create_app(settings, identity_verifier=self.IdentityVerifier(), transport=httpx.MockTransport(lambda _request: httpx.Response(202)))) as client:
+                response = client.get("/health/ready")
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["operational_bindings"], {
+            "retention_verified": True,
+            "support_verified": True,
+            "outbound_policy_verified": True,
+            "backup_restore_verified": True,
+        })
 
 
 def enterprise_context() -> dict:
@@ -769,6 +827,26 @@ class StorageBackendTests(unittest.TestCase):
             settings = Settings.from_env()
 
         self.assertEqual(settings.audit_anchor_url, "https://audit.example.com/events")
+
+    def test_operational_bindings_accept_deny_all_and_reject_stale_restore_evidence(self) -> None:
+        settings = Settings(
+            repo_root=REPO_ROOT,
+            database_path=Path("unused.db"),
+            session_secret="operations-test-secret-that-is-at-least-thirty-two-bytes",
+            allow_dev_auth=False,
+            allowed_http_hosts=(),
+            cors_origins=(),
+            retention_policy_url="https://policy.example.com/retention",
+            support_contact="loopos-operations@example.com",
+            outbound_policy_mode="deny_all",
+            backup_restore_evidence_url="https://evidence.example.com/restore-test",
+            backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=91)).isoformat(),
+        )
+
+        bindings = operational_binding_status(settings)
+
+        self.assertTrue(bindings["outbound_policy_verified"])
+        self.assertFalse(bindings["backup_restore_verified"])
 
     def test_supabase_migration_preserves_authority_tables_and_audit_controls(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")

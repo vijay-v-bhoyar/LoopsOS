@@ -6,13 +6,14 @@ LoopOS has two explicit postures: `evaluation` and `enterprise`. Evaluation mode
 
 | Binding | Required contract | Activation proof |
 | --- | --- | --- |
-| Identity | BFF-managed session; IdP groups mapped server-side to LoopOS roles | Session endpoint verifies tenant, subject, role, expiry, and CSRF protection |
-| Persistence | LoopOS authority service and tenant-scoped durable database | Read/write/isolation/restart probes pass; browser storage is only a non-authoritative workspace cache |
-| Audit | Authority hash chain replicated to an external append-only sink | Write, retrieve, correlation, clock, chain verification, and external-anchor probes pass |
+| Identity | BFF-managed session; IdP groups mapped server-side to LoopOS roles | Session endpoint verifies issuer, audience, signature, expiry, tenant, subject, and one explicit role mapping |
+| Persistence | LoopOS authority service and tenant-scoped durable Postgres database | Authority readiness reports Postgres and the authenticated workspace list succeeds; enterprise mode never uses browser workspace storage |
+| Audit | Authority hash chain delivered through the durable outbox to an external append-only sink | Authority readiness reports a configured sink and zero undelivered anchors |
 | Transport | HTTPS for every non-local origin | Certificate, reachability, redirect, and hostname checks pass |
 | Retention | Approved retention and deletion policy URL | Legal/security owners approve the policy and deletion evidence path |
 | Operations | Named support contact and on-call route | Alert routing and incident exercise pass |
 | Outbound policy | Exact host allowlist for AI/transcription endpoints | Egress policy and endpoint data-processing terms are approved |
+| Backup and restore | Secure reference to a recent restore exercise | Authority validates the reference and freshness timestamp; an independent reviewer validates the exercise itself |
 
 The required `VITE_` values are documented in `.env.example`. They are public build configuration, never secrets. Tokens and service credentials belong only in the BFF or service runtime.
 
@@ -23,7 +24,7 @@ docker compose build
 docker compose up -d
 ```
 
-Terminate TLS at the enterprise ingress, keep the supplied security headers, and narrow `connect-src` in `nginx.conf` to approved origins. Do not set `VITE_LOOPOS_DEPLOYMENT_MODE=enterprise` until the authority API exists and the runtime probes are wired into `evaluateDeploymentPosture`.
+Terminate TLS at the enterprise ingress, keep the supplied security headers, and narrow `connect-src` in `nginx.conf` to approved origins. Set `VITE_LOOPOS_AUTHORITY_URL` to the exact HTTPS authority origin or to `/api` behind a same-origin ingress. Enterprise mode probes `/health/ready`, exchanges the managed identity session, and loads the tenant workspace register before it can transition to `enterprise_ready`.
 
 ## Release Gate
 
@@ -36,4 +37,4 @@ Terminate TLS at the enterprise ingress, keep the supplied security headers, and
 
 ## Current Boundary
 
-This repository now supplies the portal, deterministic recommendation engine, governed execution authority, single-instance SQLite persistence, tool/probe runtime, audit chain, and hardened containers. It does not supply the organization IdP/BFF, horizontally scalable managed database, external WORM/SIEM anchor, secrets manager, or organization-specific retention implementation. Production activation remains blocked until those bindings are integrated and verified.
+This repository supplies the portal, deterministic recommendation engine, governed execution authority, tenant-scoped SQLite/Postgres store contract, authoritative workspace revisions, tool/probe runtime, audit chain with a durable external-anchor outbox, and hardened containers. It does not supply the organization IdP/BFF, a provisioned managed Postgres instance, the independently administered WORM/SIEM sink, secrets manager, or organization-specific retention/backup implementation. Production activation remains blocked until those bindings are provisioned and verified.

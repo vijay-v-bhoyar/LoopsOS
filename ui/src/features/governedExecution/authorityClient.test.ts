@@ -11,6 +11,7 @@ import {
   createReleaseInitiative,
   deleteAuthorityWorkspace,
   getReleaseProofPack,
+  getAuthorityReadiness,
   listAuthorityWorkspaces,
   recordConnectorEvent,
   streamGovernedRun,
@@ -93,6 +94,36 @@ describe("authorityClient", () => {
     await createAuthoritySession(user, "enterprise");
 
     expect(fetchImpl).toHaveBeenCalledWith("/api/v1/sessions", expect.any(Object));
+  });
+
+  it("reads fail-closed runtime evidence from the authority readiness endpoint", async () => {
+    const fetchImpl = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      status: "ready",
+      storage_backend: "postgres",
+      production_identity: true,
+      audit_anchor_configured: true,
+      audit_anchor_backlog: 0,
+      operational_bindings: {
+        retention_verified: true,
+        support_verified: true,
+        outbound_policy_verified: true,
+        backup_restore_verified: true,
+      },
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    const readiness = await getAuthorityReadiness();
+
+    expect(readiness).toMatchObject({
+      storage_backend: "postgres",
+      production_identity: true,
+      audit_anchor_configured: true,
+      audit_anchor_backlog: 0,
+      operational_bindings: expect.objectContaining({ backup_restore_verified: true }),
+    });
+    expect(fetchImpl).toHaveBeenCalledWith("/api/health/ready", expect.objectContaining({
+      credentials: "omit",
+      cache: "no-store",
+    }));
   });
 
   it("lists tenant-scoped authoritative workspace documents", async () => {

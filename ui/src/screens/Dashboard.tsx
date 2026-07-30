@@ -5,7 +5,7 @@ import { Button } from "../components/Button";
 import { Card, SectionHeader } from "../components/Card";
 import { HelpPopover } from "../components/Help";
 import { StatCard } from "../components/StatCard";
-import { deploymentPosture, DEPLOYMENT_STATUS_LABELS } from "../lib/deployment";
+import { deploymentPosture, DEPLOYMENT_STATUS_LABELS, type DeploymentPosture } from "../lib/deployment";
 import { summarizeGateStatus } from "../lib/releaseAssurance";
 import { buildIssueTicketText, workflowLabel } from "../lib/sdlcProductivity";
 import type { InitiativeWorkspace, LoopDetail, LoopOSData, LoopRecommendation, PilotPlaybook, SavedWorkspace, UseCaseValidationResult } from "../types";
@@ -25,6 +25,7 @@ export function Dashboard({
   onCreateInitiative,
   onCompleteRunStep,
   onExportProofPack,
+  posture = deploymentPosture,
 }: {
   data: LoopOSData;
   activeWorkspace: SavedWorkspace | null;
@@ -40,6 +41,7 @@ export function Dashboard({
   onCreateInitiative: () => void;
   onCompleteRunStep: () => void;
   onExportProofPack: () => void;
+  posture?: DeploymentPosture;
 }) {
   const topRecommendations = recommendations.slice(0, 5);
   const savedPlan = Boolean(activeWorkspace?.action_plan_markdown);
@@ -63,7 +65,7 @@ export function Dashboard({
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge tone="success">Beta pilot ready</Badge>
               <Badge tone="success">Corpus validated</Badge>
-              <Badge tone={deploymentPosture.enterpriseReady ? "success" : "warning"}>{DEPLOYMENT_STATUS_LABELS[deploymentPosture.status]}</Badge>
+              <Badge tone={posture.enterpriseReady ? "success" : "warning"}>{DEPLOYMENT_STATUS_LABELS[posture.status]}</Badge>
               <Badge>{data.validation.audit.blockers} audit blockers</Badge>
               <Badge>{data.validation.audit.action_required} activation actions</Badge>
             </div>

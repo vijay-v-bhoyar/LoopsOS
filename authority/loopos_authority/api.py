@@ -16,7 +16,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .auth import IdentityVerifier, InvalidSession, SessionSigner
 from .audit_anchor import AuditAnchorDispatcher
-from .config import Settings
+from .config import Settings, operational_binding_status
 from .corpus import Corpus
 from .engine import ExecutionEngine
 from .identity import OIDCIdentityVerifier
@@ -226,6 +226,23 @@ def create_app(
             raise HTTPException(status_code=503, detail="Production persistence must use Postgres.")
         if not settings.allow_dev_auth and audit_anchor is None:
             raise HTTPException(status_code=503, detail="Production audit anchoring is not configured.")
+        operational_bindings = operational_binding_status(settings)
+        operational_binding_names = {
+            "retention_verified": "retention_policy",
+            "support_verified": "support_contact",
+            "outbound_policy_verified": "outbound_policy",
+            "backup_restore_verified": "backup_restore",
+        }
+        missing_operational_bindings = [
+            operational_binding_names[name]
+            for name, verified in operational_bindings.items()
+            if not verified
+        ]
+        if not settings.allow_dev_auth and missing_operational_bindings:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Production operational bindings are incomplete: {', '.join(missing_operational_bindings)}.",
+            )
         try:
             store.connection.execute("SELECT 1").fetchone()
             anchor_backlog = store.audit_anchor_backlog()
@@ -241,6 +258,7 @@ def create_app(
                 "storage_backend": settings.storage_backend,
                 "audit_anchor_configured": audit_anchor is not None,
                 "audit_anchor_backlog": anchor_backlog,
+                "operational_bindings": operational_bindings,
             }
         except HTTPException:
             raise

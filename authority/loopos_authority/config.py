@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import json
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
@@ -42,6 +43,34 @@ def _validate_audit_anchor(url: str | None, secret: str | None) -> tuple[str | N
         raise ValueError("LOOPOS_AUDIT_ANCHOR_HMAC_SECRET must contain at least 32 bytes.")
     return url, secret
 
+def _secure_reference(url: str | None) -> bool:
+    if not url:
+        return False
+    parsed = urlparse(url)
+    localhost = parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+    return bool(parsed.hostname and (parsed.scheme == "https" or (parsed.scheme == "http" and localhost)))
+
+
+def operational_binding_status(settings: "Settings") -> dict[str, bool]:
+    try:
+        verified_at = datetime.fromisoformat((settings.backup_restore_verified_at or "").replace("Z", "+00:00"))
+        if verified_at.tzinfo is None:
+            verified_at = verified_at.replace(tzinfo=timezone.utc)
+        verified_at = verified_at.astimezone(timezone.utc)
+    except ValueError:
+        verified_at = datetime.min.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    backup_recent = now - timedelta(days=settings.backup_restore_max_age_days) <= verified_at <= now + timedelta(minutes=5)
+    outbound_verified = settings.outbound_policy_mode == "deny_all" or (
+        settings.outbound_policy_mode == "allowlist" and bool(settings.allowed_http_hosts)
+    )
+    return {
+        "retention_verified": _secure_reference(settings.retention_policy_url),
+        "support_verified": bool(settings.support_contact and settings.support_contact.strip()),
+        "outbound_policy_verified": outbound_verified,
+        "backup_restore_verified": _secure_reference(settings.backup_restore_evidence_url) and backup_recent,
+    }
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -70,6 +99,12 @@ class Settings:
     audit_anchor_url: str | None = None
     audit_anchor_hmac_secret: str | None = None
     audit_anchor_poll_seconds: float = 5.0
+    retention_policy_url: str | None = None
+    support_contact: str | None = None
+    outbound_policy_mode: str | None = None
+    backup_restore_evidence_url: str | None = None
+    backup_restore_verified_at: str | None = None
+    backup_restore_max_age_days: float = 90.0
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -93,6 +128,15 @@ class Settings:
             os.getenv("LOOPOS_AUDIT_ANCHOR_URL"),
             os.getenv("LOOPOS_AUDIT_ANCHOR_HMAC_SECRET"),
         )
+        outbound_policy_mode = os.getenv("LOOPOS_OUTBOUND_POLICY_MODE")
+        if outbound_policy_mode and outbound_policy_mode not in {"allowlist", "deny_all"}:
+            raise ValueError("LOOPOS_OUTBOUND_POLICY_MODE must be 'allowlist' or 'deny_all'.")
+        retention_policy_url = os.getenv("LOOPOS_RETENTION_POLICY_URL")
+        backup_restore_evidence_url = os.getenv("LOOPOS_BACKUP_RESTORE_EVIDENCE_URL")
+        if retention_policy_url and not _secure_reference(retention_policy_url):
+            raise ValueError("LOOPOS_RETENTION_POLICY_URL must use HTTPS outside local development.")
+        if backup_restore_evidence_url and not _secure_reference(backup_restore_evidence_url):
+            raise ValueError("LOOPOS_BACKUP_RESTORE_EVIDENCE_URL must use HTTPS outside local development.")
         return cls(
             repo_root=repo_root,
             database_path=database_path,
@@ -113,6 +157,12 @@ class Settings:
             audit_anchor_url=audit_anchor_url,
             audit_anchor_hmac_secret=audit_anchor_hmac_secret,
             audit_anchor_poll_seconds=_positive_float("LOOPOS_AUDIT_ANCHOR_POLL_SECONDS", 5.0),
+            retention_policy_url=retention_policy_url,
+            support_contact=os.getenv("LOOPOS_SUPPORT_CONTACT"),
+            outbound_policy_mode=outbound_policy_mode,
+            backup_restore_evidence_url=backup_restore_evidence_url,
+            backup_restore_verified_at=os.getenv("LOOPOS_BACKUP_RESTORE_VERIFIED_AT"),
+            backup_restore_max_age_days=_positive_float("LOOPOS_BACKUP_RESTORE_MAX_AGE_DAYS", 90.0),
         )
 
 
