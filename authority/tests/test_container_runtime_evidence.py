@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import io
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+import scripts.verify_container_runtime as runtime_verifier
 from scripts.verify_container_runtime import verify_runtime
 
 
@@ -45,6 +47,33 @@ class ContainerRuntimeEvidenceTests(unittest.TestCase):
         self.assertIn("x-content-type-options", verifier)
         self.assertIn("finally:", verifier)
         self.assertIn("docker\", \"rm\", \"--force", verifier)
+
+    def test_authority_tmpfs_uses_the_image_numeric_identity(self) -> None:
+        resolve_identity = getattr(runtime_verifier, "_image_uid_gid", None)
+        self.assertIsNotNone(resolve_identity)
+        if resolve_identity is None:
+            return
+
+        with patch(
+            "scripts.verify_container_runtime._run",
+            return_value=subprocess.CompletedProcess([], 0, "101\n102\n", ""),
+        ) as run:
+            uid, gid = resolve_identity("loopos-authority:test")
+
+        self.assertEqual((uid, gid), (101, 102))
+        run.assert_called_once_with([
+            "docker",
+            "run",
+            "--rm",
+            "--entrypoint",
+            "sh",
+            "loopos-authority:test",
+            "-c",
+            "id -u; id -g",
+        ])
+
+        verifier = (REPO_ROOT / "scripts" / "verify_container_runtime.py").read_text(encoding="utf-8")
+        self.assertIn("uid={authority_uid},gid={authority_gid},mode=0700", verifier)
 
     def test_missing_docker_emits_a_fail_closed_report(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

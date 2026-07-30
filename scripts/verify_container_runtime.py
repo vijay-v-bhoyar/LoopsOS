@@ -80,6 +80,26 @@ def _runtime_uid(container: str) -> int:
         raise RuntimeEvidenceError(f"{container} returned an invalid runtime UID.") from error
 
 
+def _image_uid_gid(image: str) -> tuple[int, int]:
+    result = _run([
+        "docker",
+        "run",
+        "--rm",
+        "--entrypoint",
+        "sh",
+        image,
+        "-c",
+        "id -u; id -g",
+    ])
+    try:
+        uid, gid = (int(value) for value in result.stdout.splitlines())
+    except (TypeError, ValueError) as error:
+        raise RuntimeEvidenceError(f"{image} returned an invalid runtime UID/GID.") from error
+    if uid <= 0 or gid <= 0:
+        raise RuntimeEvidenceError(f"{image} must declare a non-root runtime UID/GID.")
+    return uid, gid
+
+
 def _mapped_port(container: str) -> int:
     result = _run(["docker", "port", container, "8080/tcp"])
     endpoint = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
@@ -127,6 +147,7 @@ def verify_runtime(ui_image: str, authority_image: str, oci_manifest: Path, outp
     }
     try:
         release_digests = _release_config_digests(oci_manifest)
+        authority_uid, authority_gid = _image_uid_gid(authority_image)
         _run(["docker", "network", "create", "--internal", network])
         _run([
             "docker", "run", "--detach",
@@ -135,7 +156,8 @@ def verify_runtime(ui_image: str, authority_image: str, oci_manifest: Path, outp
             "--network-alias", "authority",
             "--read-only",
             "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
-            "--tmpfs", "/data:rw,noexec,nosuid,size=64m",
+            "--tmpfs",
+            f"/data:rw,noexec,nosuid,size=64m,uid={authority_uid},gid={authority_gid},mode=0700",
             "--security-opt", "no-new-privileges:true",
             "--cap-drop", "ALL",
             "--env", "LOOPOS_ALLOW_DEV_AUTH=true",

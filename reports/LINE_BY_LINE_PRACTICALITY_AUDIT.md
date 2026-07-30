@@ -2,8 +2,8 @@
 
 ## Summary
 
-- Files scanned: 263
-- Lines scanned: 228570
+- Files scanned: 267
+- Lines scanned: 229536
 - Blockers: 0
 - Action-required findings: 1577
 - Warnings: 715
