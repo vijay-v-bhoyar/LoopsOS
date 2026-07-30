@@ -1,0 +1,139 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import tarfile
+import tempfile
+import unittest
+from pathlib import Path
+
+from scripts.verify_oci_attestations import EvidenceError, verify_oci_archive
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+class SupplyChainEvidenceTests(unittest.TestCase):
+    def _archive(self, root: Path, *, include_sbom: bool = True) -> Path:
+        layout = root / "layout"
+        blobs = layout / "blobs" / "sha256"
+        blobs.mkdir(parents=True)
+
+        def blob(value: dict[str, object]) -> str:
+            content = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            digest = hashlib.sha256(content).hexdigest()
+            (blobs / digest).write_bytes(content)
+            return f"sha256:{digest}"
+
+        config_digest = blob({"architecture": "amd64", "os": "linux"})
+        image_digest = blob({
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "digest": config_digest,
+                "size": 1,
+            },
+            "layers": [],
+        })
+        statements = [
+            {
+                "_type": "https://in-toto.io/Statement/v0.1",
+                "predicateType": "https://slsa.dev/provenance/v1",
+                "subject": [{"name": "pkg:docker/loopos", "digest": {"sha256": image_digest.split(":", 1)[1]}}],
+                "predicate": {"buildDefinition": {}, "runDetails": {}},
+            }
+        ]
+        if include_sbom:
+            statements.append({
+                "_type": "https://in-toto.io/Statement/v0.1",
+                "predicateType": "https://spdx.dev/Document",
+                "subject": [{"name": "pkg:docker/loopos", "digest": {"sha256": image_digest.split(":", 1)[1]}}],
+                "predicate": {"spdxVersion": "SPDX-2.3", "packages": []},
+            })
+        layers = []
+        for statement in statements:
+            statement_digest = blob(statement)
+            layers.append({
+                "mediaType": "application/vnd.in-toto+json",
+                "digest": statement_digest,
+                "size": 1,
+            })
+        attestation_config = blob({"architecture": "unknown", "os": "unknown"})
+        attestation_digest = blob({
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "config": {
+                "mediaType": "application/vnd.oci.image.config.v1+json",
+                "digest": attestation_config,
+                "size": 1,
+            },
+            "layers": layers,
+        })
+        index = {
+            "schemaVersion": 2,
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "manifests": [
+                {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": image_digest,
+                    "size": 1,
+                    "platform": {"architecture": "amd64", "os": "linux"},
+                },
+                {
+                    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                    "digest": attestation_digest,
+                    "size": 1,
+                    "platform": {"architecture": "unknown", "os": "unknown"},
+                    "annotations": {
+                        "vnd.docker.reference.digest": image_digest,
+                        "vnd.docker.reference.type": "attestation-manifest",
+                    },
+                },
+            ],
+        }
+        (layout / "index.json").write_text(json.dumps(index), encoding="utf-8")
+        (layout / "oci-layout").write_text('{"imageLayoutVersion":"1.0.0"}', encoding="utf-8")
+        archive = root / "loopos.oci.tar"
+        with tarfile.open(archive, "w") as output:
+            for path in layout.rglob("*"):
+                if path.is_file():
+                    output.add(path, arcname=path.relative_to(layout))
+        return archive
+
+    def test_verifies_embedded_sbom_and_provenance_attestations(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            archive = self._archive(Path(temporary_directory))
+            report = verify_oci_archive(archive)
+
+        self.assertTrue(report["verified"])
+        self.assertTrue(report["image_digest"].startswith("sha256:"))
+        self.assertEqual(report["sbom_predicate"], "https://spdx.dev/Document")
+        self.assertEqual(report["provenance_predicate"], "https://slsa.dev/provenance/v1")
+        self.assertEqual(len(report["archive_sha256"]), 64)
+
+    def test_rejects_an_oci_archive_without_an_sbom(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            archive = self._archive(Path(temporary_directory), include_sbom=False)
+
+            with self.assertRaisesRegex(EvidenceError, "SBOM"):
+                verify_oci_archive(archive)
+
+    def test_ci_builds_and_retains_attested_oci_archives(self) -> None:
+        workflow = (REPO_ROOT / ".github" / "workflows" / "loopos-ui.yml").read_text(encoding="utf-8")
+
+        self.assertIn("docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd", workflow)
+        self.assertGreaterEqual(workflow.count("--provenance=mode=max"), 2)
+        self.assertGreaterEqual(workflow.count("--sbom=true"), 2)
+        self.assertIn("type=oci,dest=.release-evidence/loopos-ui.oci.tar", workflow)
+        self.assertIn("type=oci,dest=.release-evidence/loopos-authority.oci.tar", workflow)
+        self.assertIn("scripts/verify_oci_attestations.py", workflow)
+        self.assertEqual(workflow.count("anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2"), 2)
+        self.assertEqual(workflow.count("severity-cutoff: high"), 2)
+        self.assertIn(".release-evidence/loopos-ui.vulnerabilities.json", workflow)
+        self.assertIn(".release-evidence/loopos-authority.vulnerabilities.json", workflow)
+        self.assertIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflow)
+
+
+if __name__ == "__main__":
+    unittest.main()

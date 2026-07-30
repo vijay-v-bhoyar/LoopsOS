@@ -53,7 +53,53 @@ jobs:
       - name: Dependency audit
         working-directory: ui
         run: npm audit --audit-level=high
-      - name: Build hardened image
-        run: docker build -f ui/Dockerfile -t loopos-ui:ci .
-      - name: Build authority image
-        run: docker build -f authority/Dockerfile -t loopos-authority:ci .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      - name: Build attested UI OCI image
+        run: |
+          mkdir -p .release-evidence
+          docker buildx build \
+            --file ui/Dockerfile \
+            --tag loopos-ui:${{ github.sha }} \
+            --provenance=mode=max \
+            --sbom=true \
+            --output type=oci,dest=.release-evidence/loopos-ui.oci.tar \
+            .
+      - name: Build attested authority OCI image
+        run: |
+          docker buildx build \
+            --file authority/Dockerfile \
+            --tag loopos-authority:${{ github.sha }} \
+            --provenance=mode=max \
+            --sbom=true \
+            --output type=oci,dest=.release-evidence/loopos-authority.oci.tar \
+            .
+      - name: Verify OCI release evidence
+        run: |
+          python scripts/verify_oci_attestations.py \
+            .release-evidence/loopos-ui.oci.tar \
+            .release-evidence/loopos-authority.oci.tar \
+            --output .release-evidence/manifest.json
+      - name: Scan UI image vulnerabilities
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          image: oci-archive:.release-evidence/loopos-ui.oci.tar
+          fail-build: true
+          severity-cutoff: high
+          output-format: json
+          output-file: .release-evidence/loopos-ui.vulnerabilities.json
+      - name: Scan authority image vulnerabilities
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          image: oci-archive:.release-evidence/loopos-authority.oci.tar
+          fail-build: true
+          severity-cutoff: high
+          output-format: json
+          output-file: .release-evidence/loopos-authority.vulnerabilities.json
+      - name: Retain OCI release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: loopos-release-evidence-${{ github.sha }}
+          path: .release-evidence
+          if-no-files-found: error
+          retention-days: 30
