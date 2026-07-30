@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlparse
 
 
 def _boolean(name: str, default: bool = False) -> bool:
@@ -12,6 +13,34 @@ def _boolean(name: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+def _positive_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive number.") from error
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive number.")
+    return value
+
+
+def _validate_audit_anchor(url: str | None, secret: str | None) -> tuple[str | None, str | None]:
+    if bool(url) != bool(secret):
+        raise ValueError("LOOPOS_AUDIT_ANCHOR_URL and LOOPOS_AUDIT_ANCHOR_HMAC_SECRET must be configured together.")
+    if not url or not secret:
+        return None, None
+    parsed = urlparse(url)
+    localhost = parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+    if parsed.scheme != "https" and not (parsed.scheme == "http" and localhost):
+        raise ValueError("LOOPOS_AUDIT_ANCHOR_URL must use HTTPS outside local development.")
+    if not parsed.hostname:
+        raise ValueError("LOOPOS_AUDIT_ANCHOR_URL must be an absolute HTTP(S) URL.")
+    if len(secret.encode("utf-8")) < 32:
+        raise ValueError("LOOPOS_AUDIT_ANCHOR_HMAC_SECRET must contain at least 32 bytes.")
+    return url, secret
 
 
 @dataclass(frozen=True)
@@ -38,6 +67,9 @@ class Settings:
     oidc_tenant_claim: str = "tenant_id"
     oidc_role_claim: str = "groups"
     oidc_role_mapping: dict[str, Literal["Executive", "Approver", "Operator", "Auditor"]] | None = None
+    audit_anchor_url: str | None = None
+    audit_anchor_hmac_secret: str | None = None
+    audit_anchor_poll_seconds: float = 5.0
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -57,6 +89,10 @@ class Settings:
         oidc_values = (oidc_issuer, oidc_audience, oidc_jwks_url)
         if any(oidc_values) and (not all(oidc_values) or not oidc_role_mapping):
             raise ValueError("OIDC configuration requires issuer, audience, JWKS URL, and at least one role mapping.")
+        audit_anchor_url, audit_anchor_hmac_secret = _validate_audit_anchor(
+            os.getenv("LOOPOS_AUDIT_ANCHOR_URL"),
+            os.getenv("LOOPOS_AUDIT_ANCHOR_HMAC_SECRET"),
+        )
         return cls(
             repo_root=repo_root,
             database_path=database_path,
@@ -74,6 +110,9 @@ class Settings:
             oidc_tenant_claim=os.getenv("LOOPOS_OIDC_TENANT_CLAIM", "tenant_id"),
             oidc_role_claim=os.getenv("LOOPOS_OIDC_ROLE_CLAIM", "groups"),
             oidc_role_mapping=oidc_role_mapping,
+            audit_anchor_url=audit_anchor_url,
+            audit_anchor_hmac_secret=audit_anchor_hmac_secret,
+            audit_anchor_poll_seconds=_positive_float("LOOPOS_AUDIT_ANCHOR_POLL_SECONDS", 5.0),
         )
 
 

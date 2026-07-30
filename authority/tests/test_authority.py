@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from loopos_authority.api import create_app
+from loopos_authority.audit_anchor import AuditAnchorDispatcher
 from loopos_authority.config import Settings
 from loopos_authority.corpus import Corpus
 from loopos_authority.engine import ExecutionEngine
@@ -165,6 +166,28 @@ def connector_event_request(system: str = "github", external_id: str = "pr-123",
         observed_at=observed_at,
         payload={"status": "green", "source": system, "external_id": external_id},
     )
+
+
+def workspace_document(workspace_id: str = "workspace-authoritative", name: str = "Authoritative workspace") -> dict:
+    return {
+        "workspace_id": workspace_id,
+        "name": name,
+        "created_at": "2026-07-30T12:00:00+00:00",
+        "updated_at": "2026-07-30T12:00:00+00:00",
+        "owner_user_id": "operator",
+        "use_case": {
+            "title": "Claims governance",
+            "description": "Govern a real claims workflow.",
+        },
+        "selected_loop_ids": [],
+        "action_plan_markdown": "",
+        "owner_evidence_edits": [],
+        "approvals": [],
+        "execution_records": [],
+        "initiatives": [],
+        "question_suggestions": [],
+        "input_sources": [],
+    }
 
 
 def release_request(source_event_ids: list[str] | None = None) -> CreateReleaseInitiativeRequest:
@@ -472,6 +495,66 @@ class StoreAndEngineTests(AuthorityHarness):
         with self.assertRaises(sqlite3.IntegrityError):
             self.store.connection.execute("DELETE FROM audit_events WHERE run_id = ?", (run.run_id,))
 
+    def test_audit_events_atomically_enqueue_external_anchor_envelopes(self) -> None:
+        run = self.store.create_run(self.operator, request(), "create-anchor-outbox")
+
+        events = self.store.events_after(self.operator.tenant_id, run.run_id)
+        pending = self.store.pending_audit_anchors(limit=100)
+
+        self.assertEqual(len(pending), len(events))
+        self.assertEqual(
+            {record["envelope"]["event_id"] for record in pending},
+            {event["event_id"] for event in events},
+        )
+        self.assertTrue(all(record["envelope"]["event_hash"] for record in pending))
+        self.assertTrue(all(record["attempts"] == 0 for record in pending))
+
+    def test_audit_anchor_dispatcher_signs_exact_bytes_and_tracks_delivery(self) -> None:
+        self.store.create_run(self.operator, request(), "create-anchor-delivery")
+        secret = "audit-anchor-secret-that-is-at-least-thirty-two-bytes"
+        requests: list[httpx.Request] = []
+
+        def handler(request_value: httpx.Request) -> httpx.Response:
+            requests.append(request_value)
+            expected = hmac.new(secret.encode("utf-8"), request_value.content, hashlib.sha256).hexdigest()
+            self.assertEqual(request_value.headers["x-loopos-signature-256"], f"sha256={expected}")
+            self.assertEqual(request_value.headers["x-loopos-event-id"], json.loads(request_value.content)["event_id"])
+            return httpx.Response(202)
+
+        dispatcher = AuditAnchorDispatcher(
+            self.store,
+            "https://audit.example.com/loopos/events",
+            secret,
+            transport=httpx.MockTransport(handler),
+        )
+        try:
+            delivered = asyncio.run(dispatcher.drain(limit=100))
+        finally:
+            asyncio.run(dispatcher.close())
+
+        self.assertEqual(delivered, len(requests))
+        self.assertGreater(delivered, 0)
+        self.assertEqual(self.store.audit_anchor_backlog(), 0)
+
+    def test_audit_anchor_dispatcher_retains_failures_for_retry(self) -> None:
+        self.store.create_run(self.operator, request(), "create-anchor-retry")
+        dispatcher = AuditAnchorDispatcher(
+            self.store,
+            "https://audit.example.com/loopos/events",
+            "audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+            transport=httpx.MockTransport(lambda _request: httpx.Response(503, json={"detail": "unavailable"})),
+        )
+        try:
+            delivered = asyncio.run(dispatcher.drain(limit=100))
+        finally:
+            asyncio.run(dispatcher.close())
+
+        self.assertEqual(delivered, 0)
+        pending = self.store.pending_audit_anchors(limit=100, include_deferred=True)
+        self.assertGreater(len(pending), 0)
+        self.assertTrue(all(record["attempts"] == 1 for record in pending))
+        self.assertTrue(all("503" in record["last_error"] for record in pending))
+
     def test_http_tool_retries_retryable_failures_with_one_idempotency_key(self) -> None:
         calls = []
 
@@ -659,15 +742,43 @@ class StorageBackendTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "LOOPOS_POSTGRES_DSN"):
             create_authority_store(settings, corpus)
 
+    def test_audit_anchor_configuration_requires_a_secure_complete_binding(self) -> None:
+        with patch.dict("os.environ", {"LOOPOS_AUDIT_ANCHOR_URL": "https://audit.example.com/events"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "LOOPOS_AUDIT_ANCHOR"):
+                Settings.from_env()
+
+        with patch.dict(
+            "os.environ",
+            {
+                "LOOPOS_AUDIT_ANCHOR_URL": "http://audit.example.com/events",
+                "LOOPOS_AUDIT_ANCHOR_HMAC_SECRET": "audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "HTTPS"):
+                Settings.from_env()
+
+        with patch.dict(
+            "os.environ",
+            {
+                "LOOPOS_AUDIT_ANCHOR_URL": "https://audit.example.com/events",
+                "LOOPOS_AUDIT_ANCHOR_HMAC_SECRET": "audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+            },
+            clear=True,
+        ):
+            settings = Settings.from_env()
+
+        self.assertEqual(settings.audit_anchor_url, "https://audit.example.com/events")
+
     def test_supabase_migration_preserves_authority_tables_and_audit_controls(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")
 
-        for table in ["runs", "approvals", "evidence", "tool_invocations", "probe_results", "action_artifacts", "release_initiatives", "connector_events", "audit_events"]:
+        for table in ["runs", "approvals", "evidence", "tool_invocations", "probe_results", "action_artifacts", "workspaces", "release_initiatives", "connector_events", "audit_events", "audit_anchor_outbox"]:
             self.assertIn(f"create table if not exists {table}", migration)
             self.assertIn(f"alter table {table} enable row level security", migration)
         self.assertIn("audit_events_no_update", migration)
         self.assertIn("audit_events_no_delete", migration)
-        self.assertIn("revoke all on runs, approvals, evidence, tool_invocations, probe_results, action_artifacts, release_initiatives, connector_events, audit_events from anon, authenticated", migration)
+        self.assertIn("revoke all on runs, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated", migration)
 
     def test_postgres_migration_runner_preserves_dollar_quoted_functions(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")
@@ -736,6 +847,131 @@ class ApiTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.client_context.__exit__(None, None, None)
         self.tempdir.cleanup()
+
+    def test_workspace_api_is_tenant_scoped_and_uses_optimistic_concurrency(self) -> None:
+        created = self.client.put(
+            "/v1/workspaces/workspace-authoritative",
+            headers={**self.headers, "if-none-match": "*"},
+            json={"document": workspace_document()},
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        self.assertEqual(created.headers["etag"], '"1"')
+        self.assertEqual(created.json()["revision"], 1)
+
+        listed = self.client.get("/v1/workspaces", headers=self.headers)
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertEqual([item["workspace_id"] for item in listed.json()], ["workspace-authoritative"])
+
+        updated = self.client.put(
+            "/v1/workspaces/workspace-authoritative",
+            headers={**self.headers, "if-match": '"1"'},
+            json={"document": workspace_document(name="Authoritative workspace v2")},
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.headers["etag"], '"2"')
+        self.assertEqual(updated.json()["document"]["name"], "Authoritative workspace v2")
+
+        stale = self.client.put(
+            "/v1/workspaces/workspace-authoritative",
+            headers={**self.headers, "if-match": '"1"'},
+            json={"document": workspace_document(name="Stale overwrite")},
+        )
+        self.assertEqual(stale.status_code, 409)
+
+        other_session = self.client.post(
+            "/v1/dev/sessions",
+            json={"tenant_id": "tenant-other", "user_id": "operator", "name": "Other Operator", "role": "Operator"},
+        ).json()
+        other_headers = {"authorization": f"Bearer {other_session['access_token']}"}
+        self.assertEqual(self.client.get("/v1/workspaces", headers=other_headers).json(), [])
+        self.assertEqual(
+            self.client.get("/v1/workspaces/workspace-authoritative", headers=other_headers).status_code,
+            404,
+        )
+
+    def test_workspace_api_rejects_mismatched_ids_and_auditor_writes(self) -> None:
+        mismatch = self.client.put(
+            "/v1/workspaces/workspace-authoritative",
+            headers={**self.headers, "if-none-match": "*"},
+            json={"document": workspace_document(workspace_id="workspace-other")},
+        )
+        self.assertEqual(mismatch.status_code, 400)
+
+        auditor = self.client.post(
+            "/v1/dev/sessions",
+            json={"tenant_id": "tenant-api", "user_id": "auditor", "name": "Auditor", "role": "Auditor"},
+        ).json()
+        denied = self.client.put(
+            "/v1/workspaces/workspace-authoritative",
+            headers={"authorization": f"Bearer {auditor['access_token']}", "if-none-match": "*"},
+            json={"document": workspace_document()},
+        )
+        self.assertEqual(denied.status_code, 403)
+
+    def test_workspace_delete_requires_current_revision_and_preserves_audit_proof(self) -> None:
+        executive = self.client.post(
+            "/v1/dev/sessions",
+            json={"tenant_id": "tenant-api", "user_id": "executive", "name": "Executive", "role": "Executive"},
+        ).json()
+        executive_headers = {"authorization": f"Bearer {executive['access_token']}"}
+        created = self.client.put(
+            "/v1/workspaces/workspace-authoritative",
+            headers={**executive_headers, "if-none-match": "*"},
+            json={"document": workspace_document()},
+        )
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(
+            self.client.delete(
+                "/v1/workspaces/workspace-authoritative",
+                headers={**executive_headers, "if-match": '"0"'},
+            ).status_code,
+            409,
+        )
+        deleted = self.client.delete(
+            "/v1/workspaces/workspace-authoritative",
+            headers={**executive_headers, "if-match": '"1"'},
+        )
+        self.assertEqual(deleted.status_code, 204, deleted.text)
+        self.assertEqual(
+            self.client.get("/v1/workspaces/workspace-authoritative", headers=executive_headers).status_code,
+            404,
+        )
+        audit = self.client.get("/v1/audit/verify", headers=executive_headers)
+        self.assertEqual(audit.status_code, 200, audit.text)
+        self.assertTrue(audit.json()["valid"])
+        events = self.client.get("/v1/events", headers=executive_headers).json()
+        self.assertIn("WORKSPACE_CREATED", [event["event_type"] for event in events])
+        self.assertIn("WORKSPACE_DELETED", [event["event_type"] for event in events])
+
+    def test_workspace_write_preflight_allows_revision_headers(self) -> None:
+        preflight = self.client.options(
+            "/v1/workspaces/workspace-authoritative",
+            headers={
+                "origin": "http://127.0.0.1:5173",
+                "access-control-request-method": "PUT",
+                "access-control-request-headers": "authorization,content-type,if-match,if-none-match",
+            },
+        )
+
+        self.assertEqual(preflight.status_code, 200, preflight.text)
+        self.assertIn("PUT", preflight.headers["access-control-allow-methods"])
+        allowed_headers = preflight.headers["access-control-allow-headers"].lower()
+        self.assertIn("if-match", allowed_headers)
+        self.assertIn("if-none-match", allowed_headers)
+
+    def test_audit_anchor_operations_are_role_restricted_and_fail_when_unconfigured(self) -> None:
+        operator_status = self.client.get("/v1/audit/anchors/status", headers=self.headers)
+        self.assertEqual(operator_status.status_code, 403)
+
+        executive = self.client.post(
+            "/v1/dev/sessions",
+            json={"tenant_id": "tenant-api", "user_id": "executive", "name": "Executive", "role": "Executive"},
+        ).json()
+        executive_headers = {"authorization": f"Bearer {executive['access_token']}"}
+        status_response = self.client.get("/v1/audit/anchors/status", headers=executive_headers)
+        self.assertEqual(status_response.status_code, 200, status_response.text)
+        self.assertFalse(status_response.json()["configured"])
+        self.assertEqual(self.client.post("/v1/audit/anchors/drain", headers=executive_headers).status_code, 503)
 
     def test_api_runs_execution_streams_events_and_isolates_tenants(self) -> None:
         created = self.client.post(

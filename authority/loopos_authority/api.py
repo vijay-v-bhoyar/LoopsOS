@@ -9,17 +9,18 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request, status
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .auth import IdentityVerifier, InvalidSession, SessionSigner
+from .audit_anchor import AuditAnchorDispatcher
 from .config import Settings
 from .corpus import Corpus
 from .engine import ExecutionEngine
 from .identity import OIDCIdentityVerifier
-from .models import Actor, ApprovalRequest, AuditVerification, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, DevSessionRequest, ReleaseInitiativeRecord, ReleaseProofPack, RunCommandResponse, RunRecord, SessionResponse
+from .models import Actor, ApprovalRequest, AuditVerification, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, DevSessionRequest, ReleaseInitiativeRecord, ReleaseProofPack, RunCommandResponse, RunRecord, SessionResponse, WorkspaceDocumentRequest, WorkspaceRecord
 from .persistence import create_authority_store
 from .store import Conflict, Forbidden, NotFound
 from .tools import ToolRegistry
@@ -44,6 +45,13 @@ def create_app(
     store = create_authority_store(settings, corpus)
     tools = ToolRegistry(settings, store, transport=transport)
     engine = ExecutionEngine(corpus, store, tools)
+    audit_anchor = AuditAnchorDispatcher(
+        store,
+        settings.audit_anchor_url,
+        settings.audit_anchor_hmac_secret,
+        transport=transport,
+        timeout_seconds=settings.http_timeout_seconds,
+    ) if settings.audit_anchor_url and settings.audit_anchor_hmac_secret else None
     signer = SessionSigner(settings.session_secret)
     bearer = HTTPBearer(auto_error=False)
 
@@ -57,14 +65,27 @@ def create_app(
                     await asyncio.gather(*due_tasks, return_exceptions=True)
                 await asyncio.sleep(settings.scheduler_poll_seconds)
         scheduler_task = asyncio.create_task(schedule_effectiveness())
+        async def schedule_audit_anchors() -> None:
+            if audit_anchor is None:
+                return
+            while True:
+                await audit_anchor.drain()
+                await asyncio.sleep(settings.audit_anchor_poll_seconds)
+        audit_anchor_task = asyncio.create_task(schedule_audit_anchors()) if audit_anchor else None
         yield
         scheduler_task.cancel()
+        if audit_anchor_task:
+            audit_anchor_task.cancel()
         for task in recovery_tasks:
             if not task.done():
                 task.cancel()
         if recovery_tasks:
             await asyncio.gather(*recovery_tasks, return_exceptions=True)
         await asyncio.gather(scheduler_task, return_exceptions=True)
+        if audit_anchor_task:
+            await asyncio.gather(audit_anchor_task, return_exceptions=True)
+        if audit_anchor:
+            await audit_anchor.close()
         await tools.close()
         store.close()
 
@@ -83,8 +104,9 @@ def create_app(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
-        allow_headers=["authorization", "content-type", "idempotency-key", "last-event-id"],
+        allow_methods=["DELETE", "GET", "POST", "PUT"],
+        allow_headers=["authorization", "content-type", "idempotency-key", "if-match", "if-none-match", "last-event-id"],
+        expose_headers=["etag"],
     )
 
     @app.middleware("http")
@@ -116,6 +138,20 @@ def create_app(
         if isinstance(error, Conflict):
             return HTTPException(status_code=409, detail=str(error))
         return HTTPException(status_code=500, detail="The authority service could not persist the operation.")
+
+    def parse_revision(value: str | None) -> int:
+        if value is None:
+            raise HTTPException(status_code=428, detail="A current If-Match revision is required.")
+        normalized = value.strip()
+        if len(normalized) >= 2 and normalized[0] == normalized[-1] == '"':
+            normalized = normalized[1:-1]
+        try:
+            revision = int(normalized)
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail="If-Match must contain a quoted non-negative revision.") from error
+        if revision < 0:
+            raise HTTPException(status_code=400, detail="If-Match must contain a quoted non-negative revision.")
+        return revision
 
     def webhook_secret(tenant_id: str, system: str) -> str:
         secrets = settings.webhook_secrets or {}
@@ -188,8 +224,13 @@ def create_app(
             raise HTTPException(status_code=503, detail="Production identity is not configured.")
         if not settings.allow_dev_auth and settings.storage_backend != "postgres":
             raise HTTPException(status_code=503, detail="Production persistence must use Postgres.")
+        if not settings.allow_dev_auth and audit_anchor is None:
+            raise HTTPException(status_code=503, detail="Production audit anchoring is not configured.")
         try:
             store.connection.execute("SELECT 1").fetchone()
+            anchor_backlog = store.audit_anchor_backlog()
+            if not settings.allow_dev_auth and anchor_backlog:
+                raise HTTPException(status_code=503, detail=f"Production audit anchor backlog contains {anchor_backlog} event(s).")
             return {
                 "status": "ready",
                 "loops": len(corpus.loop_descriptors),
@@ -198,7 +239,11 @@ def create_app(
                 "development_auth": settings.allow_dev_auth,
                 "production_identity": identity_verifier is not None,
                 "storage_backend": settings.storage_backend,
+                "audit_anchor_configured": audit_anchor is not None,
+                "audit_anchor_backlog": anchor_backlog,
             }
+        except HTTPException:
+            raise
         except Exception as error:
             raise HTTPException(status_code=503, detail="Authority persistence is unavailable.") from error
 
@@ -229,6 +274,67 @@ def create_app(
     @app.get("/v1/session", response_model=Actor)
     async def session(actor: Actor = Depends(current_actor)) -> Actor:
         return actor
+
+    @app.get("/v1/workspaces", response_model=list[WorkspaceRecord])
+    async def list_workspaces(
+        limit: int = Query(default=100, ge=1, le=200),
+        actor: Actor = Depends(current_actor),
+    ) -> list[WorkspaceRecord]:
+        return store.list_workspaces(actor.tenant_id, limit)
+
+    @app.get("/v1/workspaces/{workspace_id}", response_model=WorkspaceRecord)
+    async def get_workspace(workspace_id: str, actor: Actor = Depends(current_actor)) -> WorkspaceRecord:
+        try:
+            return store.get_workspace(actor.tenant_id, workspace_id)
+        except Exception as error:
+            raise map_store_error(error) from error
+
+    @app.put("/v1/workspaces/{workspace_id}", response_model=WorkspaceRecord)
+    async def put_workspace(
+        workspace_id: str,
+        request: WorkspaceDocumentRequest,
+        response: Response,
+        actor: Actor = Depends(current_actor),
+        if_match: str | None = Header(default=None, alias="If-Match"),
+        if_none_match: str | None = Header(default=None, alias="If-None-Match"),
+    ) -> WorkspaceRecord:
+        if actor.role == "Auditor":
+            raise HTTPException(status_code=403, detail="Auditors cannot modify workspaces.")
+        if request.document.get("workspace_id") != workspace_id:
+            raise HTTPException(status_code=400, detail="Workspace document ID must match the request path.")
+        create_only = if_none_match == "*"
+        if create_only == (if_match is not None):
+            raise HTTPException(status_code=428, detail="Use If-None-Match: * to create or If-Match with the current revision to update.")
+        expected_revision = None if create_only else parse_revision(if_match)
+        try:
+            record, created = store.put_workspace(
+                actor,
+                workspace_id,
+                request.document,
+                expected_revision=expected_revision,
+                create_only=create_only,
+            )
+        except Exception as error:
+            raise map_store_error(error) from error
+        response.status_code = 201 if created else 200
+        response.headers["etag"] = f'"{record.revision}"'
+        return record
+
+    @app.delete("/v1/workspaces/{workspace_id}", status_code=204)
+    async def delete_workspace(
+        workspace_id: str,
+        actor: Actor = Depends(current_actor),
+        if_match: str | None = Header(default=None, alias="If-Match"),
+    ) -> Response:
+        if actor.role == "Auditor":
+            raise HTTPException(status_code=403, detail="Auditors cannot delete workspaces.")
+        try:
+            store.delete_workspace(actor, workspace_id, parse_revision(if_match))
+        except HTTPException:
+            raise
+        except Exception as error:
+            raise map_store_error(error) from error
+        return Response(status_code=204)
 
     @app.post("/v1/runs", response_model=RunRecord, status_code=201)
     async def create_run(
@@ -463,6 +569,34 @@ def create_app(
             raise HTTPException(status_code=403, detail="Audit verification requires Auditor or Executive authority.")
         valid, count, invalid = store.verify_audit_chain(actor.tenant_id)
         return AuditVerification(tenant_id=actor.tenant_id, valid=valid, event_count=count, first_invalid_sequence=invalid)
+
+    @app.get("/v1/events")
+    async def tenant_events(
+        after: int = Query(default=0, ge=0),
+        limit: int = Query(default=200, ge=1, le=500),
+        actor: Actor = Depends(current_actor),
+    ) -> list[dict[str, object]]:
+        if actor.role not in {"Auditor", "Executive"}:
+            raise HTTPException(status_code=403, detail="Audit event access requires Auditor or Executive authority.")
+        return store.events_after(actor.tenant_id, None, after, limit)
+
+    @app.get("/v1/audit/anchors/status")
+    async def audit_anchor_status(actor: Actor = Depends(current_actor)) -> dict[str, object]:
+        if actor.role not in {"Auditor", "Executive"}:
+            raise HTTPException(status_code=403, detail="Audit anchor status requires Auditor or Executive role.")
+        return {
+            "configured": audit_anchor is not None,
+            "backlog": store.audit_anchor_backlog(),
+        }
+
+    @app.post("/v1/audit/anchors/drain")
+    async def drain_audit_anchors(actor: Actor = Depends(current_actor)) -> dict[str, int]:
+        if actor.role != "Executive":
+            raise HTTPException(status_code=403, detail="Audit anchor delivery requires Executive role.")
+        if audit_anchor is None:
+            raise HTTPException(status_code=503, detail="External audit anchoring is not configured.")
+        delivered = await audit_anchor.drain()
+        return {"delivered": delivered, "backlog": store.audit_anchor_backlog()}
 
     return app
 

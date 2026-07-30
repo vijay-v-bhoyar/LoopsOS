@@ -97,6 +97,21 @@ create table if not exists action_artifacts (
   unique(tenant_id, idempotency_key)
 );
 
+create table if not exists workspaces (
+  tenant_id text not null,
+  workspace_id text not null,
+  revision integer not null,
+  document_json text not null,
+  document_hash text not null,
+  created_by text not null,
+  updated_by text not null,
+  created_at text not null,
+  updated_at text not null,
+  primary key(tenant_id, workspace_id)
+);
+
+create index if not exists idx_workspaces_tenant_updated on workspaces(tenant_id, updated_at desc);
+
 create table if not exists release_initiatives (
   initiative_id text primary key,
   tenant_id text not null,
@@ -162,6 +177,20 @@ create table if not exists audit_events (
 create index if not exists idx_audit_tenant_sequence on audit_events(tenant_id, sequence);
 create index if not exists idx_audit_run_sequence on audit_events(run_id, sequence);
 
+create table if not exists audit_anchor_outbox (
+  event_id text primary key references audit_events(event_id),
+  tenant_id text not null,
+  envelope_json text not null,
+  attempts integer not null default 0,
+  next_attempt_at text not null,
+  last_error text,
+  delivered_at text,
+  created_at text not null
+);
+
+create index if not exists idx_audit_anchor_pending
+  on audit_anchor_outbox(delivered_at, next_attempt_at, created_at);
+
 create or replace function deny_audit_event_mutation()
 returns trigger
 language plpgsql
@@ -187,8 +216,10 @@ alter table evidence enable row level security;
 alter table tool_invocations enable row level security;
 alter table probe_results enable row level security;
 alter table action_artifacts enable row level security;
+alter table workspaces enable row level security;
 alter table release_initiatives enable row level security;
 alter table connector_events enable row level security;
 alter table audit_events enable row level security;
+alter table audit_anchor_outbox enable row level security;
 
-revoke all on runs, approvals, evidence, tool_invocations, probe_results, action_artifacts, release_initiatives, connector_events, audit_events from anon, authenticated;
+revoke all on runs, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated;

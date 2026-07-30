@@ -275,7 +275,12 @@ export default function App() {
   const currentUser = workspace.state.current_user;
 
   return (
-    <AuthGate user={currentUser} onSignIn={workspace.signIn}>
+    <AuthGate
+      user={currentUser}
+      onSignIn={workspace.signIn}
+      enterpriseSession={workspace.enterpriseSession}
+      onEnterpriseSignIn={workspace.retryEnterpriseSignIn}
+    >
       {currentUser ? (
         <Shell
           activeView={activeView}

@@ -57,7 +57,7 @@ $env:PYTHONPATH="authority"
 python -m uvicorn loopos_authority.api:app --host 127.0.0.1 --port 8787
 ```
 
-The schema lives in `supabase/migrations/20260720010000_loopos_authority.sql`. It creates the authority tables, enables RLS, revokes `anon` and `authenticated` access to the exposed `public` tables, and adds triggers that reject audit-event updates and deletes.
+The schema lives in `supabase/migrations/20260720010000_loopos_authority.sql`. It creates the authority tables and audit-anchor outbox, enables RLS, revokes `anon` and `authenticated` access to the exposed `public` tables, and adds triggers that reject audit-event updates and deletes.
 
 Local Supabase requires Docker or a compatible container runtime and is for development or beta evaluation only. Do not expose the local Supabase stack to external traffic.
 
@@ -80,12 +80,17 @@ Local Supabase requires Docker or a compatible container runtime and is for deve
 | `LOOPOS_CONNECTOR_BEARER_TOKENS_JSON` | Server-only JSON map of host to bearer token; never expose through Vite variables |
 | `LOOPOS_WEBHOOK_SECRETS_JSON` | Server-only JSON map of `tenant:system` or `system` to HMAC secret for verified webhook evidence |
 | `LOOPOS_CORS_ORIGINS` | Exact allowed UI origins |
+| `LOOPOS_AUDIT_ANCHOR_URL` | HTTPS endpoint for the approved append-only WORM/SIEM sink |
+| `LOOPOS_AUDIT_ANCHOR_HMAC_SECRET` | Server-only HMAC secret, minimum 32 bytes, shared with the audit sink |
+| `LOOPOS_AUDIT_ANCHOR_POLL_SECONDS` | Retry worker polling interval; defaults to 5 seconds |
 
 ## Production Boundary
 
-Development sessions deliberately make local evaluation easy. Enterprise deployment must disable them and place an identity-aware gateway in front of the service. The gateway supplies a signed OIDC assertion through the same-origin session exchange; LoopOS verifies the fixed issuer, audience, RS256 signature, expiry, tenant claim, and explicit external-role mapping before issuing a 15-minute application session. Production readiness rejects missing identity configuration and SQLite persistence. Supabase/Postgres is the supported shared persistence path; horizontal scale still requires a shared work queue, backup/restore proof, and the same store invariants.
+Development sessions deliberately make local evaluation easy. Enterprise deployment must disable them and place an identity-aware gateway in front of the service. The gateway supplies a signed OIDC assertion through the same-origin session exchange; LoopOS verifies the fixed issuer, audience, RS256 signature, expiry, tenant claim, and explicit external-role mapping before issuing a 15-minute application session. Production readiness rejects missing identity configuration, SQLite persistence, missing audit-anchor configuration, and any undelivered anchor backlog. Supabase/Postgres is the supported shared persistence path; horizontal scale still requires a shared work queue, backup/restore proof, and the same store invariants.
 
-The hash chain detects ordinary event mutation but is not a substitute for an externally anchored WORM/SIEM audit sink against a privileged database administrator. Export or replicate event hashes to that enterprise sink before treating the service as a compliance authority.
+Every audit-event insert atomically creates an outbox envelope containing the chain hashes and canonical event fields. The worker signs the exact canonical request bytes with `x-loopos-signature-256`, supplies `x-loopos-event-id` for sink-side idempotency, marks only 2xx responses delivered, and retains bounded failure details with exponential retry timing. Auditors and executives can inspect `GET /v1/audit/anchors/status`; executives can request an immediate retry through `POST /v1/audit/anchors/drain`.
+
+The sink must verify the signature, deduplicate the event ID, and retain the envelope under the approved immutable retention policy. The database hash chain and outbox are not substitutes for that independently administered sink or for a tested backup/restore process.
 
 ## Tests
 

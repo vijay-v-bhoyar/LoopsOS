@@ -1,4 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  AuthorityError,
+  createAuthorityWorkspace,
+  createEnterpriseSession,
+  deleteAuthorityWorkspace,
+  listAuthorityWorkspaces,
+  updateAuthorityWorkspace,
+  type AuthorityWorkspaceRecord,
+} from "../features/governedExecution/authorityClient";
+import type { AuthoritySession } from "../features/governedExecution/types";
+import { deploymentPosture, type DeploymentMode } from "./deployment";
 import type {
   ApprovalRecord,
   EnterpriseActionPlan,
@@ -27,10 +38,38 @@ export const EMPTY_WORKSPACE_USE_CASE: UseCaseInput = {
 
 export interface WorkspacePersistenceResult {
   status: "saved" | "skipped" | "error";
-  code?: "size_limit" | "storage_unavailable";
+  code?: "size_limit" | "storage_unavailable" | "authority_conflict" | "authority_unauthorized" | "authority_unavailable";
   message?: string;
   bytes: number;
+  location?: "browser" | "authority";
 }
+
+export interface EnterpriseSessionState {
+  status: "idle" | "loading" | "ready" | "error";
+  error?: string;
+}
+
+export interface WorkspaceAuthorityAdapter {
+  createSession: () => Promise<AuthoritySession>;
+  listWorkspaces: (token: string) => Promise<AuthorityWorkspaceRecord[]>;
+  createWorkspace: (token: string, workspace: SavedWorkspace) => Promise<AuthorityWorkspaceRecord>;
+  updateWorkspace: (token: string, workspace: SavedWorkspace, revision: number) => Promise<AuthorityWorkspaceRecord>;
+  deleteWorkspace: (token: string, workspaceId: string, revision: number) => Promise<void>;
+}
+
+export interface WorkspaceStoreOptions {
+  mode?: DeploymentMode;
+  authority?: WorkspaceAuthorityAdapter;
+  saveDebounceMs?: number;
+}
+
+const DEFAULT_AUTHORITY_ADAPTER: WorkspaceAuthorityAdapter = {
+  createSession: createEnterpriseSession,
+  listWorkspaces: listAuthorityWorkspaces,
+  createWorkspace: createAuthorityWorkspace,
+  updateWorkspace: updateAuthorityWorkspace,
+  deleteWorkspace: deleteAuthorityWorkspace,
+};
 
 export const EMPTY_STATE: WorkspaceState = {
   current_user: null,
@@ -123,17 +162,17 @@ export function normalizeWorkspaceState(value: Record<string, unknown> | Partial
 }
 
 export function saveWorkspaceState(state: WorkspaceState): WorkspacePersistenceResult {
-  if (typeof window === "undefined") return { status: "skipped", bytes: 0 };
+  if (typeof window === "undefined") return { status: "skipped", bytes: 0, location: "browser" };
   const serialized = JSON.stringify(state);
   const bytes = new TextEncoder().encode(serialized).byteLength;
   if (bytes > MAX_WORKSPACE_STORAGE_BYTES) {
-    return { status: "error", code: "size_limit", message: "Workspace data exceeds the 4 MB browser-local storage limit.", bytes };
+    return { status: "error", code: "size_limit", message: "Workspace data exceeds the 4 MB browser-local storage limit.", bytes, location: "browser" };
   }
   try {
     window.localStorage.setItem(STORAGE_KEY, serialized);
-    return { status: "saved", bytes };
+    return { status: "saved", bytes, location: "browser" };
   } catch {
-    return { status: "error", code: "storage_unavailable", message: "Browser-local storage is unavailable or full. Export the workspace before leaving this page.", bytes };
+    return { status: "error", code: "storage_unavailable", message: "Browser-local storage is unavailable or full. Export the workspace before leaving this page.", bytes, location: "browser" };
   }
 }
 
@@ -198,13 +237,146 @@ export function canApprove(user: EnterpriseUser | null): boolean {
   return Boolean(user && (user.role === "Approver" || user.role === "Executive"));
 }
 
-export function useWorkspaceStore() {
-  const [state, setState] = useState<WorkspaceState>(() => loadWorkspaceState());
-  const [persistence, setPersistence] = useState<WorkspacePersistenceResult>({ status: "skipped", bytes: 0 });
+export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
+  const mode = options.mode ?? deploymentPosture.mode;
+  const authority = options.authority ?? DEFAULT_AUTHORITY_ADAPTER;
+  const saveDebounceMs = options.saveDebounceMs ?? 400;
+  const [state, setState] = useState<WorkspaceState>(() => mode === "enterprise" ? EMPTY_STATE : loadWorkspaceState());
+  const [persistence, setPersistence] = useState<WorkspacePersistenceResult>({
+    status: "skipped",
+    bytes: 0,
+    location: mode === "enterprise" ? "authority" : "browser",
+  });
+  const [enterpriseSession, setEnterpriseSession] = useState<EnterpriseSessionState>({
+    status: mode === "enterprise" ? "loading" : "idle",
+  });
+  const [sessionAttempt, setSessionAttempt] = useState(0);
+  const tokenRef = useRef<string | null>(null);
+  const revisionsRef = useRef(new Map<string, number>());
+  const synchronizedDocumentsRef = useRef(new Map<string, string>());
+  const authorityHydratedRef = useRef(false);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    setPersistence(saveWorkspaceState(state));
-  }, [state]);
+    if (mode !== "enterprise") {
+      setPersistence(saveWorkspaceState(state));
+      return;
+    }
+    if (!authorityHydratedRef.current || enterpriseSession.status !== "ready" || !tokenRef.current) return;
+
+    const snapshot = state.workspaces;
+    const timeout = window.setTimeout(() => {
+      saveQueueRef.current = saveQueueRef.current.then(async () => {
+        const token = tokenRef.current;
+        if (!token) return;
+        try {
+          const currentIds = new Set(snapshot.map((workspace) => workspace.workspace_id));
+          for (const [workspaceId, revision] of [...revisionsRef.current.entries()]) {
+            if (currentIds.has(workspaceId)) continue;
+            await authority.deleteWorkspace(token, workspaceId, revision);
+            revisionsRef.current.delete(workspaceId);
+            synchronizedDocumentsRef.current.delete(workspaceId);
+          }
+
+          for (const workspace of snapshot) {
+            const serialized = JSON.stringify(workspace);
+            if (synchronizedDocumentsRef.current.get(workspace.workspace_id) === serialized) continue;
+            const revision = revisionsRef.current.get(workspace.workspace_id);
+            const record = revision === undefined
+              ? await authority.createWorkspace(token, workspace)
+              : await authority.updateWorkspace(token, workspace, revision);
+            revisionsRef.current.set(workspace.workspace_id, record.revision);
+            synchronizedDocumentsRef.current.set(workspace.workspace_id, JSON.stringify(record.document));
+          }
+
+          const bytes = new TextEncoder().encode(JSON.stringify(snapshot)).byteLength;
+          setPersistence({
+            status: "saved",
+            bytes,
+            location: "authority",
+            message: "Saved to tenant-scoped authoritative storage.",
+          });
+        } catch (error) {
+          const conflict = error instanceof AuthorityError && error.status === 409;
+          const unauthorized = error instanceof AuthorityError && (error.status === 401 || error.status === 403);
+          setPersistence({
+            status: "error",
+            code: conflict ? "authority_conflict" : unauthorized ? "authority_unauthorized" : "authority_unavailable",
+            message: conflict
+              ? "This workspace changed elsewhere. Reload authoritative state before making another edit."
+              : unauthorized
+                ? "The verified enterprise identity is not authorized to persist this workspace."
+                : error instanceof Error ? error.message : "Authoritative workspace persistence failed.",
+            bytes: new TextEncoder().encode(JSON.stringify(snapshot)).byteLength,
+            location: "authority",
+          });
+        }
+      });
+    }, saveDebounceMs);
+    return () => window.clearTimeout(timeout);
+  }, [authority, enterpriseSession.status, mode, saveDebounceMs, state]);
+
+  useEffect(() => {
+    if (mode !== "enterprise") return;
+    let cancelled = false;
+    authorityHydratedRef.current = false;
+    tokenRef.current = null;
+    revisionsRef.current.clear();
+    synchronizedDocumentsRef.current.clear();
+    setEnterpriseSession({ status: "loading" });
+    setPersistence({ status: "skipped", bytes: 0, location: "authority", message: "Verifying enterprise identity and loading authoritative workspaces." });
+
+    void (async () => {
+      try {
+        const session = await authority.createSession();
+        const records = await authority.listWorkspaces(session.access_token);
+        const user: EnterpriseUser = {
+          user_id: session.actor.user_id,
+          name: session.actor.name,
+          email: session.actor.email ?? "",
+          role: session.actor.role,
+          signed_in_at: nowIso(),
+        };
+        const normalized = records
+          .map((record) => normalizeWorkspaceState({ workspaces: [record.document] }).workspaces[0] ?? null)
+          .filter((workspace): workspace is SavedWorkspace => workspace !== null);
+        if (normalized.length !== records.length) {
+          throw new AuthorityError("Authority returned a malformed workspace document.");
+        }
+        if (cancelled) return;
+        for (const record of records) {
+          revisionsRef.current.set(record.workspace_id, record.revision);
+          synchronizedDocumentsRef.current.set(record.workspace_id, JSON.stringify(record.document));
+        }
+        tokenRef.current = session.access_token;
+        authorityHydratedRef.current = true;
+        setState({
+          current_user: user,
+          active_workspace_id: normalized[0]?.workspace_id ?? null,
+          workspaces: normalized,
+        });
+        setEnterpriseSession({ status: "ready" });
+      } catch (error) {
+        if (cancelled) return;
+        setState(EMPTY_STATE);
+        setEnterpriseSession({
+          status: "error",
+          error: error instanceof Error ? error.message : "Enterprise identity verification failed.",
+        });
+        setPersistence({
+          status: "error",
+          code: error instanceof AuthorityError && (error.status === 401 || error.status === 403) ? "authority_unauthorized" : "authority_unavailable",
+          message: error instanceof Error ? error.message : "Enterprise identity verification failed.",
+          bytes: 0,
+          location: "authority",
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authority, mode, sessionAttempt]);
 
   const activeWorkspace = useMemo(
     () => state.workspaces.find((workspace) => workspace.workspace_id === state.active_workspace_id) ?? null,
@@ -224,6 +396,7 @@ export function useWorkspaceStore() {
   }, []);
 
   const signIn = useCallback((name: string, email: string, role: UserRole) => {
+    if (mode === "enterprise") return;
     setState((current) => {
       const user = createUser(name, email, role);
       const hasWorkspace = current.workspaces.length > 0;
@@ -235,11 +408,24 @@ export function useWorkspaceStore() {
         workspaces: hasWorkspace ? current.workspaces : [firstWorkspace],
       };
     });
-  }, []);
+  }, [mode]);
 
   const signOut = useCallback(() => {
+    if (mode === "enterprise") {
+      tokenRef.current = null;
+      authorityHydratedRef.current = false;
+      revisionsRef.current.clear();
+      synchronizedDocumentsRef.current.clear();
+      setEnterpriseSession({ status: "idle" });
+      setState(EMPTY_STATE);
+      return;
+    }
     setState((current) => ({ ...current, current_user: null }));
-  }, []);
+  }, [mode]);
+
+  const retryEnterpriseSignIn = useCallback(() => {
+    if (mode === "enterprise") setSessionAttempt((attempt) => attempt + 1);
+  }, [mode]);
 
   const addWorkspace = useCallback((name: string, useCase: UseCaseInput) => {
     setState((current) => {
@@ -289,6 +475,7 @@ export function useWorkspaceStore() {
   return {
     state,
     persistence,
+    enterpriseSession,
     activeWorkspace,
     signIn,
     signOut,
@@ -299,5 +486,6 @@ export function useWorkspaceStore() {
     savePlan,
     mutateActiveWorkspace,
     setState,
+    retryEnterpriseSignIn,
   };
 }

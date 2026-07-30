@@ -1,4 +1,6 @@
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AuthorityError } from "../features/governedExecution/authorityClient";
 import {
   canApprove,
   createApproval,
@@ -9,6 +11,7 @@ import {
   loadWorkspaceState,
   saveWorkspaceState,
   MAX_WORKSPACE_STORAGE_BYTES,
+  useWorkspaceStore,
 } from "./workspaceStore";
 
 describe("workspaceStore", () => {
@@ -116,5 +119,117 @@ describe("workspaceStore", () => {
     expect(approval.approval_id).toMatch(/^approval-/);
     expect(execution.execution_id).toMatch(/^execution-/);
     expect(execution.state).toBe("TRIGGERED");
+  });
+
+  it("hydrates enterprise identity and workspaces from authority without browser persistence", async () => {
+    const localUser = createUser("Local", "local@example.local", "Operator");
+    const authoritativeWorkspace = createWorkspace(localUser, "Authoritative claims", DEFAULT_WORKSPACE_USE_CASE);
+    const authority = {
+      createSession: vi.fn().mockResolvedValue({
+        access_token: "enterprise-token",
+        token_type: "bearer",
+        expires_in: 900,
+        actor: {
+          tenant_id: "tenant-enterprise",
+          user_id: "oidc-user-42",
+          name: "Enterprise Approver",
+          email: "approver@example.com",
+          role: "Approver",
+        },
+      }),
+      listWorkspaces: vi.fn().mockResolvedValue([{
+        workspace_id: authoritativeWorkspace.workspace_id,
+        tenant_id: "tenant-enterprise",
+        revision: 7,
+        document: authoritativeWorkspace,
+        document_hash: "a".repeat(64),
+        created_by: "oidc-user-42",
+        updated_by: "oidc-user-42",
+        created_at: authoritativeWorkspace.created_at,
+        updated_at: authoritativeWorkspace.updated_at,
+      }]),
+      createWorkspace: vi.fn(),
+      updateWorkspace: vi.fn().mockImplementation(async (_token, workspace, revision) => ({
+        workspace_id: workspace.workspace_id,
+        tenant_id: "tenant-enterprise",
+        revision: revision + 1,
+        document: workspace,
+        document_hash: "b".repeat(64),
+        created_by: "oidc-user-42",
+        updated_by: "oidc-user-42",
+        created_at: workspace.created_at,
+        updated_at: workspace.updated_at,
+      })),
+      deleteWorkspace: vi.fn(),
+    };
+    const localStorageWrite = vi.spyOn(window.localStorage, "setItem");
+
+    const { result } = renderHook(() => useWorkspaceStore({
+      mode: "enterprise",
+      authority,
+      saveDebounceMs: 0,
+    }));
+
+    await waitFor(() => expect(result.current.enterpriseSession.status).toBe("ready"));
+    expect(result.current.state.current_user).toMatchObject({
+      user_id: "oidc-user-42",
+      role: "Approver",
+      email: "approver@example.com",
+    });
+    expect(result.current.activeWorkspace?.workspace_id).toBe(authoritativeWorkspace.workspace_id);
+    expect(localStorageWrite).not.toHaveBeenCalled();
+
+    act(() => result.current.updateUseCase({ ...DEFAULT_WORKSPACE_USE_CASE, title: "Updated authoritative claim" }));
+
+    await waitFor(() => expect(authority.updateWorkspace).toHaveBeenCalledWith(
+      "enterprise-token",
+      expect.objectContaining({ use_case: expect.objectContaining({ title: "Updated authoritative claim" }) }),
+      7,
+    ));
+    await waitFor(() => expect(result.current.persistence).toMatchObject({ status: "saved", location: "authority" }));
+    expect(localStorageWrite).not.toHaveBeenCalled();
+  });
+
+  it("surfaces authoritative revision conflicts without retrying stale state", async () => {
+    const user = createUser("Operator", "operator@example.local", "Operator");
+    const authoritativeWorkspace = createWorkspace(user, "Claims", DEFAULT_WORKSPACE_USE_CASE);
+    const authority = {
+      createSession: vi.fn().mockResolvedValue({
+        access_token: "enterprise-token",
+        token_type: "bearer",
+        expires_in: 900,
+        actor: { tenant_id: "tenant-enterprise", user_id: "oidc-user-42", name: "Operator", role: "Operator" },
+      }),
+      listWorkspaces: vi.fn().mockResolvedValue([{
+        workspace_id: authoritativeWorkspace.workspace_id,
+        tenant_id: "tenant-enterprise",
+        revision: 2,
+        document: authoritativeWorkspace,
+        document_hash: "a".repeat(64),
+        created_by: "oidc-user-42",
+        updated_by: "oidc-user-42",
+        created_at: authoritativeWorkspace.created_at,
+        updated_at: authoritativeWorkspace.updated_at,
+      }]),
+      createWorkspace: vi.fn(),
+      updateWorkspace: vi.fn().mockRejectedValue(new AuthorityError("Workspace revision changed.", 409)),
+      deleteWorkspace: vi.fn(),
+    };
+
+    const { result } = renderHook(() => useWorkspaceStore({
+      mode: "enterprise",
+      authority,
+      saveDebounceMs: 0,
+    }));
+    await waitFor(() => expect(result.current.enterpriseSession.status).toBe("ready"));
+
+    act(() => result.current.updateUseCase({ ...DEFAULT_WORKSPACE_USE_CASE, title: "Stale edit" }));
+
+    await waitFor(() => expect(result.current.persistence).toMatchObject({
+      status: "error",
+      code: "authority_conflict",
+      location: "authority",
+    }));
+    expect(authority.updateWorkspace).toHaveBeenCalledOnce();
   });
 });

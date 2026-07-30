@@ -102,9 +102,13 @@ export function WorkspaceConsole({
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border2 pt-4">
           <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-fg2">
             <Badge tone={persistence.status === "saved" ? "success" : persistence.status === "error" ? "danger" : "neutral"}>
-              {persistence.status === "saved" ? "Saved locally" : persistence.status === "error" ? "Save failed" : "Save pending"}
+              {persistence.status === "saved"
+                ? persistence.location === "authority" ? "Saved to authority" : "Saved locally"
+                : persistence.status === "error" ? "Save failed" : "Save pending"}
             </Badge>
-            {persistence.message ? <span>{persistence.message}</span> : <span>{Math.ceil(persistence.bytes / 1024)} KB browser-local record</span>}
+            {persistence.message
+              ? <span>{persistence.message}</span>
+              : <span>{Math.ceil(persistence.bytes / 1024)} KB {persistence.location === "authority" ? "authoritative record" : "browser-local record"}</span>}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => downloadWorkspaceExport(workspace)}>

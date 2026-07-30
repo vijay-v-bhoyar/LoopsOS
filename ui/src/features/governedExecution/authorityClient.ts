@@ -1,4 +1,4 @@
-import type { EnterpriseUser } from "../../types";
+import type { EnterpriseUser, SavedWorkspace } from "../../types";
 import { deploymentPosture, type DeploymentMode } from "../../lib/deployment";
 import type { AuditVerification, AuthorityEvent, AuthoritySession, ConnectorEventInput, ConnectorEventRecord, CreateGovernedRun, CreateReleaseInitiative, GovernedRun, ReleaseInitiativeRecord, ReleaseProofPack } from "./types";
 
@@ -8,6 +8,18 @@ export class AuthorityError extends Error {
   constructor(message: string, readonly status?: number) {
     super(message);
   }
+}
+
+export interface AuthorityWorkspaceRecord {
+  workspace_id: string;
+  tenant_id: string;
+  revision: number;
+  document: SavedWorkspace;
+  document_hash: string;
+  created_by: string;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 async function request<T>(path: string, options: RequestInit = {}, timeoutMs = 15_000): Promise<T> {
@@ -57,6 +69,33 @@ export async function createAuthoritySession(
   mode: DeploymentMode = deploymentPosture.mode,
 ): Promise<AuthoritySession> {
   return mode === "enterprise" ? createEnterpriseSession() : createDevelopmentSession(user);
+}
+
+export async function listAuthorityWorkspaces(token: string): Promise<AuthorityWorkspaceRecord[]> {
+  return request<AuthorityWorkspaceRecord[]>("/v1/workspaces", authorized(token));
+}
+
+export async function createAuthorityWorkspace(token: string, workspace: SavedWorkspace): Promise<AuthorityWorkspaceRecord> {
+  return request<AuthorityWorkspaceRecord>(`/v1/workspaces/${encodeURIComponent(workspace.workspace_id)}`, authorized(token, {
+    method: "PUT",
+    headers: { "content-type": "application/json", "if-none-match": "*" },
+    body: JSON.stringify({ document: workspace }),
+  }));
+}
+
+export async function updateAuthorityWorkspace(token: string, workspace: SavedWorkspace, revision: number): Promise<AuthorityWorkspaceRecord> {
+  return request<AuthorityWorkspaceRecord>(`/v1/workspaces/${encodeURIComponent(workspace.workspace_id)}`, authorized(token, {
+    method: "PUT",
+    headers: { "content-type": "application/json", "if-match": `"${revision}"` },
+    body: JSON.stringify({ document: workspace }),
+  }));
+}
+
+export async function deleteAuthorityWorkspace(token: string, workspaceId: string, revision: number): Promise<void> {
+  await request(`/v1/workspaces/${encodeURIComponent(workspaceId)}`, authorized(token, {
+    method: "DELETE",
+    headers: { "if-match": `"${revision}"` },
+  }));
 }
 
 export async function listGovernedRuns(token: string, workspaceId: string): Promise<GovernedRun[]> {

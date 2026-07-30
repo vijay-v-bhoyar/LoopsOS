@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Iterator, Protocol
 
 from .corpus import Corpus, RISK_ORDER
-from .models import Actor, ApprovalRequest, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, ExecutionPlan, ReleaseInitiativeRecord, ReleaseProofPack, RunRecord
+from .models import Actor, ApprovalRequest, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, ExecutionPlan, ReleaseInitiativeRecord, ReleaseProofPack, RunRecord, WorkspaceRecord
 
 
 def utc_now() -> str:
@@ -202,6 +202,21 @@ class AuthorityStore:
                   UNIQUE(tenant_id, idempotency_key)
                 );
 
+                CREATE TABLE IF NOT EXISTS workspaces (
+                  tenant_id TEXT NOT NULL,
+                  workspace_id TEXT NOT NULL,
+                  revision INTEGER NOT NULL,
+                  document_json TEXT NOT NULL,
+                  document_hash TEXT NOT NULL,
+                  created_by TEXT NOT NULL,
+                  updated_by TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL,
+                  PRIMARY KEY(tenant_id, workspace_id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_workspaces_tenant_updated ON workspaces(tenant_id, updated_at DESC);
+
                 CREATE TABLE IF NOT EXISTS audit_events (
                   sequence INTEGER PRIMARY KEY AUTOINCREMENT,
                   event_id TEXT NOT NULL UNIQUE,
@@ -218,6 +233,20 @@ class AuthorityStore:
 
                 CREATE INDEX IF NOT EXISTS idx_audit_tenant_sequence ON audit_events(tenant_id, sequence);
                 CREATE INDEX IF NOT EXISTS idx_audit_run_sequence ON audit_events(run_id, sequence);
+
+                CREATE TABLE IF NOT EXISTS audit_anchor_outbox (
+                  event_id TEXT PRIMARY KEY REFERENCES audit_events(event_id),
+                  tenant_id TEXT NOT NULL,
+                  envelope_json TEXT NOT NULL,
+                  attempts INTEGER NOT NULL DEFAULT 0,
+                  next_attempt_at TEXT NOT NULL,
+                  last_error TEXT,
+                  delivered_at TEXT,
+                  created_at TEXT NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_audit_anchor_pending
+                  ON audit_anchor_outbox(delivered_at, next_attempt_at, created_at);
 
                 CREATE TRIGGER IF NOT EXISTS audit_events_no_update
                 BEFORE UPDATE ON audit_events BEGIN SELECT RAISE(ABORT, 'audit events are append-only'); END;
@@ -320,6 +349,114 @@ class AuthorityStore:
                 self.connection.execute("ALTER TABLE connector_events ADD COLUMN verification_status TEXT NOT NULL DEFAULT 'session_authenticated'")
             if "delivery_id" not in connector_columns:
                 self.connection.execute("ALTER TABLE connector_events ADD COLUMN delivery_id TEXT")
+
+    def list_workspaces(self, tenant_id: str, limit: int = 100) -> list[WorkspaceRecord]:
+        with self.lock:
+            rows = self.connection.execute(
+                "SELECT * FROM workspaces WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT ?",
+                (tenant_id, min(limit, 200)),
+            ).fetchall()
+        return [self._row_to_workspace(row) for row in rows]
+
+    def get_workspace(self, tenant_id: str, workspace_id: str) -> WorkspaceRecord:
+        with self.lock:
+            row = self.connection.execute(
+                "SELECT * FROM workspaces WHERE tenant_id = ? AND workspace_id = ?",
+                (tenant_id, workspace_id),
+            ).fetchone()
+        if not row:
+            raise NotFound("Workspace not found.")
+        return self._row_to_workspace(row)
+
+    def put_workspace(
+        self,
+        actor: Actor,
+        workspace_id: str,
+        document: dict[str, Any],
+        *,
+        expected_revision: int | None,
+        create_only: bool,
+    ) -> tuple[WorkspaceRecord, bool]:
+        document_json = canonical_json(document)
+        document_hash = hashlib.sha256(document_json.encode("utf-8")).hexdigest()
+        timestamp = utc_now()
+        created = False
+        with self.transaction() as cursor:
+            existing = cursor.execute(
+                "SELECT * FROM workspaces WHERE tenant_id = ? AND workspace_id = ?",
+                (actor.tenant_id, workspace_id),
+            ).fetchone()
+            if existing:
+                if create_only:
+                    raise Conflict("Workspace already exists.")
+                if expected_revision != int(existing["revision"]):
+                    raise Conflict("Workspace revision does not match the current authoritative record.")
+                revision = int(existing["revision"]) + 1
+                cursor.execute(
+                    """
+                    UPDATE workspaces
+                    SET revision = ?, document_json = ?, document_hash = ?, updated_by = ?, updated_at = ?
+                    WHERE tenant_id = ? AND workspace_id = ?
+                    """,
+                    (revision, document_json, document_hash, actor.user_id, timestamp, actor.tenant_id, workspace_id),
+                )
+                event_type = "WORKSPACE_UPDATED"
+            else:
+                if not create_only:
+                    raise NotFound("Workspace not found.")
+                revision = 1
+                cursor.execute(
+                    """
+                    INSERT INTO workspaces(tenant_id, workspace_id, revision, document_json, document_hash,
+                      created_by, updated_by, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (actor.tenant_id, workspace_id, revision, document_json, document_hash, actor.user_id, actor.user_id, timestamp, timestamp),
+                )
+                event_type = "WORKSPACE_CREATED"
+                created = True
+            self._append_event_cursor(
+                cursor,
+                actor.tenant_id,
+                None,
+                event_type,
+                None,
+                actor.user_id,
+                {"workspace_id": workspace_id, "revision": revision, "document_hash": document_hash},
+            )
+            row = cursor.execute(
+                "SELECT * FROM workspaces WHERE tenant_id = ? AND workspace_id = ?",
+                (actor.tenant_id, workspace_id),
+            ).fetchone()
+        return self._row_to_workspace(row), created
+
+    def delete_workspace(self, actor: Actor, workspace_id: str, expected_revision: int) -> None:
+        with self.transaction() as cursor:
+            existing = cursor.execute(
+                "SELECT * FROM workspaces WHERE tenant_id = ? AND workspace_id = ?",
+                (actor.tenant_id, workspace_id),
+            ).fetchone()
+            if not existing:
+                raise NotFound("Workspace not found.")
+            if expected_revision != int(existing["revision"]):
+                raise Conflict("Workspace revision does not match the current authoritative record.")
+            self._append_event_cursor(
+                cursor,
+                actor.tenant_id,
+                None,
+                "WORKSPACE_DELETED",
+                None,
+                actor.user_id,
+                {
+                    "workspace_id": workspace_id,
+                    "revision": int(existing["revision"]),
+                    "document_hash": str(existing["document_hash"]),
+                },
+            )
+            cursor.execute(
+                "DELETE FROM workspaces WHERE tenant_id = ? AND workspace_id = ?",
+                (actor.tenant_id, workspace_id),
+            )
 
     def record_connector_event(self, actor: Actor, request: ConnectorEventRequest) -> ConnectorEventRecord:
         payload_hash = sha256_json(request.payload)
@@ -1134,6 +1271,50 @@ class AuthorityStore:
             previous_hash = row["event_hash"]
         return True, len(rows), None
 
+    def pending_audit_anchors(self, limit: int = 100, include_deferred: bool = False) -> list[dict[str, Any]]:
+        where = "delivered_at IS NULL"
+        parameters: list[Any] = []
+        if not include_deferred:
+            where += " AND next_attempt_at <= ?"
+            parameters.append(utc_now())
+        parameters.append(min(max(limit, 1), 500))
+        with self.lock:
+            rows = self.connection.execute(
+                f"SELECT * FROM audit_anchor_outbox WHERE {where} ORDER BY created_at, event_id LIMIT ?",
+                tuple(parameters),
+            ).fetchall()
+        return [{**dict(row), "envelope": json.loads(row["envelope_json"])} for row in rows]
+
+    def mark_audit_anchor_delivered(self, event_id: str) -> None:
+        with self.transaction() as cursor:
+            cursor.execute(
+                "UPDATE audit_anchor_outbox SET delivered_at = ?, last_error = NULL WHERE event_id = ? AND delivered_at IS NULL",
+                (utc_now(), event_id),
+            )
+
+    def record_audit_anchor_failure(self, event_id: str, error: str) -> None:
+        with self.transaction() as cursor:
+            row = cursor.execute(
+                "SELECT attempts FROM audit_anchor_outbox WHERE event_id = ? AND delivered_at IS NULL",
+                (event_id,),
+            ).fetchone()
+            if not row:
+                return
+            attempts = int(row["attempts"]) + 1
+            retry_seconds = min(300, 2 ** min(attempts, 8))
+            next_attempt_at = (datetime.now(timezone.utc) + timedelta(seconds=retry_seconds)).isoformat()
+            cursor.execute(
+                "UPDATE audit_anchor_outbox SET attempts = ?, next_attempt_at = ?, last_error = ? WHERE event_id = ? AND delivered_at IS NULL",
+                (attempts, next_attempt_at, error[:500], event_id),
+            )
+
+    def audit_anchor_backlog(self) -> int:
+        with self.lock:
+            row = self.connection.execute(
+                "SELECT COUNT(*) AS count FROM audit_anchor_outbox WHERE delivered_at IS NULL"
+            ).fetchone()
+        return int(row["count"]) if row else 0
+
     def _append_event_cursor(self, cursor: StoreCursor, tenant_id: str, run_id: str | None, event_type: str, state: str | None, actor_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         previous = cursor.execute("SELECT event_hash FROM audit_events WHERE tenant_id = ? ORDER BY sequence DESC LIMIT 1", (tenant_id,)).fetchone()
         previous_hash = str(previous["event_hash"]) if previous else "0" * 64
@@ -1143,7 +1324,15 @@ class AuthorityStore:
         core = self._event_core(event_id, tenant_id, run_id, event_type, state, actor_id, payload_json, created_at, previous_hash)
         event_hash = hashlib.sha256((previous_hash + canonical_json(core)).encode("utf-8")).hexdigest()
         sequence = self._insert_audit_event(cursor, event_id, tenant_id, run_id, event_type, state, actor_id, payload_json, created_at, previous_hash, event_hash)
-        return {**core, "event_hash": event_hash, "sequence": sequence}
+        envelope = {**core, "event_hash": event_hash, "sequence": sequence}
+        cursor.execute(
+            """
+            INSERT INTO audit_anchor_outbox(event_id, tenant_id, envelope_json, attempts, next_attempt_at, created_at)
+            VALUES (?, ?, ?, 0, ?, ?)
+            """,
+            (event_id, tenant_id, canonical_json(envelope), created_at, created_at),
+        )
+        return envelope
 
     def _insert_audit_event(
         self,
@@ -1171,6 +1360,20 @@ class AuthorityStore:
                   content_json, content_hash, collected_at, expires_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
+
+    @staticmethod
+    def _row_to_workspace(row: Any) -> WorkspaceRecord:
+        return WorkspaceRecord(
+            workspace_id=row["workspace_id"],
+            tenant_id=row["tenant_id"],
+            revision=int(row["revision"]),
+            document=json.loads(row["document_json"]),
+            document_hash=row["document_hash"],
+            created_by=row["created_by"],
+            updated_by=row["updated_by"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
 
     @staticmethod
     def _event_core(event_id: str, tenant_id: str, run_id: str | None, event_type: str, state: str | None, actor_id: str, payload_json: str, created_at: str, previous_hash: str) -> dict[str, Any]:

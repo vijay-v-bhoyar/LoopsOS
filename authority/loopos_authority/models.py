@@ -33,6 +33,30 @@ class SessionResponse(BaseModel):
     actor: Actor
 
 
+class WorkspaceDocumentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    document: dict[str, Any]
+
+    @field_validator("document")
+    @classmethod
+    def document_is_bounded(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if len(json.dumps(value, separators=(",", ":")).encode("utf-8")) > 1_000_000:
+            raise ValueError("Workspace document exceeds 1,000,000 bytes.")
+        return value
+
+
+class WorkspaceRecord(BaseModel):
+    workspace_id: str
+    tenant_id: str
+    revision: int
+    document: dict[str, Any]
+    document_hash: str
+    created_by: str
+    updated_by: str
+    created_at: str
+    updated_at: str
+
+
 class EvidenceRequest(BaseModel):
     evidence_id: str = Field(min_length=1, max_length=120, pattern=r"^[a-zA-Z0-9._-]+$")
     kind: Literal["workspace_snapshot", "http_json"]

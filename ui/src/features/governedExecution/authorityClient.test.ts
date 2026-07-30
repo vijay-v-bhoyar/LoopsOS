@@ -2,7 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildConnectorEventsForRelease, buildReleaseInitiativeRecord, buildWorkspaceExecutionPlan } from "./types";
 import { createReleaseAssuranceProfile } from "../../lib/releaseAssurance";
 import { createUser, createWorkspace, DEFAULT_WORKSPACE_USE_CASE } from "../../lib/workspaceStore";
-import { createAuthoritySession, createEnterpriseSession, createReleaseInitiative, createDevelopmentSession, getReleaseProofPack, recordConnectorEvent, streamGovernedRun } from "./authorityClient";
+import {
+  AuthorityError,
+  createAuthoritySession,
+  createAuthorityWorkspace,
+  createDevelopmentSession,
+  createEnterpriseSession,
+  createReleaseInitiative,
+  deleteAuthorityWorkspace,
+  getReleaseProofPack,
+  listAuthorityWorkspaces,
+  recordConnectorEvent,
+  streamGovernedRun,
+  updateAuthorityWorkspace,
+} from "./authorityClient";
 import { looposData } from "../../lib/loopos";
 import type { InitiativeWorkspace } from "../../types";
 
@@ -80,6 +93,80 @@ describe("authorityClient", () => {
     await createAuthoritySession(user, "enterprise");
 
     expect(fetchImpl).toHaveBeenCalledWith("/api/v1/sessions", expect.any(Object));
+  });
+
+  it("lists tenant-scoped authoritative workspace documents", async () => {
+    const user = createUser("Operator", "operator@example.local", "Operator");
+    const workspace = createWorkspace(user, "Claims", DEFAULT_WORKSPACE_USE_CASE);
+    const fetchImpl = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify([{
+      workspace_id: workspace.workspace_id,
+      tenant_id: "tenant-enterprise",
+      revision: 3,
+      document: workspace,
+      document_hash: "a".repeat(64),
+      created_by: "oidc-user-42",
+      updated_by: "oidc-user-42",
+      created_at: workspace.created_at,
+      updated_at: workspace.updated_at,
+    }]), { status: 200, headers: { "content-type": "application/json" } }));
+
+    const records = await listAuthorityWorkspaces("enterprise-token");
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ revision: 3, document: { workspace_id: workspace.workspace_id } });
+    expect(fetchImpl).toHaveBeenCalledWith("/api/v1/workspaces", expect.objectContaining({
+      headers: expect.objectContaining({ authorization: "Bearer enterprise-token" }),
+    }));
+  });
+
+  it("uses create-only and revision preconditions for authoritative writes", async () => {
+    const user = createUser("Operator", "operator@example.local", "Operator");
+    const workspace = createWorkspace(user, "Claims", DEFAULT_WORKSPACE_USE_CASE);
+    const responseRecord = {
+      workspace_id: workspace.workspace_id,
+      tenant_id: "tenant-enterprise",
+      revision: 1,
+      document: workspace,
+      document_hash: "a".repeat(64),
+      created_by: "oidc-user-42",
+      updated_by: "oidc-user-42",
+      created_at: workspace.created_at,
+      updated_at: workspace.updated_at,
+    };
+    const fetchImpl = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(responseRecord), { status: 201, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...responseRecord, revision: 2 }), { status: 200, headers: { "content-type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await createAuthorityWorkspace("enterprise-token", workspace);
+    await updateAuthorityWorkspace("enterprise-token", workspace, 1);
+    await deleteAuthorityWorkspace("enterprise-token", workspace.workspace_id, 2);
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(1, `/api/v1/workspaces/${workspace.workspace_id}`, expect.objectContaining({
+      method: "PUT",
+      headers: expect.objectContaining({ "if-none-match": "*" }),
+    }));
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, `/api/v1/workspaces/${workspace.workspace_id}`, expect.objectContaining({
+      method: "PUT",
+      headers: expect.objectContaining({ "if-match": "\"1\"" }),
+    }));
+    expect(fetchImpl).toHaveBeenNthCalledWith(3, `/api/v1/workspaces/${workspace.workspace_id}`, expect.objectContaining({
+      method: "DELETE",
+      headers: expect.objectContaining({ "if-match": "\"2\"" }),
+    }));
+  });
+
+  it("surfaces optimistic concurrency conflicts without overwriting authority state", async () => {
+    const user = createUser("Operator", "operator@example.local", "Operator");
+    const workspace = createWorkspace(user, "Claims", DEFAULT_WORKSPACE_USE_CASE);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ detail: "Workspace revision changed." }), {
+      status: 409,
+      headers: { "content-type": "application/json" },
+    }));
+
+    await expect(updateAuthorityWorkspace("enterprise-token", workspace, 4)).rejects.toEqual(
+      expect.objectContaining<Partial<AuthorityError>>({ status: 409, message: "Workspace revision changed." }),
+    );
   });
 
   it("builds and posts a release assurance initiative record", async () => {
