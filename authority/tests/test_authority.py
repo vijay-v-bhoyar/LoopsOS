@@ -1090,7 +1090,8 @@ class StorageBackendTests(unittest.TestCase):
             self.assertIn(f"alter table {table} enable row level security", migration)
         self.assertIn("audit_events_no_update", migration)
         self.assertIn("audit_events_no_delete", migration)
-        self.assertIn("revoke all on runs, execution_jobs, operational_signals, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated", migration)
+        self.assertIn("select rolname from pg_roles where rolname in ('anon', 'authenticated')", migration)
+        self.assertIn("execute format('revoke all on runs, execution_jobs", migration)
 
     def test_postgres_migration_runner_preserves_dollar_quoted_functions(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")

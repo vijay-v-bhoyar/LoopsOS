@@ -253,4 +253,14 @@ alter table connector_events enable row level security;
 alter table audit_events enable row level security;
 alter table audit_anchor_outbox enable row level security;
 
-revoke all on runs, execution_jobs, operational_signals, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated;
+do $$
+declare
+  role_name text;
+begin
+  for role_name in
+    select rolname from pg_roles where rolname in ('anon', 'authenticated')
+  loop
+    execute format('revoke all on runs, execution_jobs, operational_signals, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from %I', role_name);
+  end loop;
+end;
+$$;
