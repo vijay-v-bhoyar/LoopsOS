@@ -95,6 +95,44 @@ class FakeHandoverClient:
             return HttpResult(404, {"detail": "Workspace not found."})
         if method == "DELETE" and path.startswith("/v1/workspaces/handover-probe-"):
             return HttpResult(204, None)
+        if path == "/v1/audit/verify":
+            return HttpResult(
+                200,
+                {
+                    "tenant_id": "tenant-primary",
+                    "valid": True,
+                    "event_count": 501,
+                    "first_invalid_sequence": None,
+                },
+            )
+        if path == "/v1/events?after=0&limit=500":
+            return HttpResult(
+                200,
+                [
+                    {
+                        "sequence": sequence,
+                        "event_type": "WORKSPACE_UPDATED",
+                        "payload": {"workspace_id": f"historical-{sequence}", "revision": 1},
+                    }
+                    for sequence in range(1, 501)
+                ],
+            )
+        if path == "/v1/events?after=500&limit=500":
+            marker_path = next(
+                call_path
+                for call_method, call_path, _headers, _body in self.calls
+                if call_method == "PUT" and call_path.startswith("/v1/workspaces/handover-probe-")
+            )
+            return HttpResult(
+                200,
+                [
+                    {
+                        "sequence": 501,
+                        "event_type": "WORKSPACE_DELETED",
+                        "payload": {"workspace_id": marker_path.rsplit("/", 1)[-1], "revision": 1},
+                    }
+                ],
+            )
         if path == "/v1/operations/jobs/drain":
             return HttpResult(
                 200,
@@ -171,6 +209,13 @@ class ProductionHandoverVerifierTests(unittest.TestCase):
         self.assertIn(("GET", marker_path), paths)
         self.assertIn(("DELETE", marker_path), paths)
         self.assertLess(paths.index(("GET", marker_path)), paths.index(("DELETE", marker_path)))
+        delete_index = paths.index(("DELETE", marker_path))
+        self.assertTrue(any(index > delete_index and call == ("GET", marker_path) for index, call in enumerate(paths)))
+        self.assertIn(("GET", "/v1/audit/verify"), paths)
+        self.assertIn(("GET", "/v1/events?after=0&limit=500"), paths)
+        self.assertIn(("GET", "/v1/events?after=500&limit=500"), paths)
+        passed = {check["name"] for check in report["checks"] if check["passed"]}
+        self.assertTrue({"probe_absence", "audit_chain", "deletion_audit_event"}.issubset(passed))
         serialized = json.dumps(report)
         self.assertNotIn("primary-secret-assertion", serialized)
         self.assertNotIn("secondary-secret-assertion", serialized)

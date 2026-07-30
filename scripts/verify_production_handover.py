@@ -428,8 +428,82 @@ def verify_production_handover(
             },
         )
         record("probe_cleanup", deleted.status == 204, f"Primary tenant marker cleanup returned HTTP {deleted.status}.")
+        absent = _safe_request(
+            client,
+            "GET",
+            marker_path,
+            headers={"authorization": f"Bearer {primary_token}"},
+        )
+        record(
+            "probe_absence",
+            deleted.status == 204 and absent.status == 404,
+            f"Primary tenant post-delete marker read returned HTTP {absent.status}; expected 404.",
+        )
+        audit = _safe_request(
+            client,
+            "GET",
+            "/v1/audit/verify",
+            headers={"authorization": f"Bearer {primary_token}"},
+        )
+        audit_payload = audit.payload if isinstance(audit.payload, dict) else {}
+        audit_valid = (
+            audit.status == 200
+            and audit_payload.get("valid") is True
+            and isinstance(audit_payload.get("event_count"), int)
+            and audit_payload.get("event_count", 0) > 0
+            and audit_payload.get("first_invalid_sequence") is None
+        )
+        record("audit_chain", audit_valid, f"Primary tenant audit verification returned HTTP {audit.status}.")
+        event_count = audit_payload.get("event_count", 0)
+        max_event_pages = max(1, (event_count + 499) // 500) if isinstance(event_count, int) else 1
+        event_cursor = 0
+        event_pages = 0
+        events_status = 0
+        deletion_recorded = False
+        while event_pages < max_event_pages:
+            events = _safe_request(
+                client,
+                "GET",
+                f"/v1/events?after={event_cursor}&limit=500",
+                headers={"authorization": f"Bearer {primary_token}"},
+            )
+            events_status = events.status
+            event_pages += 1
+            if events.status != 200 or not isinstance(events.payload, list):
+                break
+            deletion_recorded = any(
+                isinstance(event, dict)
+                and event.get("event_type") == "WORKSPACE_DELETED"
+                and isinstance(event.get("payload"), dict)
+                and event["payload"].get("workspace_id") == marker_id
+                and event["payload"].get("revision") == revision
+                for event in events.payload
+            )
+            if deletion_recorded or len(events.payload) < 500:
+                break
+            page_sequences = [
+                event.get("sequence")
+                for event in events.payload
+                if isinstance(event, dict)
+                and isinstance(event.get("sequence"), int)
+                and event["sequence"] > event_cursor
+            ]
+            if not page_sequences:
+                break
+            next_cursor = max(page_sequences)
+            if next_cursor <= event_cursor:
+                break
+            event_cursor = next_cursor
+        record(
+            "deletion_audit_event",
+            events_status == 200 and deletion_recorded,
+            f"Primary tenant deletion-event retrieval returned HTTP {events_status} after {event_pages} page(s).",
+        )
     else:
         record("probe_cleanup", False, "No verified marker revision was available for cleanup.")
+        record("probe_absence", False, "No verified marker revision was available for post-delete verification.")
+        record("audit_chain", False, "Audit verification requires a created and deleted marker.")
+        record("deletion_audit_event", False, "Deletion-event verification requires a created and deleted marker.")
 
     if worker_token:
         drain = _safe_request(

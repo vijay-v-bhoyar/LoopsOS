@@ -38,7 +38,7 @@ Terminate TLS at the enterprise ingress, keep the supplied security headers, and
 
 ## Live Handover Proof
 
-Run the verifier from a controlled release workstation after staging or production bindings are provisioned. The two assertions must resolve to different expected tenants, and the primary identity must be allowed to create and delete a workspace. The verifier creates a uniquely named marker, proves the secondary tenant receives `404`, deletes the marker, invokes protected worker dispatch, and then validates the complete readiness payload. Assertions, worker tokens, and application session tokens are never included in the JSON report.
+Run the verifier from a controlled release workstation after staging or production bindings are provisioned. The two assertions must resolve to different expected tenants, and the primary identity must have Executive authority so it can create and delete the marker and inspect audit proof. The verifier creates a uniquely named marker, proves the secondary tenant receives `404`, deletes the marker, proves the primary tenant also receives `404`, verifies the complete tenant audit chain and exact `WORKSPACE_DELETED` event, invokes protected worker dispatch, and then validates the complete readiness payload. Assertions, worker tokens, and application session tokens are never included in the JSON report.
 
 ```powershell
 $env:LOOPOS_HANDOVER_BASE_URL="https://loopos.example.com/api"
