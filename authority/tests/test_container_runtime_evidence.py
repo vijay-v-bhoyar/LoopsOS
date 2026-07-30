@@ -75,6 +75,27 @@ class ContainerRuntimeEvidenceTests(unittest.TestCase):
         verifier = (REPO_ROOT / "scripts" / "verify_container_runtime.py").read_text(encoding="utf-8")
         self.assertIn("uid={authority_uid},gid={authority_gid},mode=0700", verifier)
 
+    def test_internal_network_is_probed_without_publishing_a_host_port(self) -> None:
+        resolve_address = getattr(runtime_verifier, "_container_address", None)
+        self.assertIsNotNone(resolve_address)
+        if resolve_address is None:
+            return
+
+        inspection = {
+            "NetworkSettings": {
+                "Networks": {
+                    "loopos-smoke-test": {
+                        "IPAddress": "172.18.0.3",
+                    },
+                },
+            },
+        }
+        self.assertEqual(resolve_address(inspection, "loopos-smoke-test"), "172.18.0.3")
+
+        verifier = (REPO_ROOT / "scripts" / "verify_container_runtime.py").read_text(encoding="utf-8")
+        self.assertNotIn("\"--publish\"", verifier)
+        self.assertIn('base_url = f"http://{ui_address}:8080"', verifier)
+
     def test_missing_docker_emits_a_fail_closed_report(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             output = Path(temporary_directory) / "runtime.json"

@@ -100,13 +100,14 @@ def _image_uid_gid(image: str) -> tuple[int, int]:
     return uid, gid
 
 
-def _mapped_port(container: str) -> int:
-    result = _run(["docker", "port", container, "8080/tcp"])
-    endpoint = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
-    try:
-        return int(endpoint.rsplit(":", 1)[1])
-    except (IndexError, ValueError) as error:
-        raise RuntimeEvidenceError(f"{container} has no valid host mapping for port 8080.") from error
+def _container_address(inspection: dict[str, Any], network: str) -> str:
+    network_settings = inspection.get("NetworkSettings")
+    networks = network_settings.get("Networks") if isinstance(network_settings, dict) else None
+    attachment = networks.get(network) if isinstance(networks, dict) else None
+    address = attachment.get("IPAddress") if isinstance(attachment, dict) else None
+    if not isinstance(address, str) or not address:
+        raise RuntimeEvidenceError(f"The UI container has no address on {network}.")
+    return address
 
 
 def _release_config_digests(manifest_path: Path) -> dict[str, str]:
@@ -178,7 +179,6 @@ def verify_runtime(ui_image: str, authority_image: str, oci_manifest: Path, outp
             "--tmpfs", "/var/run:rw,noexec,nosuid,size=16m",
             "--security-opt", "no-new-privileges:true",
             "--cap-drop", "ALL",
-            "--publish", "127.0.0.1::8080",
             ui_image,
         ])
         ui_inspection = _wait_healthy(ui)
@@ -188,8 +188,8 @@ def verify_runtime(ui_image: str, authority_image: str, oci_manifest: Path, outp
         if authority_uid == 0 or ui_uid == 0:
             raise RuntimeEvidenceError("Both release containers must execute as non-root users.")
 
-        port = _mapped_port(ui)
-        base_url = f"http://127.0.0.1:{port}"
+        ui_address = _container_address(ui_inspection, network)
+        base_url = f"http://{ui_address}:8080"
         health_status, _, health_body = _request(base_url, "/healthz")
         live_status, _, live_body = _request(base_url, "/api/health/live")
         ready_status, _, ready_body = _request(base_url, "/api/health/ready")
