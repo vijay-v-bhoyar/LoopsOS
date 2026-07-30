@@ -164,6 +164,18 @@ class SupplyChainEvidenceTests(unittest.TestCase):
         )
         self.assertNotIn("nginx-unprivileged:1.27", dockerfile)
 
+    def test_authority_runtime_base_is_current_and_digest_pinned(self) -> None:
+        dockerfile = (REPO_ROOT / "authority" / "Dockerfile").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "python:3.14.6-alpine3.24"
+            "@sha256:26730869004e2b9c4b9ad09cab8625e81d256d1ce97e72df5520e806b1709f92",
+            dockerfile,
+        )
+        self.assertIn("apk upgrade --no-cache", dockerfile)
+        self.assertIn("python -c \"import fastapi, httpx, jwt, psycopg", dockerfile)
+        self.assertNotIn("python:3.12-slim", dockerfile)
+
 
 if __name__ == "__main__":
     unittest.main()
