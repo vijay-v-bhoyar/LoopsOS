@@ -154,6 +154,16 @@ class SupplyChainEvidenceTests(unittest.TestCase):
         self.assertIn("if: always()", workflow)
         self.assertIn("include-hidden-files: true", workflow)
 
+    def test_ui_runtime_base_is_current_and_digest_pinned(self) -> None:
+        dockerfile = (REPO_ROOT / "ui" / "Dockerfile").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "nginxinc/nginx-unprivileged:1.31.3-alpine3.24"
+            "@sha256:59ccf0943b0b8e8d9e6ea9039a39555730f544701a655c596f7df7d096c593f5",
+            dockerfile,
+        )
+        self.assertNotIn("nginx-unprivileged:1.27", dockerfile)
+
 
 if __name__ == "__main__":
     unittest.main()
