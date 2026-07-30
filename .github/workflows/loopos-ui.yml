@@ -12,6 +12,20 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      LOOPOS_TEST_POSTGRES_DSN: postgresql://postgres:loopos-ci-restore@127.0.0.1:5432/postgres
+    services:
+      postgres:
+        image: postgres:17.10-alpine3.24@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_PASSWORD: loopos-ci-restore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username postgres --dbname postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,6 +50,13 @@ jobs:
         env:
           PYTHONPATH: authority
         run: python -m unittest discover -s authority/tests -v
+      - name: Verify reversible Postgres restore
+        run: |
+          mkdir -p .release-evidence
+          python scripts/verify_postgres_restore.py \
+            --container ${{ job.services.postgres.id }} \
+            --output .release-evidence/postgres-restore.json \
+            --backup-output .release-evidence/postgres-backup.dump
       - name: Audit loop practicality
         run: python scripts/audit_loop_practicality.py
       - name: Unit and integration tests
