@@ -345,6 +345,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
               supportVerified: readiness.operational_bindings.support_verified,
               outboundPolicyVerified: readiness.operational_bindings.outbound_policy_verified,
               backupRestoreVerified: readiness.operational_bindings.backup_restore_verified,
+              workerVerified: readiness.operational_bindings.worker_dispatch_verified,
             };
           } catch (error) {
             readinessEvidence = {
@@ -355,6 +356,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
               supportVerified: false,
               outboundPolicyVerified: false,
               backupRestoreVerified: false,
+              workerVerified: false,
             };
           }
           if (!cancelled) setRuntimeEvidence(readinessEvidence);
@@ -396,6 +398,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
           supportVerified: readinessEvidence.supportVerified === true,
           outboundPolicyVerified: readinessEvidence.outboundPolicyVerified === true,
           backupRestoreVerified: readinessEvidence.backupRestoreVerified === true,
+          workerVerified: readinessEvidence.workerVerified === true,
         });
         setEnterpriseSession({ status: "ready" });
       } catch (error) {

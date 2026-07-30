@@ -25,6 +25,27 @@ create table if not exists runs (
 
 create index if not exists idx_runs_tenant_updated on runs(tenant_id, updated_at desc);
 
+create table if not exists execution_jobs (
+  job_id text primary key,
+  tenant_id text not null,
+  run_id text not null references runs(run_id),
+  command text not null,
+  payload_json text not null,
+  status text not null,
+  attempts integer not null default 0,
+  available_at text not null,
+  lease_owner text,
+  lease_expires_at text,
+  last_error text,
+  created_at text not null,
+  updated_at text not null
+);
+
+create index if not exists idx_execution_jobs_claim
+  on execution_jobs(status, available_at, lease_expires_at, created_at);
+create index if not exists idx_execution_jobs_run
+  on execution_jobs(tenant_id, run_id, created_at);
+
 create table if not exists approvals (
   approval_id text primary key,
   tenant_id text not null,
@@ -211,6 +232,7 @@ before delete on audit_events
 for each row execute function deny_audit_event_mutation();
 
 alter table runs enable row level security;
+alter table execution_jobs enable row level security;
 alter table approvals enable row level security;
 alter table evidence enable row level security;
 alter table tool_invocations enable row level security;
@@ -222,4 +244,4 @@ alter table connector_events enable row level security;
 alter table audit_events enable row level security;
 alter table audit_anchor_outbox enable row level security;
 
-revoke all on runs, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated;
+revoke all on runs, execution_jobs, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated;

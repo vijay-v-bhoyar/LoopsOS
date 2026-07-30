@@ -8,6 +8,7 @@ LoopOS has two explicit postures: `evaluation` and `enterprise`. Evaluation mode
 | --- | --- | --- |
 | Identity | BFF-managed session; IdP groups mapped server-side to LoopOS roles | Session endpoint verifies issuer, audience, signature, expiry, tenant, subject, and one explicit role mapping |
 | Persistence | LoopOS authority service and tenant-scoped durable Postgres database | Authority readiness reports Postgres and the authenticated workspace list succeeds; enterprise mode never uses browser workspace storage |
+| Durable worker | Database-leased execution jobs and a protected worker/cron dispatch route | Authority readiness reports the server-side dispatch credential and job store binding |
 | Audit | Authority hash chain delivered through the durable outbox to an external append-only sink | Authority readiness reports a configured sink and zero undelivered anchors |
 | Transport | HTTPS for every non-local origin | Certificate, reachability, redirect, and hostname checks pass |
 | Retention | Approved retention and deletion policy URL | Legal/security owners approve the policy and deletion evidence path |
@@ -37,4 +38,4 @@ Terminate TLS at the enterprise ingress, keep the supplied security headers, and
 
 ## Current Boundary
 
-This repository supplies the portal, deterministic recommendation engine, governed execution authority, tenant-scoped SQLite/Postgres store contract, authoritative workspace revisions, tool/probe runtime, audit chain with a durable external-anchor outbox, and hardened containers. It does not supply the organization IdP/BFF, a provisioned managed Postgres instance, the independently administered WORM/SIEM sink, secrets manager, or organization-specific retention/backup implementation. Production activation remains blocked until those bindings are provisioned and verified.
+This repository supplies the portal, deterministic recommendation engine, governed execution authority, tenant-scoped SQLite/Postgres store contract, authoritative workspace revisions, database-leased execution jobs, protected worker/cron dispatch, tool/probe runtime, audit chain with a durable external-anchor outbox, and hardened containers. It does not supply the organization IdP/BFF, a provisioned managed Postgres instance, the independently administered WORM/SIEM sink, secrets manager, or organization-specific retention/backup implementation. Production activation remains blocked until those bindings are provisioned and verified.

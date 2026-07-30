@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -24,6 +24,7 @@ from .models import Actor, ApprovalRequest, AuditVerification, ConnectorEventRec
 from .persistence import create_authority_store
 from .store import Conflict, Forbidden, NotFound
 from .tools import ToolRegistry
+from .worker import ExecutionJobWorker
 
 
 def create_app(
@@ -45,6 +46,13 @@ def create_app(
     store = create_authority_store(settings, corpus)
     tools = ToolRegistry(settings, store, transport=transport)
     engine = ExecutionEngine(corpus, store, tools)
+    execution_worker = ExecutionJobWorker(
+        store,
+        engine,
+        worker_id=f"worker-{uuid.uuid4()}",
+        lease_seconds=settings.execution_job_lease_seconds,
+        max_attempts=settings.execution_job_max_attempts,
+    )
     audit_anchor = AuditAnchorDispatcher(
         store,
         settings.audit_anchor_url,
@@ -57,14 +65,13 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        recovery_tasks = {asyncio.create_task(engine.execute(tenant_id, run_id)) for tenant_id, run_id in store.requeue_incomplete_runs()}
-        async def schedule_effectiveness() -> None:
+        store.requeue_incomplete_runs()
+        async def schedule_execution_jobs() -> None:
             while True:
-                due_tasks = [asyncio.create_task(engine.execute(tenant_id, run_id)) for tenant_id, run_id in store.queue_due_effectiveness()]
-                if due_tasks:
-                    await asyncio.gather(*due_tasks, return_exceptions=True)
-                await asyncio.sleep(settings.scheduler_poll_seconds)
-        scheduler_task = asyncio.create_task(schedule_effectiveness())
+                store.queue_due_effectiveness()
+                await execution_worker.run_once()
+                await asyncio.sleep(settings.execution_worker_poll_seconds)
+        execution_worker_task = asyncio.create_task(schedule_execution_jobs())
         async def schedule_audit_anchors() -> None:
             if audit_anchor is None:
                 return
@@ -73,15 +80,10 @@ def create_app(
                 await asyncio.sleep(settings.audit_anchor_poll_seconds)
         audit_anchor_task = asyncio.create_task(schedule_audit_anchors()) if audit_anchor else None
         yield
-        scheduler_task.cancel()
+        execution_worker_task.cancel()
         if audit_anchor_task:
             audit_anchor_task.cancel()
-        for task in recovery_tasks:
-            if not task.done():
-                task.cancel()
-        if recovery_tasks:
-            await asyncio.gather(*recovery_tasks, return_exceptions=True)
-        await asyncio.gather(scheduler_task, return_exceptions=True)
+        await asyncio.gather(execution_worker_task, return_exceptions=True)
         if audit_anchor_task:
             await asyncio.gather(audit_anchor_task, return_exceptions=True)
         if audit_anchor:
@@ -100,6 +102,7 @@ def create_app(
     app.state.corpus = corpus
     app.state.store = store
     app.state.engine = engine
+    app.state.execution_worker = execution_worker
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
@@ -232,6 +235,7 @@ def create_app(
             "support_verified": "support_contact",
             "outbound_policy_verified": "outbound_policy",
             "backup_restore_verified": "backup_restore",
+            "worker_dispatch_verified": "worker_dispatch",
         }
         missing_operational_bindings = [
             operational_binding_names[name]
@@ -258,6 +262,7 @@ def create_app(
                 "storage_backend": settings.storage_backend,
                 "audit_anchor_configured": audit_anchor is not None,
                 "audit_anchor_backlog": anchor_backlog,
+                "execution_job_backlog": store.execution_job_backlog(),
                 "operational_bindings": operational_bindings,
             }
         except HTTPException:
@@ -460,12 +465,11 @@ def create_app(
             raise map_store_error(error) from error
 
     @app.post("/v1/runs/{run_id}/start", response_model=RunCommandResponse, status_code=202)
-    async def start_run(run_id: str, background: BackgroundTasks, actor: Actor = Depends(current_actor)) -> RunCommandResponse:
+    async def start_run(run_id: str, actor: Actor = Depends(current_actor)) -> RunCommandResponse:
         if actor.role not in {"Operator", "Approver", "Executive"}:
             raise HTTPException(status_code=403, detail="Auditors cannot start execution.")
         try:
             run = store.queue_run(actor.tenant_id, run_id, actor.user_id)
-            background.add_task(engine.execute, actor.tenant_id, run_id)
             return RunCommandResponse(run_id=run_id, state=run.state, runner_status="queued")
         except Exception as error:
             raise map_store_error(error) from error
@@ -487,7 +491,7 @@ def create_app(
             raise map_store_error(error) from error
 
     @app.post("/v1/runs/{run_id}/rollback", response_model=RunCommandResponse, status_code=202)
-    async def rollback_run(run_id: str, background: BackgroundTasks, actor: Actor = Depends(current_actor)) -> RunCommandResponse:
+    async def rollback_run(run_id: str, actor: Actor = Depends(current_actor)) -> RunCommandResponse:
         if actor.role not in {"Approver", "Executive"}:
             raise HTTPException(status_code=403, detail="Rollback requires Approver or Executive authority.")
         try:
@@ -496,8 +500,13 @@ def create_app(
                 raise Conflict("This run has no compensating action contract.")
             if not corpus.allows_transition(run.state, "ROLLED_BACK"):
                 raise Conflict(f"Run cannot roll back from {run.state}.")
-            store.queue_run(actor.tenant_id, run_id, actor.user_id, "rollback")
-            background.add_task(engine.rollback, actor.tenant_id, run_id, f"Manual rollback requested by {actor.user_id}.")
+            store.queue_run(
+                actor.tenant_id,
+                run_id,
+                actor.user_id,
+                "rollback",
+                {"reason": f"Manual rollback requested by {actor.user_id}."},
+            )
             return RunCommandResponse(run_id=run_id, state=run.state, runner_status="queued")
         except Exception as error:
             raise map_store_error(error) from error
@@ -615,6 +624,44 @@ def create_app(
             raise HTTPException(status_code=503, detail="External audit anchoring is not configured.")
         delivered = await audit_anchor.drain()
         return {"delivered": delivered, "backlog": store.audit_anchor_backlog()}
+
+    @app.get("/v1/operations/jobs/status")
+    async def execution_job_status(actor: Actor = Depends(current_actor)) -> dict[str, int]:
+        if actor.role not in {"Auditor", "Executive"}:
+            raise HTTPException(status_code=403, detail="Execution job status requires Auditor or Executive role.")
+        return {"backlog": store.execution_job_backlog()}
+
+    @app.post("/v1/operations/jobs/drain")
+    async def drain_execution_jobs(
+        request: Request,
+        credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    ) -> dict[str, int]:
+        supplied_worker_token = request.headers.get("x-loopos-worker-token")
+        if not supplied_worker_token and credentials and credentials.scheme.lower() == "bearer":
+            supplied_worker_token = credentials.credentials
+        worker_authorized = bool(
+            settings.worker_token
+            and supplied_worker_token
+            and hmac.compare_digest(supplied_worker_token, settings.worker_token)
+        )
+        if not worker_authorized:
+            if credentials is None or credentials.scheme.lower() != "bearer":
+                raise HTTPException(status_code=401, detail="Worker token or Executive session is required.")
+            try:
+                actor = signer.verify(credentials.credentials)
+            except InvalidSession as error:
+                raise HTTPException(status_code=401, detail=str(error)) from error
+            if actor.role != "Executive":
+                raise HTTPException(status_code=403, detail="Execution job drain requires Executive role.")
+        store.queue_due_effectiveness()
+        processed = await execution_worker.run_once()
+        audit_delivered = await audit_anchor.drain() if audit_anchor else 0
+        return {
+            "processed": processed,
+            "backlog": store.execution_job_backlog(),
+            "audit_delivered": audit_delivered,
+            "audit_backlog": store.audit_anchor_backlog(),
+        }
 
     return app
 

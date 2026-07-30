@@ -5,6 +5,12 @@
   "buildCommand": "cd ui && npm run build",
   "outputDirectory": "ui/dist",
   "framework": "vite",
+  "crons": [
+    {
+      "path": "/api/v1/operations/jobs/drain",
+      "schedule": "* * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",

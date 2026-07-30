@@ -56,6 +56,7 @@ describe("evaluateDeploymentPosture", () => {
       supportVerified: true,
       outboundPolicyVerified: true,
       backupRestoreVerified: true,
+      workerVerified: true,
     });
 
     expect(posture.apiBaseUrl).toBe("https://loopos.example.com/api");
@@ -76,6 +77,7 @@ describe("evaluateDeploymentPosture", () => {
       supportVerified: true,
       outboundPolicyVerified: true,
       backupRestoreVerified: true,
+      workerVerified: true,
     });
     expect(verified.status).toBe("enterprise_ready");
     expect(verified.enterpriseReady).toBe(true);
@@ -96,6 +98,7 @@ describe("evaluateDeploymentPosture", () => {
       supportVerified: true,
       outboundPolicyVerified: true,
       backupRestoreVerified: true,
+      workerVerified: true,
     });
 
     expect(posture.bindings.find((binding) => binding.id === "outbound_policy")?.status).toBe("bound");

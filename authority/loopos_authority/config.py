@@ -69,6 +69,7 @@ def operational_binding_status(settings: "Settings") -> dict[str, bool]:
         "support_verified": bool(settings.support_contact and settings.support_contact.strip()),
         "outbound_policy_verified": outbound_verified,
         "backup_restore_verified": _secure_reference(settings.backup_restore_evidence_url) and backup_recent,
+        "worker_dispatch_verified": bool(settings.worker_token and len(settings.worker_token.encode("utf-8")) >= 32),
     }
 
 
@@ -105,6 +106,10 @@ class Settings:
     backup_restore_evidence_url: str | None = None
     backup_restore_verified_at: str | None = None
     backup_restore_max_age_days: float = 90.0
+    worker_token: str | None = None
+    execution_worker_poll_seconds: float = 0.25
+    execution_job_lease_seconds: int = 120
+    execution_job_max_attempts: int = 5
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -137,6 +142,9 @@ class Settings:
             raise ValueError("LOOPOS_RETENTION_POLICY_URL must use HTTPS outside local development.")
         if backup_restore_evidence_url and not _secure_reference(backup_restore_evidence_url):
             raise ValueError("LOOPOS_BACKUP_RESTORE_EVIDENCE_URL must use HTTPS outside local development.")
+        worker_token = os.getenv("LOOPOS_WORKER_TOKEN") or os.getenv("CRON_SECRET")
+        if worker_token and len(worker_token.encode("utf-8")) < 32:
+            raise ValueError("LOOPOS_WORKER_TOKEN must contain at least 32 bytes.")
         return cls(
             repo_root=repo_root,
             database_path=database_path,
@@ -163,6 +171,10 @@ class Settings:
             backup_restore_evidence_url=backup_restore_evidence_url,
             backup_restore_verified_at=os.getenv("LOOPOS_BACKUP_RESTORE_VERIFIED_AT"),
             backup_restore_max_age_days=_positive_float("LOOPOS_BACKUP_RESTORE_MAX_AGE_DAYS", 90.0),
+            worker_token=worker_token,
+            execution_worker_poll_seconds=_positive_float("LOOPOS_EXECUTION_WORKER_POLL_SECONDS", 0.25),
+            execution_job_lease_seconds=int(_positive_float("LOOPOS_EXECUTION_JOB_LEASE_SECONDS", 120)),
+            execution_job_max_attempts=int(_positive_float("LOOPOS_EXECUTION_JOB_MAX_ATTEMPTS", 5)),
         )
 
 

@@ -130,6 +130,27 @@ class AuthorityStore:
 
                 CREATE INDEX IF NOT EXISTS idx_runs_tenant_updated ON runs(tenant_id, updated_at DESC);
 
+                CREATE TABLE IF NOT EXISTS execution_jobs (
+                  job_id TEXT PRIMARY KEY,
+                  tenant_id TEXT NOT NULL,
+                  run_id TEXT NOT NULL REFERENCES runs(run_id),
+                  command TEXT NOT NULL,
+                  payload_json TEXT NOT NULL,
+                  status TEXT NOT NULL,
+                  attempts INTEGER NOT NULL DEFAULT 0,
+                  available_at TEXT NOT NULL,
+                  lease_owner TEXT,
+                  lease_expires_at TEXT,
+                  last_error TEXT,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_execution_jobs_claim
+                  ON execution_jobs(status, available_at, lease_expires_at, created_at);
+                CREATE INDEX IF NOT EXISTS idx_execution_jobs_run
+                  ON execution_jobs(tenant_id, run_id, created_at);
+
                 CREATE TABLE IF NOT EXISTS approvals (
                   approval_id TEXT PRIMARY KEY,
                   tenant_id TEXT NOT NULL,
@@ -908,12 +929,12 @@ class AuthorityStore:
             rows = self.connection.execute(query, parameters).fetchall()
         return [self._row_to_run(row) for row in rows]
 
-    def claim_run(self, tenant_id: str, run_id: str) -> RunRecord:
+    def claim_run(self, tenant_id: str, run_id: str, reclaim_running: bool = False) -> RunRecord:
         with self.transaction() as cursor:
-            row = cursor.execute("SELECT * FROM runs WHERE tenant_id = ? AND run_id = ?", (tenant_id, run_id)).fetchone()
+            row = cursor.execute(self._run_for_update_sql(), (tenant_id, run_id)).fetchone()
             if not row:
                 raise NotFound("Run not found.")
-            if row["runner_status"] == "running":
+            if row["runner_status"] == "running" and not reclaim_running:
                 raise Conflict("Run is already running.")
             if self.corpus.is_terminal(row["state"]):
                 raise Conflict(f"Terminal run {run_id} cannot be started again.")
@@ -921,13 +942,28 @@ class AuthorityStore:
                 raise Conflict("The effectiveness observation window is not due yet.")
             timestamp = utc_now()
             cursor.execute("UPDATE runs SET runner_status = 'running', updated_at = ? WHERE run_id = ?", (timestamp, run_id))
-            self._append_event_cursor(cursor, tenant_id, run_id, "RUN_CLAIMED", row["state"], "authority-engine", {})
+            self._append_event_cursor(
+                cursor,
+                tenant_id,
+                run_id,
+                "RUN_CLAIMED",
+                row["state"],
+                "authority-engine",
+                {"reclaimed": row["runner_status"] == "running"},
+            )
             updated = cursor.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
         return self._row_to_run(updated)
 
-    def queue_run(self, tenant_id: str, run_id: str, actor_id: str, command: str = "execute") -> RunRecord:
+    def queue_run(
+        self,
+        tenant_id: str,
+        run_id: str,
+        actor_id: str,
+        command: str = "execute",
+        payload: dict[str, Any] | None = None,
+    ) -> RunRecord:
         with self.transaction() as cursor:
-            row = cursor.execute("SELECT * FROM runs WHERE tenant_id = ? AND run_id = ?", (tenant_id, run_id)).fetchone()
+            row = cursor.execute(self._run_for_update_sql(), (tenant_id, run_id)).fetchone()
             if not row:
                 raise NotFound("Run not found.")
             if row["runner_status"] in {"queued", "running"}:
@@ -936,14 +972,16 @@ class AuthorityStore:
                 raise Conflict("Terminal runs cannot accept new commands.")
             if row["state"] == "EFFECTIVENESS_PENDING" and row["effectiveness_due_at"] and datetime.fromisoformat(row["effectiveness_due_at"]) > datetime.now(timezone.utc):
                 raise Conflict("The effectiveness observation window is not due yet.")
-            cursor.execute("UPDATE runs SET runner_status = 'queued', updated_at = ? WHERE run_id = ?", (utc_now(), run_id))
+            timestamp = utc_now()
+            cursor.execute("UPDATE runs SET runner_status = 'queued', updated_at = ? WHERE run_id = ?", (timestamp, run_id))
+            self._enqueue_execution_job_cursor(cursor, tenant_id, run_id, command, payload or {}, timestamp)
             self._append_event_cursor(cursor, tenant_id, run_id, "RUN_QUEUED", row["state"], actor_id, {"command": command})
             updated = cursor.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
         return self._row_to_run(updated)
 
     def release_run(self, tenant_id: str, run_id: str, status: str = "idle", error: str | None = None) -> None:
         with self.transaction() as cursor:
-            row = cursor.execute("SELECT state FROM runs WHERE tenant_id = ? AND run_id = ?", (tenant_id, run_id)).fetchone()
+            row = cursor.execute(self._run_for_update_sql(), (tenant_id, run_id)).fetchone()
             if not row:
                 raise NotFound("Run not found.")
             cursor.execute(
@@ -955,9 +993,31 @@ class AuthorityStore:
     def requeue_incomplete_runs(self) -> list[tuple[str, str]]:
         recovered: list[tuple[str, str]] = []
         with self.transaction() as cursor:
-            rows = cursor.execute("SELECT * FROM runs WHERE runner_status IN ('queued', 'running') ORDER BY updated_at").fetchall()
+            rows = cursor.execute(self._incomplete_runs_claim_sql()).fetchall()
             for row in rows:
-                cursor.execute("UPDATE runs SET runner_status = 'queued', updated_at = ? WHERE run_id = ?", (utc_now(), row["run_id"]))
+                timestamp = utc_now()
+                active_job = cursor.execute(
+                    """
+                    SELECT * FROM execution_jobs
+                    WHERE tenant_id = ? AND run_id = ? AND status IN ('queued', 'running')
+                    ORDER BY created_at DESC LIMIT 1
+                    """,
+                    (row["tenant_id"], row["run_id"]),
+                ).fetchone()
+                if active_job and active_job["status"] == "running" and active_job["lease_expires_at"] and active_job["lease_expires_at"] > timestamp:
+                    continue
+                if active_job:
+                    cursor.execute(
+                        """
+                        UPDATE execution_jobs
+                        SET status = 'queued', lease_owner = NULL, lease_expires_at = NULL, available_at = ?, updated_at = ?
+                        WHERE job_id = ?
+                        """,
+                        (timestamp, timestamp, active_job["job_id"]),
+                    )
+                else:
+                    self._enqueue_execution_job_cursor(cursor, row["tenant_id"], row["run_id"], "execute", {}, timestamp)
+                cursor.execute("UPDATE runs SET runner_status = 'queued', updated_at = ? WHERE run_id = ?", (timestamp, row["run_id"]))
                 self._append_event_cursor(cursor, row["tenant_id"], row["run_id"], "RUN_REQUEUED_AFTER_RESTART", row["state"], "authority-engine", {"previous_runner_status": row["runner_status"]})
                 recovered.append((str(row["tenant_id"]), str(row["run_id"])))
         return recovered
@@ -978,18 +1038,170 @@ class AuthorityStore:
     def queue_due_effectiveness(self, limit: int = 20) -> list[tuple[str, str]]:
         due: list[tuple[str, str]] = []
         with self.transaction() as cursor:
-            rows = cursor.execute(
-                """
-                SELECT * FROM runs WHERE state = 'EFFECTIVENESS_PENDING' AND runner_status = 'awaiting_effectiveness'
-                  AND effectiveness_due_at IS NOT NULL AND effectiveness_due_at <= ? ORDER BY effectiveness_due_at LIMIT ?
-                """,
-                (utc_now(), limit),
-            ).fetchall()
+            rows = cursor.execute(self._due_effectiveness_claim_sql(), (utc_now(), limit)).fetchall()
             for row in rows:
-                cursor.execute("UPDATE runs SET runner_status = 'queued', updated_at = ? WHERE run_id = ?", (utc_now(), row["run_id"]))
+                timestamp = utc_now()
+                cursor.execute("UPDATE runs SET runner_status = 'queued', updated_at = ? WHERE run_id = ?", (timestamp, row["run_id"]))
+                self._enqueue_execution_job_cursor(cursor, row["tenant_id"], row["run_id"], "execute", {"phase": "effectiveness"}, timestamp)
                 self._append_event_cursor(cursor, row["tenant_id"], row["run_id"], "EFFECTIVENESS_QUEUED", row["state"], "authority-scheduler", {"due_at": row["effectiveness_due_at"]})
                 due.append((str(row["tenant_id"]), str(row["run_id"])))
         return due
+
+    def claim_execution_jobs(self, worker_id: str, lease_seconds: int, limit: int = 10) -> list[dict[str, Any]]:
+        now = datetime.now(timezone.utc)
+        now_iso = now.isoformat()
+        lease_expires_at = (now + timedelta(seconds=max(lease_seconds, 1))).isoformat()
+        claimed: list[dict[str, Any]] = []
+        with self.transaction() as cursor:
+            rows = cursor.execute(
+                self._execution_job_claim_sql(),
+                (now_iso, now_iso, min(max(limit, 1), 100)),
+            ).fetchall()
+            for row in rows:
+                cursor.execute(
+                    """
+                    UPDATE execution_jobs
+                    SET status = 'running', attempts = attempts + 1, lease_owner = ?, lease_expires_at = ?,
+                      last_error = NULL, updated_at = ?
+                    WHERE job_id = ?
+                    """,
+                    (worker_id, lease_expires_at, now_iso, row["job_id"]),
+                )
+                updated = cursor.execute("SELECT * FROM execution_jobs WHERE job_id = ?", (row["job_id"],)).fetchone()
+                claimed.append(self._row_to_execution_job(updated))
+        return claimed
+
+    def renew_execution_job(self, job_id: str, worker_id: str, lease_seconds: int) -> str:
+        lease_expires_at = (datetime.now(timezone.utc) + timedelta(seconds=max(lease_seconds, 1))).isoformat()
+        with self.transaction() as cursor:
+            row = cursor.execute("SELECT * FROM execution_jobs WHERE job_id = ?", (job_id,)).fetchone()
+            if not row or row["status"] != "running" or row["lease_owner"] != worker_id:
+                raise Conflict("Execution job lease is not owned by this worker.")
+            cursor.execute(
+                "UPDATE execution_jobs SET lease_expires_at = ?, updated_at = ? WHERE job_id = ?",
+                (lease_expires_at, utc_now(), job_id),
+            )
+        return lease_expires_at
+
+    def complete_execution_job(self, job_id: str, worker_id: str) -> None:
+        with self.transaction() as cursor:
+            row = cursor.execute("SELECT * FROM execution_jobs WHERE job_id = ?", (job_id,)).fetchone()
+            if not row or row["status"] != "running" or row["lease_owner"] != worker_id:
+                raise Conflict("Execution job lease is not owned by this worker.")
+            cursor.execute(
+                """
+                UPDATE execution_jobs
+                SET status = 'completed', lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
+                WHERE job_id = ?
+                """,
+                (utc_now(), job_id),
+            )
+
+    def fail_execution_job(self, job_id: str, worker_id: str, error: str, max_attempts: int = 5) -> None:
+        with self.transaction() as cursor:
+            row = cursor.execute("SELECT * FROM execution_jobs WHERE job_id = ?", (job_id,)).fetchone()
+            if not row or row["status"] != "running" or row["lease_owner"] != worker_id:
+                raise Conflict("Execution job lease is not owned by this worker.")
+            attempts = int(row["attempts"])
+            terminal = attempts >= max(max_attempts, 1)
+            timestamp = utc_now()
+            if terminal:
+                cursor.execute(
+                    """
+                    UPDATE execution_jobs
+                    SET status = 'failed', lease_owner = NULL, lease_expires_at = NULL, last_error = ?, updated_at = ?
+                    WHERE job_id = ?
+                    """,
+                    (error[:500], timestamp, job_id),
+                )
+                run_state = cursor.execute(
+                    "SELECT state FROM runs WHERE tenant_id = ? AND run_id = ?",
+                    (row["tenant_id"], row["run_id"]),
+                ).fetchone()
+                if run_state and not self.corpus.is_terminal(run_state["state"]):
+                    cursor.execute(
+                        "UPDATE runs SET runner_status = 'failed', last_error = ?, updated_at = ? WHERE tenant_id = ? AND run_id = ?",
+                        (error[:500], timestamp, row["tenant_id"], row["run_id"]),
+                    )
+            else:
+                available_at = (datetime.now(timezone.utc) + timedelta(seconds=min(300, 2 ** min(attempts, 8)))).isoformat()
+                cursor.execute(
+                    """
+                    UPDATE execution_jobs
+                    SET status = 'queued', lease_owner = NULL, lease_expires_at = NULL, last_error = ?,
+                      available_at = ?, updated_at = ?
+                    WHERE job_id = ?
+                    """,
+                    (error[:500], available_at, timestamp, job_id),
+                )
+                cursor.execute(
+                    "UPDATE runs SET runner_status = 'queued', last_error = ?, updated_at = ? WHERE tenant_id = ? AND run_id = ?",
+                    (error[:500], timestamp, row["tenant_id"], row["run_id"]),
+                )
+            run = cursor.execute(
+                "SELECT state FROM runs WHERE tenant_id = ? AND run_id = ?",
+                (row["tenant_id"], row["run_id"]),
+            ).fetchone()
+            self._append_event_cursor(
+                cursor,
+                row["tenant_id"],
+                row["run_id"],
+                "EXECUTION_JOB_FAILED" if terminal else "EXECUTION_JOB_RETRY_SCHEDULED",
+                run["state"] if run else None,
+                worker_id,
+                {"job_id": job_id, "attempts": attempts, "error": error[:500]},
+            )
+
+    def execution_job_backlog(self) -> int:
+        with self.lock:
+            row = self.connection.execute(
+                "SELECT COUNT(*) AS count FROM execution_jobs WHERE status IN ('queued', 'running')"
+            ).fetchone()
+        return int(row["count"]) if row else 0
+
+    def _enqueue_execution_job_cursor(
+        self,
+        cursor: StoreCursor,
+        tenant_id: str,
+        run_id: str,
+        command: str,
+        payload: dict[str, Any],
+        available_at: str,
+    ) -> str:
+        job_id = f"job-{uuid.uuid4()}"
+        cursor.execute(
+            """
+            INSERT INTO execution_jobs(
+              job_id, tenant_id, run_id, command, payload_json, status, attempts, available_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'queued', 0, ?, ?, ?)
+            """,
+            (job_id, tenant_id, run_id, command, canonical_json(payload), available_at, available_at, available_at),
+        )
+        return job_id
+
+    def _execution_job_claim_sql(self) -> str:
+        return """
+            SELECT * FROM execution_jobs
+            WHERE (status = 'queued' AND available_at <= ?)
+               OR (status = 'running' AND lease_expires_at IS NOT NULL AND lease_expires_at <= ?)
+            ORDER BY available_at, created_at
+            LIMIT ?
+        """
+
+    def _run_for_update_sql(self) -> str:
+        return "SELECT * FROM runs WHERE tenant_id = ? AND run_id = ?"
+
+    def _due_effectiveness_claim_sql(self) -> str:
+        return """
+            SELECT * FROM runs
+            WHERE state = 'EFFECTIVENESS_PENDING' AND runner_status = 'awaiting_effectiveness'
+              AND effectiveness_due_at IS NOT NULL AND effectiveness_due_at <= ?
+            ORDER BY effectiveness_due_at
+            LIMIT ?
+        """
+
+    def _incomplete_runs_claim_sql(self) -> str:
+        return "SELECT * FROM runs WHERE runner_status IN ('queued', 'running') ORDER BY updated_at"
 
     def transition(self, tenant_id: str, run_id: str, to_state: str, actor_id: str, detail: dict[str, Any] | None = None) -> RunRecord:
         denied_transition: str | None = None
@@ -1374,6 +1586,14 @@ class AuthorityStore:
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )
+
+    @staticmethod
+    def _row_to_execution_job(row: Any) -> dict[str, Any]:
+        return {
+            **dict(row),
+            "payload": json.loads(row["payload_json"]),
+            "attempts": int(row["attempts"]),
+        }
 
     @staticmethod
     def _event_core(event_id: str, tenant_id: str, run_id: str | None, event_type: str, state: str | None, actor_id: str, payload_json: str, created_at: str, previous_hash: str) -> dict[str, Any]:

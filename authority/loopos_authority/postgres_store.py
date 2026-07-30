@@ -159,3 +159,34 @@ class PostgresAuthorityStore(AuthorityStore):
                   collected_at = EXCLUDED.collected_at,
                   expires_at = EXCLUDED.expires_at
                 """
+
+    def _execution_job_claim_sql(self) -> str:
+        return """
+            SELECT * FROM execution_jobs
+            WHERE (status = 'queued' AND available_at <= ?)
+               OR (status = 'running' AND lease_expires_at IS NOT NULL AND lease_expires_at <= ?)
+            ORDER BY available_at, created_at
+            LIMIT ?
+            FOR UPDATE SKIP LOCKED
+        """
+
+    def _run_for_update_sql(self) -> str:
+        return "SELECT * FROM runs WHERE tenant_id = ? AND run_id = ? FOR UPDATE"
+
+    def _due_effectiveness_claim_sql(self) -> str:
+        return """
+            SELECT * FROM runs
+            WHERE state = 'EFFECTIVENESS_PENDING' AND runner_status = 'awaiting_effectiveness'
+              AND effectiveness_due_at IS NOT NULL AND effectiveness_due_at <= ?
+            ORDER BY effectiveness_due_at
+            LIMIT ?
+            FOR UPDATE SKIP LOCKED
+        """
+
+    def _incomplete_runs_claim_sql(self) -> str:
+        return """
+            SELECT * FROM runs
+            WHERE runner_status IN ('queued', 'running')
+            ORDER BY updated_at
+            FOR UPDATE SKIP LOCKED
+        """

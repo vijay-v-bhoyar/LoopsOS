@@ -33,6 +33,7 @@ export interface AuthorityReadiness {
     support_verified: boolean;
     outbound_policy_verified: boolean;
     backup_restore_verified: boolean;
+    worker_dispatch_verified: boolean;
   };
 }
 

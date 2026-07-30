@@ -13,8 +13,8 @@ class ExecutionEngine:
         self.store = store
         self.tools = tools
 
-    async def execute(self, tenant_id: str, run_id: str) -> None:
-        run = self.store.claim_run(tenant_id, run_id)
+    async def execute(self, tenant_id: str, run_id: str, reclaim_running: bool = False) -> None:
+        run = self.store.claim_run(tenant_id, run_id, reclaim_running=reclaim_running)
         try:
             if run.state == "EFFECTIVENESS_PENDING":
                 await self._complete_effectiveness(run)
@@ -82,8 +82,8 @@ class ExecutionEngine:
                     self.store.transition(tenant_id, run_id, "EFFECTIVENESS_FAILED", "authority-engine", {"error": str(error)})
             self.store.release_run(tenant_id, run_id, "failed", str(error))
 
-    async def rollback(self, tenant_id: str, run_id: str, reason: str) -> None:
-        run = self.store.claim_run(tenant_id, run_id)
+    async def rollback(self, tenant_id: str, run_id: str, reason: str, reclaim_running: bool = False) -> None:
+        run = self.store.claim_run(tenant_id, run_id, reclaim_running=reclaim_running)
         await self._rollback_or_block(run, reason)
 
     async def _prepare(self, run):

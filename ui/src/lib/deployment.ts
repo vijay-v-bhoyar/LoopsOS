@@ -11,10 +11,11 @@ export interface DeploymentRuntimeEvidence {
   supportVerified?: boolean;
   outboundPolicyVerified?: boolean;
   backupRestoreVerified?: boolean;
+  workerVerified?: boolean;
 }
 
 export interface DeploymentBinding {
-  id: "identity" | "persistence" | "audit" | "transport" | "retention" | "support" | "outbound_policy" | "backup_restore";
+  id: "identity" | "persistence" | "audit" | "transport" | "retention" | "support" | "outbound_policy" | "backup_restore" | "worker";
   label: string;
   status: BindingStatus;
   detail: string;
@@ -115,6 +116,15 @@ export function evaluateDeploymentPosture(env: Environment, runtime: DeploymentR
       "Configure a server-side append-only audit sink for approvals and execution records.",
       "Audit is declared but event write and retrieval probes have not passed.",
       "The append-only audit probe passed.",
+    ),
+    binding(
+      "worker",
+      "Durable execution worker",
+      enterpriseDeclared && persistenceMode === "api" && Boolean(apiBaseUrl),
+      runtime.workerVerified,
+      "Configure the durable execution worker and protected dispatch route.",
+      "Execution persistence is declared but worker dispatch has not been verified by the authority.",
+      "The authority verified durable worker dispatch and leased job storage.",
     ),
     {
       id: "transport",

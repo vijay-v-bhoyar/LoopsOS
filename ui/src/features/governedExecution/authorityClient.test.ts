@@ -108,6 +108,7 @@ describe("authorityClient", () => {
         support_verified: true,
         outbound_policy_verified: true,
         backup_restore_verified: true,
+        worker_dispatch_verified: true,
       },
     }), { status: 200, headers: { "content-type": "application/json" } }));
 

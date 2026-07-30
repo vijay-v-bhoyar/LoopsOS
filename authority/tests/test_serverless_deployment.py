@@ -56,6 +56,14 @@ class ServerlessDeploymentContractTests(unittest.TestCase):
             (REPO_ROOT / "authority" / "requirements.txt").read_text(encoding="utf-8"),
         )
 
+    def test_vercel_declares_the_durable_worker_cron(self) -> None:
+        configuration = json.loads((REPO_ROOT / "vercel.json").read_text(encoding="utf-8"))
+
+        self.assertIn(
+            {"path": "/api/v1/operations/jobs/drain", "schedule": "* * * * *"},
+            configuration.get("crons", []),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

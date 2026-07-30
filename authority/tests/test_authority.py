@@ -23,9 +23,10 @@ from loopos_authority.corpus import Corpus
 from loopos_authority.engine import ExecutionEngine
 from loopos_authority.models import Actor, ApprovalRequest, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, EvidenceRequest, ExecutionPlan, ProbeSpec
 from loopos_authority.persistence import create_authority_store
-from loopos_authority.postgres_store import PostgresConnection, split_postgres_script
+from loopos_authority.postgres_store import PostgresAuthorityStore, PostgresConnection, split_postgres_script
 from loopos_authority.store import AuthorityStore, Conflict, Forbidden
 from loopos_authority.tools import ToolRegistry
+from loopos_authority.worker import ExecutionJobWorker
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -37,6 +38,14 @@ class PostgresConnectionContractTests(unittest.TestCase):
             PostgresConnection("postgresql://authority.example/loopos")
 
         self.assertIsNone(connect.call_args.kwargs["prepare_threshold"])
+
+    def test_postgres_job_claims_lock_runs_and_skip_locked_scheduler_rows(self) -> None:
+        store = object.__new__(PostgresAuthorityStore)
+
+        self.assertIn("FOR UPDATE", store._run_for_update_sql())
+        self.assertIn("FOR UPDATE SKIP LOCKED", store._execution_job_claim_sql())
+        self.assertIn("FOR UPDATE SKIP LOCKED", store._due_effectiveness_claim_sql())
+        self.assertIn("FOR UPDATE SKIP LOCKED", store._incomplete_runs_claim_sql())
 
 
 class ProductionIdentityApiTests(unittest.TestCase):
@@ -131,6 +140,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
         self.assertIn("support_contact", detail)
         self.assertIn("outbound_policy", detail)
         self.assertIn("backup_restore", detail)
+        self.assertIn("worker_dispatch", detail)
 
     def test_production_readiness_accepts_complete_recent_operational_evidence(self) -> None:
         settings = Settings(
@@ -150,6 +160,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             outbound_policy_mode="allowlist",
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+            worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
         )
         store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
         with patch("loopos_authority.api.create_authority_store", return_value=store):
@@ -162,6 +173,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             "support_verified": True,
             "outbound_policy_verified": True,
             "backup_restore_verified": True,
+            "worker_dispatch_verified": True,
         })
 
 
@@ -750,6 +762,96 @@ class StoreAndEngineTests(AuthorityHarness):
         self.assertEqual(self.store.get_run(run.tenant_id, run.run_id).runner_status, "queued")
         self.assertIn("RUN_REQUEUED_AFTER_RESTART", {event["event_type"] for event in self.store.events_after(run.tenant_id, run.run_id)})
 
+    def test_execution_jobs_are_durable_and_exclusively_leased(self) -> None:
+        run = self.store.create_run(self.operator, request(), "create-durable-job")
+        self.store.queue_run(run.tenant_id, run.run_id, self.operator.user_id)
+
+        first_claim = self.store.claim_execution_jobs("worker-a", lease_seconds=60, limit=10)
+        competing_claim = self.store.claim_execution_jobs("worker-b", lease_seconds=60, limit=10)
+
+        self.assertEqual(len(first_claim), 1)
+        self.assertEqual(first_claim[0]["run_id"], run.run_id)
+        self.assertEqual(first_claim[0]["command"], "execute")
+        self.assertEqual(first_claim[0]["attempts"], 1)
+        self.assertEqual(competing_claim, [])
+        self.assertEqual(self.store.execution_job_backlog(), 1)
+
+        self.store.connection.execute(
+            "UPDATE execution_jobs SET lease_expires_at = '2000-01-01T00:00:00+00:00' WHERE job_id = ?",
+            (first_claim[0]["job_id"],),
+        )
+        reclaimed = self.store.claim_execution_jobs("worker-b", lease_seconds=60, limit=10)
+
+        self.assertEqual(len(reclaimed), 1)
+        self.assertEqual(reclaimed[0]["job_id"], first_claim[0]["job_id"])
+        self.assertEqual(reclaimed[0]["attempts"], 2)
+        self.store.complete_execution_job(reclaimed[0]["job_id"], "worker-b")
+        self.assertEqual(self.store.execution_job_backlog(), 0)
+
+    def test_execution_job_lease_can_only_be_renewed_by_its_owner(self) -> None:
+        run = self.store.create_run(self.operator, request(), "create-renewable-job")
+        self.store.queue_run(run.tenant_id, run.run_id, self.operator.user_id)
+        job = self.store.claim_execution_jobs("worker-a", lease_seconds=30, limit=1)[0]
+
+        with self.assertRaises(Conflict):
+            self.store.renew_execution_job(job["job_id"], "worker-b", lease_seconds=60)
+
+        renewed = self.store.renew_execution_job(job["job_id"], "worker-a", lease_seconds=60)
+        self.assertGreater(renewed, job["lease_expires_at"])
+
+    def test_exhausted_execution_job_releases_the_run_as_failed(self) -> None:
+        run = self.store.create_run(self.operator, request(), "create-terminal-job")
+        self.store.queue_run(run.tenant_id, run.run_id, self.operator.user_id)
+        job = self.store.claim_execution_jobs("worker-a", lease_seconds=30, limit=1)[0]
+        self.store.claim_run(run.tenant_id, run.run_id)
+
+        self.store.fail_execution_job(job["job_id"], "worker-a", "Worker infrastructure failed.", max_attempts=1)
+
+        failed_run = self.store.get_run(run.tenant_id, run.run_id)
+        failed_job = self.store.connection.execute(
+            "SELECT * FROM execution_jobs WHERE job_id = ?",
+            (job["job_id"],),
+        ).fetchone()
+        self.assertEqual(failed_job["status"], "failed")
+        self.assertEqual(failed_run.runner_status, "failed")
+        self.assertEqual(failed_run.last_error, "Worker infrastructure failed.")
+        self.assertEqual(self.store.execution_job_backlog(), 0)
+
+    def test_execution_worker_completes_and_acknowledges_a_durable_job(self) -> None:
+        run = self.store.create_run(self.operator, request(), "create-worker-job")
+        self.store.queue_run(run.tenant_id, run.run_id, self.operator.user_id)
+        worker = ExecutionJobWorker(self.store, self.engine, worker_id="worker-a", lease_seconds=30)
+
+        processed = asyncio.run(worker.run_once())
+
+        self.assertEqual(processed, 1)
+        self.assertEqual(self.store.execution_job_backlog(), 0)
+        completed = self.store.get_run(run.tenant_id, run.run_id)
+        self.assertEqual(completed.state, "EFFECTIVENESS_PROVEN")
+        self.assertEqual(completed.runner_status, "completed")
+
+    def test_execution_worker_reclaims_a_run_after_the_previous_worker_dies(self) -> None:
+        run = self.store.create_run(self.operator, request(), "create-worker-recovery")
+        self.store.queue_run(run.tenant_id, run.run_id, self.operator.user_id)
+        abandoned = self.store.claim_execution_jobs("dead-worker", lease_seconds=30, limit=1)[0]
+        self.store.claim_run(run.tenant_id, run.run_id)
+        self.store.connection.execute(
+            "UPDATE execution_jobs SET lease_expires_at = '2000-01-01T00:00:00+00:00' WHERE job_id = ?",
+            (abandoned["job_id"],),
+        )
+        worker = ExecutionJobWorker(self.store, self.engine, worker_id="recovery-worker", lease_seconds=30)
+
+        processed = asyncio.run(worker.run_once())
+
+        self.assertEqual(processed, 1)
+        self.assertEqual(self.store.execution_job_backlog(), 0)
+        self.assertEqual(self.store.get_run(run.tenant_id, run.run_id).state, "EFFECTIVENESS_PROVEN")
+        claimed_events = [
+            event for event in self.store.events_after(run.tenant_id, run.run_id)
+            if event["event_type"] == "RUN_CLAIMED"
+        ]
+        self.assertTrue(claimed_events[-1]["payload"]["reclaimed"])
+
     def test_effectiveness_probes_resume_from_a_durable_observation_window(self) -> None:
         delayed_plan = plan().model_copy(update={"observation_delay_seconds": 300})
         run = self.store.create_run(self.operator, request(execution_plan=delayed_plan), "create-delayed-effectiveness")
@@ -767,6 +869,7 @@ class StoreAndEngineTests(AuthorityHarness):
             self.store.claim_run(run.tenant_id, run.run_id)
         self.store.connection.execute("UPDATE runs SET effectiveness_due_at = '2000-01-01T00:00:00+00:00' WHERE run_id = ?", (run.run_id,))
         self.assertEqual(self.store.queue_due_effectiveness(), [(run.tenant_id, run.run_id)])
+        self.assertEqual(self.store.execution_job_backlog(), 1)
         asyncio.run(self.engine.execute(run.tenant_id, run.run_id))
         self.assertEqual(self.store.get_run(run.tenant_id, run.run_id).state, "EFFECTIVENESS_PROVEN")
 
@@ -851,12 +954,12 @@ class StorageBackendTests(unittest.TestCase):
     def test_supabase_migration_preserves_authority_tables_and_audit_controls(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")
 
-        for table in ["runs", "approvals", "evidence", "tool_invocations", "probe_results", "action_artifacts", "workspaces", "release_initiatives", "connector_events", "audit_events", "audit_anchor_outbox"]:
+        for table in ["runs", "execution_jobs", "approvals", "evidence", "tool_invocations", "probe_results", "action_artifacts", "workspaces", "release_initiatives", "connector_events", "audit_events", "audit_anchor_outbox"]:
             self.assertIn(f"create table if not exists {table}", migration)
             self.assertIn(f"alter table {table} enable row level security", migration)
         self.assertIn("audit_events_no_update", migration)
         self.assertIn("audit_events_no_delete", migration)
-        self.assertIn("revoke all on runs, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated", migration)
+        self.assertIn("revoke all on runs, execution_jobs, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from anon, authenticated", migration)
 
     def test_postgres_migration_runner_preserves_dollar_quoted_functions(self) -> None:
         migration = (REPO_ROOT / "supabase" / "migrations" / "20260720010000_loopos_authority.sql").read_text(encoding="utf-8")
@@ -915,6 +1018,8 @@ class ApiTests(unittest.TestCase):
             event_poll_seconds=0.001,
             retry_wait_seconds=0,
             webhook_secrets={"tenant-api:github": "github-webhook-secret", "tenant-api:jira": "jira-webhook-secret"},
+            worker_token="api-worker-token-that-is-at-least-thirty-two-bytes",
+            execution_worker_poll_seconds=0.01,
         )
         self.client_context = TestClient(create_app(settings))
         self.client = self.client_context.__enter__()
@@ -1050,6 +1155,24 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status_response.status_code, 200, status_response.text)
         self.assertFalse(status_response.json()["configured"])
         self.assertEqual(self.client.post("/v1/audit/anchors/drain", headers=executive_headers).status_code, 503)
+
+    def test_execution_job_operations_require_worker_or_executive_authority(self) -> None:
+        self.assertEqual(self.client.get("/v1/operations/jobs/status", headers=self.headers).status_code, 403)
+        self.assertEqual(self.client.post("/v1/operations/jobs/drain").status_code, 401)
+        self.assertEqual(
+            self.client.post("/v1/operations/jobs/drain", headers={"x-loopos-worker-token": "wrong-token"}).status_code,
+            401,
+        )
+        authorized = self.client.post(
+            "/v1/operations/jobs/drain",
+            headers={"x-loopos-worker-token": "api-worker-token-that-is-at-least-thirty-two-bytes"},
+        )
+        self.assertEqual(authorized.status_code, 200, authorized.text)
+        cron_authorized = self.client.post(
+            "/v1/operations/jobs/drain",
+            headers={"authorization": "Bearer api-worker-token-that-is-at-least-thirty-two-bytes"},
+        )
+        self.assertEqual(cron_authorized.status_code, 200, cron_authorized.text)
 
     def test_api_runs_execution_streams_events_and_isolates_tenants(self) -> None:
         created = self.client.post(

@@ -136,6 +136,7 @@ describe("workspaceStore", () => {
           support_verified: true,
           outbound_policy_verified: true,
           backup_restore_verified: true,
+          worker_dispatch_verified: true,
         },
       }),
       createSession: vi.fn().mockResolvedValue({
@@ -193,6 +194,7 @@ describe("workspaceStore", () => {
       supportVerified: true,
       outboundPolicyVerified: true,
       backupRestoreVerified: true,
+      workerVerified: true,
     });
     expect(result.current.state.current_user).toMatchObject({
       user_id: "oidc-user-42",
