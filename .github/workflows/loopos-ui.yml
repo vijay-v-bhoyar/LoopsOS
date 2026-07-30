@@ -80,6 +80,7 @@ jobs:
             .release-evidence/loopos-ui.oci.tar \
             .release-evidence/loopos-authority.oci.tar \
             --output .release-evidence/manifest.json
+          cp security/authority-python-3.14.6.openvex.json .release-evidence/
       - name: Scan UI image vulnerabilities
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
@@ -93,6 +94,7 @@ jobs:
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
           sbom: .release-evidence/loopos-authority.sbom.spdx.json
+          vex: security/authority-python-3.14.6.openvex.json
           fail-build: true
           severity-cutoff: high
           cache-db: true

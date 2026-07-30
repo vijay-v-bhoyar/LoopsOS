@@ -153,6 +153,26 @@ class SupplyChainEvidenceTests(unittest.TestCase):
         self.assertIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflow)
         self.assertIn("if: always()", workflow)
         self.assertIn("include-hidden-files: true", workflow)
+        self.assertIn("vex: security/authority-python-3.14.6.openvex.json", workflow)
+        self.assertIn("cp security/authority-python-3.14.6.openvex.json .release-evidence/", workflow)
+
+    def test_authority_vex_is_narrow_and_fixed_by_the_pinned_runtime(self) -> None:
+        vex = json.loads(
+            (REPO_ROOT / "security" / "authority-python-3.14.6.openvex.json").read_text(encoding="utf-8")
+        )
+        statements = vex["statements"]
+
+        self.assertEqual(
+            {statement["vulnerability"]["name"] for statement in statements},
+            {"CVE-2026-11940", "CVE-2026-11972", "CVE-2026-15308"},
+        )
+        self.assertTrue(all(statement["status"] == "fixed" for statement in statements))
+        self.assertTrue(
+            all(
+                statement["products"] == [{"@id": "pkg:generic/python@3.14.6"}]
+                for statement in statements
+            )
+        )
 
     def test_ui_runtime_base_is_current_and_digest_pinned(self) -> None:
         dockerfile = (REPO_ROOT / "ui" / "Dockerfile").read_text(encoding="utf-8")
