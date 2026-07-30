@@ -340,7 +340,9 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
             readinessEvidence = {
               apiReachable: true,
               persistenceVerified: readiness.storage_backend === "postgres",
-              auditVerified: readiness.audit_anchor_configured && readiness.audit_anchor_backlog === 0,
+              auditVerified: readiness.audit_anchor_configured
+                && readiness.audit_anchor_backlog === 0
+                && readiness.audit_anchor_delivery_verified,
               retentionVerified: readiness.operational_bindings.retention_verified,
               supportVerified: readiness.operational_bindings.support_verified,
               outboundPolicyVerified: readiness.operational_bindings.outbound_policy_verified,

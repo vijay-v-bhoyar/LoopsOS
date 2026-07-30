@@ -1527,6 +1527,22 @@ class AuthorityStore:
             ).fetchone()
         return int(row["count"]) if row else 0
 
+    def audit_anchor_delivery_status(self) -> dict[str, Any]:
+        with self.lock:
+            row = self.connection.execute(
+                """
+                SELECT
+                  COUNT(CASE WHEN delivered_at IS NOT NULL THEN 1 END) AS delivered_count,
+                  MAX(delivered_at) AS last_delivered_at
+                FROM audit_anchor_outbox
+                """
+            ).fetchone()
+        return {
+            "verified": bool(row and int(row["delivered_count"] or 0) > 0),
+            "delivered_count": int(row["delivered_count"] or 0) if row else 0,
+            "last_delivered_at": row["last_delivered_at"] if row else None,
+        }
+
     def _append_event_cursor(self, cursor: StoreCursor, tenant_id: str, run_id: str | None, event_type: str, state: str | None, actor_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         previous = cursor.execute("SELECT event_hash FROM audit_events WHERE tenant_id = ? ORDER BY sequence DESC LIMIT 1", (tenant_id,)).fetchone()
         previous_hash = str(previous["event_hash"]) if previous else "0" * 64

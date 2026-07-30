@@ -9,7 +9,7 @@ LoopOS has two explicit postures: `evaluation` and `enterprise`. Evaluation mode
 | Identity | BFF-managed session; IdP groups mapped server-side to LoopOS roles | Session endpoint verifies issuer, audience, signature, expiry, tenant, subject, and one explicit role mapping |
 | Persistence | LoopOS authority service and tenant-scoped durable Postgres database | Authority readiness reports Postgres and the authenticated workspace list succeeds; enterprise mode never uses browser workspace storage |
 | Durable worker | Database-leased execution jobs and a protected worker/cron dispatch route | Authority readiness reports the server-side dispatch credential and job store binding |
-| Audit | Authority hash chain delivered through the durable outbox to an external append-only sink | Authority readiness reports a configured sink and zero undelivered anchors |
+| Audit | Authority hash chain delivered through the durable outbox to an external append-only sink | Authority readiness reports a configured sink, at least one accepted signed envelope, and zero undelivered anchors |
 | Transport | HTTPS for every non-local origin | Certificate, reachability, redirect, and hostname checks pass |
 | Retention | Approved retention and deletion policy URL | Legal/security owners approve the policy and deletion evidence path |
 | Operations | Named support contact and on-call route | Alert routing and incident exercise pass |

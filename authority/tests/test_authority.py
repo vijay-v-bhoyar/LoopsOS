@@ -166,9 +166,16 @@ class ProductionIdentityApiTests(unittest.TestCase):
         store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
         with patch("loopos_authority.api.create_authority_store", return_value=store):
             with TestClient(create_app(settings, identity_verifier=self.IdentityVerifier(), transport=httpx.MockTransport(lambda _request: httpx.Response(202)))) as client:
+                session = client.post(
+                    "/v1/sessions",
+                    headers={"x-loopos-identity-token": "verified-identity-assertion"},
+                )
+                self.assertEqual(session.status_code, 200, session.text)
                 response = client.get("/health/ready")
 
         self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["audit_anchor_delivery_verified"])
+        self.assertIsNotNone(response.json()["audit_anchor_last_delivered_at"])
         self.assertEqual(response.json()["operational_bindings"], {
             "retention_verified": True,
             "support_verified": True,
@@ -176,6 +183,34 @@ class ProductionIdentityApiTests(unittest.TestCase):
             "backup_restore_verified": True,
             "worker_dispatch_verified": True,
         })
+
+    def test_production_readiness_rejects_an_audit_sink_without_a_verified_delivery(self) -> None:
+        settings = Settings(
+            repo_root=REPO_ROOT,
+            database_path=Path(self.tempdir.name) / "operations-unproven-audit.db",
+            session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
+            allow_dev_auth=False,
+            allowed_http_hosts=(),
+            cors_origins=(),
+            storage_backend="postgres",
+            postgres_dsn="postgresql://unused.example/loopos",
+            audit_anchor_url="https://audit.example.com/loopos/events",
+            audit_anchor_hmac_secret="audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+            audit_anchor_poll_seconds=3600,
+            retention_policy_url="https://policy.example.com/loopos-retention",
+            support_contact="loopos-operations@example.com",
+            outbound_policy_mode="deny_all",
+            backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
+            backup_restore_verified_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(),
+            worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
+        )
+        store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
+        with patch("loopos_authority.api.create_authority_store", return_value=store):
+            with TestClient(create_app(settings, identity_verifier=self.IdentityVerifier(), transport=httpx.MockTransport(lambda _request: httpx.Response(202)))) as client:
+                response = client.get("/health/ready")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"], "Production audit anchoring has not completed a verified delivery.")
 
 
 def enterprise_context() -> dict:

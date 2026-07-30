@@ -252,6 +252,9 @@ def create_app(
             anchor_backlog = store.audit_anchor_backlog()
             if not settings.allow_dev_auth and anchor_backlog:
                 raise HTTPException(status_code=503, detail=f"Production audit anchor backlog contains {anchor_backlog} event(s).")
+            anchor_delivery = store.audit_anchor_delivery_status()
+            if not settings.allow_dev_auth and not anchor_delivery["verified"]:
+                raise HTTPException(status_code=503, detail="Production audit anchoring has not completed a verified delivery.")
             return {
                 "status": "ready",
                 "loops": len(corpus.loop_descriptors),
@@ -262,6 +265,8 @@ def create_app(
                 "storage_backend": settings.storage_backend,
                 "audit_anchor_configured": audit_anchor is not None,
                 "audit_anchor_backlog": anchor_backlog,
+                "audit_anchor_delivery_verified": anchor_delivery["verified"],
+                "audit_anchor_last_delivered_at": anchor_delivery["last_delivered_at"],
                 "execution_job_backlog": store.execution_job_backlog(),
                 "operational_bindings": operational_bindings,
             }
@@ -287,6 +292,16 @@ def create_app(
             actor = identity_verifier.verify(assertion)
         except Exception as error:
             raise HTTPException(status_code=401, detail="Identity assertion verification failed.") from error
+        store.append_event(
+            actor.tenant_id,
+            None,
+            "ENTERPRISE_SESSION_ISSUED",
+            None,
+            actor.user_id,
+            {"role": actor.role},
+        )
+        if audit_anchor:
+            await audit_anchor.drain()
         ttl_seconds = 900
         return SessionResponse(
             access_token=signer.issue(actor, ttl_seconds),

@@ -28,6 +28,8 @@ export interface AuthorityReadiness {
   production_identity: boolean;
   audit_anchor_configured: boolean;
   audit_anchor_backlog: number;
+  audit_anchor_delivery_verified: boolean;
+  audit_anchor_last_delivered_at: string | null;
   operational_bindings: {
     retention_verified: boolean;
     support_verified: boolean;

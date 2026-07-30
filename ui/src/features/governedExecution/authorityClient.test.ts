@@ -103,6 +103,8 @@ describe("authorityClient", () => {
       production_identity: true,
       audit_anchor_configured: true,
       audit_anchor_backlog: 0,
+      audit_anchor_delivery_verified: true,
+      audit_anchor_last_delivered_at: "2026-07-30T12:00:00+00:00",
       operational_bindings: {
         retention_verified: true,
         support_verified: true,
@@ -119,6 +121,7 @@ describe("authorityClient", () => {
       production_identity: true,
       audit_anchor_configured: true,
       audit_anchor_backlog: 0,
+      audit_anchor_delivery_verified: true,
       operational_bindings: expect.objectContaining({ backup_restore_verified: true }),
     });
     expect(fetchImpl).toHaveBeenCalledWith("/api/health/ready", expect.objectContaining({
