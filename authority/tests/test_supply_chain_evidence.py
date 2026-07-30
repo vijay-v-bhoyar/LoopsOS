@@ -116,10 +116,14 @@ class SupplyChainEvidenceTests(unittest.TestCase):
     def test_verifies_embedded_sbom_and_provenance_attestations(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             archive = self._archive(Path(temporary_directory))
-            report = verify_oci_archive(archive)
+            sbom_output = Path(temporary_directory) / "loopos.sbom.spdx.json"
+            report = verify_oci_archive(archive, sbom_output=sbom_output)
+            sbom = json.loads(sbom_output.read_text(encoding="utf-8"))
 
         self.assertTrue(report["verified"])
         self.assertTrue(report["image_digest"].startswith("sha256:"))
+        self.assertEqual(report["sbom_file"], "loopos.sbom.spdx.json")
+        self.assertEqual(sbom["spdxVersion"], "SPDX-2.3")
         self.assertEqual(report["sbom_predicate"], "https://spdx.dev/Document")
         self.assertEqual(report["provenance_predicate"], "https://slsa.dev/provenance/v1")
         self.assertEqual(len(report["archive_sha256"]), 64)
@@ -141,11 +145,14 @@ class SupplyChainEvidenceTests(unittest.TestCase):
         self.assertIn("type=oci,dest=.release-evidence/loopos-authority.oci.tar", workflow)
         self.assertIn("scripts/verify_oci_attestations.py", workflow)
         self.assertEqual(workflow.count("anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2"), 2)
+        self.assertEqual(workflow.count("sbom: .release-evidence/"), 2)
+        self.assertNotIn("image: oci-archive:", workflow)
         self.assertEqual(workflow.count("severity-cutoff: high"), 2)
         self.assertIn(".release-evidence/loopos-ui.vulnerabilities.json", workflow)
         self.assertIn(".release-evidence/loopos-authority.vulnerabilities.json", workflow)
         self.assertIn("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", workflow)
         self.assertIn("if: always()", workflow)
+        self.assertIn("include-hidden-files: true", workflow)
 
 
 if __name__ == "__main__":

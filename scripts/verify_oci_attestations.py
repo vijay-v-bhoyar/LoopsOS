@@ -111,7 +111,7 @@ def _leaf_descriptors(
     return leaves
 
 
-def verify_oci_archive(path: Path) -> dict[str, Any]:
+def verify_oci_archive(path: Path, *, sbom_output: Path | None = None) -> dict[str, Any]:
     archive_sha256 = _file_sha256(path)
     try:
         archive = tarfile.open(path, "r:*")
@@ -146,6 +146,7 @@ def verify_oci_archive(path: Path) -> dict[str, Any]:
             raise EvidenceError("OCI archive does not contain an attestation manifest.")
 
         predicate_types: set[str] = set()
+        sbom_documents: list[tuple[str, dict[str, Any]]] = []
         bound_attestations = 0
         for descriptor in attestation_descriptors:
             annotations = descriptor.get("annotations")
@@ -170,6 +171,11 @@ def verify_oci_archive(path: Path) -> dict[str, Any]:
                 predicate_type = statement.get("predicateType")
                 if isinstance(predicate_type, str):
                     predicate_types.add(predicate_type)
+                    if "spdx" in predicate_type.lower() or "cyclonedx" in predicate_type.lower():
+                        predicate = statement.get("predicate")
+                        if not isinstance(predicate, dict):
+                            raise EvidenceError(f"SBOM attestation {layer_digest} has no JSON object predicate.")
+                        sbom_documents.append((predicate_type, predicate))
 
         if not bound_attestations:
             raise EvidenceError("No attestation manifest is bound to the image digest.")
@@ -185,11 +191,18 @@ def verify_oci_archive(path: Path) -> dict[str, Any]:
             raise EvidenceError("OCI archive is missing an embedded SBOM attestation.")
         if not provenance_predicates:
             raise EvidenceError("OCI archive is missing an embedded provenance attestation.")
+        if sbom_output is not None:
+            sbom_output.parent.mkdir(parents=True, exist_ok=True)
+            sbom_output.write_text(
+                json.dumps(sbom_documents[0][1], indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
 
     return {
         "archive": path.name,
         "archive_sha256": archive_sha256,
         "image_digest": image_digest,
+        "sbom_file": sbom_output.name if sbom_output is not None else None,
         "sbom_predicate": sbom_predicates[0],
         "provenance_predicate": provenance_predicates[0],
         "verified": True,
@@ -204,7 +217,12 @@ def main(argv: list[str] | None = None) -> int:
 
     report: dict[str, Any] = {"schema_version": 1, "verified": False, "artifacts": []}
     try:
-        report["artifacts"] = [verify_oci_archive(path) for path in args.archives]
+        artifacts = []
+        for path in args.archives:
+            archive_name = path.name.removesuffix(".oci.tar")
+            sbom_output = args.output.parent / f"{archive_name}.sbom.spdx.json"
+            artifacts.append(verify_oci_archive(path, sbom_output=sbom_output))
+        report["artifacts"] = artifacts
         report["verified"] = True
     except EvidenceError as error:
         report["error"] = str(error)

@@ -83,17 +83,19 @@ jobs:
       - name: Scan UI image vulnerabilities
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
-          image: oci-archive:.release-evidence/loopos-ui.oci.tar
+          sbom: .release-evidence/loopos-ui.sbom.spdx.json
           fail-build: true
           severity-cutoff: high
+          cache-db: true
           output-format: json
           output-file: .release-evidence/loopos-ui.vulnerabilities.json
       - name: Scan authority image vulnerabilities
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
-          image: oci-archive:.release-evidence/loopos-authority.oci.tar
+          sbom: .release-evidence/loopos-authority.sbom.spdx.json
           fail-build: true
           severity-cutoff: high
+          cache-db: true
           output-format: json
           output-file: .release-evidence/loopos-authority.vulnerabilities.json
       - name: Retain OCI release evidence
@@ -103,4 +105,5 @@ jobs:
           name: loopos-release-evidence-${{ github.sha }}
           path: .release-evidence
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 30
