@@ -7,6 +7,7 @@ import json
 import os
 import sqlite3
 import tempfile
+import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -1031,6 +1032,18 @@ class ApiTests(unittest.TestCase):
         self.client_context.__exit__(None, None, None)
         self.tempdir.cleanup()
 
+    def wait_for_run_state(self, run_id: str, expected_state: str, timeout_seconds: float = 5.0) -> dict[str, object]:
+        deadline = time.monotonic() + timeout_seconds
+        last_run: dict[str, object] | None = None
+        while time.monotonic() < deadline:
+            response = self.client.get(f"/v1/runs/{run_id}", headers=self.headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            last_run = response.json()
+            if last_run["state"] == expected_state:
+                return last_run
+            time.sleep(0.01)
+        self.fail(f"Run {run_id} did not reach {expected_state}; last observed record: {last_run}")
+
     def test_workspace_api_is_tenant_scoped_and_uses_optimistic_concurrency(self) -> None:
         created = self.client.put(
             "/v1/workspaces/workspace-authoritative",
@@ -1185,8 +1198,8 @@ class ApiTests(unittest.TestCase):
         run_id = created.json()["run_id"]
         started = self.client.post(f"/v1/runs/{run_id}/start", headers=self.headers)
         self.assertEqual(started.status_code, 202, started.text)
-        completed = self.client.get(f"/v1/runs/{run_id}", headers=self.headers)
-        self.assertEqual(completed.json()["state"], "EFFECTIVENESS_PROVEN")
+        completed = self.wait_for_run_state(run_id, "EFFECTIVENESS_PROVEN")
+        self.assertEqual(completed["runner_status"], "completed")
         stream = self.client.get(f"/v1/runs/{run_id}/events", headers=self.headers)
         self.assertIn("event: RUN_CREATED", stream.text)
         self.assertIn("event: STATE_TRANSITION", stream.text)
@@ -1213,8 +1226,7 @@ class ApiTests(unittest.TestCase):
         )
         run_id = created.json()["run_id"]
         self.assertEqual(self.client.post(f"/v1/runs/{run_id}/start", headers=self.headers).status_code, 202)
-        failed = self.client.get(f"/v1/runs/{run_id}", headers=self.headers).json()
-        self.assertEqual(failed["state"], "ROLLED_BACK")
+        failed = self.wait_for_run_state(run_id, "ROLLED_BACK")
 
         recovery = self.client.post(
             f"/v1/runs/{run_id}/recover",
