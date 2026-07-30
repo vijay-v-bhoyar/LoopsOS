@@ -7,7 +7,7 @@ import { validateUseCase } from "./lib/validation";
 import { buildEnterpriseActionPlan } from "./lib/actionPlan";
 import { buildProofPackMarkdown, completeNextRunStep, createInitiativeFromWorkspace, refreshInitiative } from "./lib/sdlcProductivity";
 import { consumeCrashAuthenticatedView } from "./lib/runtimeConfig";
-import { createExecution, DEFAULT_WORKSPACE_USE_CASE, useWorkspaceStore } from "./lib/workspaceStore";
+import { createExecution, EMPTY_WORKSPACE_USE_CASE, useWorkspaceStore } from "./lib/workspaceStore";
 import { downloadMarkdown } from "./lib/workspaceExport";
 import { Dashboard } from "./screens/Dashboard";
 import { ImplementationPlan } from "./screens/ImplementationPlan";
@@ -36,7 +36,7 @@ export default function App() {
   const [selectedLoop, setSelectedLoop] = useState<LoopDetail | null>(looposData.loops[0] ?? null);
   const [plan, setPlan] = useState<EnterpriseActionPlan | null>(null);
   const workspace = useWorkspaceStore();
-  const input = workspace.activeWorkspace?.use_case ?? DEFAULT_WORKSPACE_USE_CASE;
+  const input = workspace.activeWorkspace?.use_case ?? EMPTY_WORKSPACE_USE_CASE;
   const inputSources = workspace.activeWorkspace?.input_sources ?? [];
 
   useEffect(() => {

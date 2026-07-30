@@ -1,6 +1,7 @@
 FROM node:22-alpine AS build
 
 WORKDIR /workspace
+ENV LOOPOS_USE_CHECKED_IN_DATA=1
 COPY . .
 RUN cd ui && npm ci && npm run build
 

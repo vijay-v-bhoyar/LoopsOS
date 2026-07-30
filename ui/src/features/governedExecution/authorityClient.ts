@@ -1,7 +1,8 @@
 import type { EnterpriseUser } from "../../types";
+import { deploymentPosture, type DeploymentMode } from "../../lib/deployment";
 import type { AuditVerification, AuthorityEvent, AuthoritySession, ConnectorEventInput, ConnectorEventRecord, CreateGovernedRun, CreateReleaseInitiative, GovernedRun, ReleaseInitiativeRecord, ReleaseProofPack } from "./types";
 
-const AUTHORITY_BASE = (import.meta.env.VITE_LOOPOS_AUTHORITY_URL as string | undefined)?.replace(/\/$/, "") ?? "/authority";
+const AUTHORITY_BASE = (import.meta.env.VITE_LOOPOS_AUTHORITY_URL as string | undefined)?.replace(/\/$/, "") ?? "/api";
 
 export class AuthorityError extends Error {
   constructor(message: string, readonly status?: number) {
@@ -16,7 +17,7 @@ async function request<T>(path: string, options: RequestInit = {}, timeoutMs = 1
     const response = await fetch(`${AUTHORITY_BASE}${path}`, {
       ...options,
       cache: "no-store",
-      credentials: "omit",
+      credentials: options.credentials ?? "omit",
       redirect: "error",
       referrerPolicy: "no-referrer",
       signal: controller.signal,
@@ -42,6 +43,20 @@ export async function createDevelopmentSession(user: EnterpriseUser): Promise<Au
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ tenant_id: "local-evaluation", user_id: user.user_id, name: user.name, role: user.role, ttl_seconds: 3600 }),
   });
+}
+
+export async function createEnterpriseSession(): Promise<AuthoritySession> {
+  return request<AuthoritySession>("/v1/sessions", {
+    method: "POST",
+    credentials: "same-origin",
+  });
+}
+
+export async function createAuthoritySession(
+  user: EnterpriseUser,
+  mode: DeploymentMode = deploymentPosture.mode,
+): Promise<AuthoritySession> {
+  return mode === "enterprise" ? createEnterpriseSession() : createDevelopmentSession(user);
 }
 
 export async function listGovernedRuns(token: string, workspaceId: string): Promise<GovernedRun[]> {

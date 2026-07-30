@@ -13,7 +13,7 @@ Proposed starting targets, subject to enterprise owner approval:
 ## Health And Alerts
 
 - Liveness: `GET /healthz` returns `200 ok`.
-- Authority liveness: `GET /authority/health/live`; authority readiness: `GET /authority/health/ready`.
+- Authority liveness: `GET /api/health/live`; authority readiness: `GET /api/health/ready`.
 - Production readiness must additionally prove IdP session, tenant-scoped persistence, audit append/retrieve/external anchor, retention configuration, and outbound policy.
 - Page on sustained 5xx, session verification failure, persistence write failure, audit delivery failure, cross-tenant probe failure, or CSP violation increase.
 - Ticket on elevated client error-boundary incidents, extraction failures, or optional endpoint timeouts.

@@ -4,6 +4,7 @@ import os
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 
 def _boolean(name: str, default: bool = False) -> bool:
@@ -31,6 +32,12 @@ class Settings:
     max_retry_attempts: int = 5
     retry_wait_seconds: float = 0.1
     scheduler_poll_seconds: float = 1.0
+    oidc_issuer: str | None = None
+    oidc_audience: str | None = None
+    oidc_jwks_url: str | None = None
+    oidc_tenant_claim: str = "tenant_id"
+    oidc_role_claim: str = "groups"
+    oidc_role_mapping: dict[str, Literal["Executive", "Approver", "Operator", "Auditor"]] | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -43,6 +50,13 @@ class Settings:
         session_secret = os.getenv("LOOPOS_SESSION_HMAC_SECRET", "loopos-local-development-secret-change-before-production")
         if not allow_dev_auth and len(session_secret.encode("utf-8")) < 32:
             raise ValueError("LOOPOS_SESSION_HMAC_SECRET must contain at least 32 bytes when development authentication is disabled.")
+        oidc_issuer = os.getenv("LOOPOS_OIDC_ISSUER")
+        oidc_audience = os.getenv("LOOPOS_OIDC_AUDIENCE")
+        oidc_jwks_url = os.getenv("LOOPOS_OIDC_JWKS_URL")
+        oidc_role_mapping = _role_mapping(os.getenv("LOOPOS_OIDC_ROLE_MAPPING_JSON", "{}"))
+        oidc_values = (oidc_issuer, oidc_audience, oidc_jwks_url)
+        if any(oidc_values) and (not all(oidc_values) or not oidc_role_mapping):
+            raise ValueError("OIDC configuration requires issuer, audience, JWKS URL, and at least one role mapping.")
         return cls(
             repo_root=repo_root,
             database_path=database_path,
@@ -54,6 +68,12 @@ class Settings:
             cors_origins=tuple(filter(None, (item.strip() for item in os.getenv("LOOPOS_CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173").split(",")))),
             connector_bearer_tokens=_connector_tokens(os.getenv("LOOPOS_CONNECTOR_BEARER_TOKENS_JSON", "{}")),
             webhook_secrets=_connector_tokens(os.getenv("LOOPOS_WEBHOOK_SECRETS_JSON", "{}")),
+            oidc_issuer=oidc_issuer,
+            oidc_audience=oidc_audience,
+            oidc_jwks_url=oidc_jwks_url,
+            oidc_tenant_claim=os.getenv("LOOPOS_OIDC_TENANT_CLAIM", "tenant_id"),
+            oidc_role_claim=os.getenv("LOOPOS_OIDC_ROLE_CLAIM", "groups"),
+            oidc_role_mapping=oidc_role_mapping,
         )
 
 
@@ -65,3 +85,14 @@ def _connector_tokens(raw: str) -> dict[str, str]:
     if not isinstance(value, dict) or not all(isinstance(key, str) and isinstance(token, str) for key, token in value.items()):
         raise ValueError("LOOPOS_CONNECTOR_BEARER_TOKENS_JSON must map hostnames to bearer tokens.")
     return {key.lower(): token for key, token in value.items()}
+
+
+def _role_mapping(raw: str) -> dict[str, Literal["Executive", "Approver", "Operator", "Auditor"]]:
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise ValueError("LOOPOS_OIDC_ROLE_MAPPING_JSON must be a JSON object.") from error
+    roles = {"Executive", "Approver", "Operator", "Auditor"}
+    if not isinstance(value, dict) or not all(isinstance(key, str) and role in roles for key, role in value.items()):
+        raise ValueError("LOOPOS_OIDC_ROLE_MAPPING_JSON must map external role names to supported LoopOS roles.")
+    return value

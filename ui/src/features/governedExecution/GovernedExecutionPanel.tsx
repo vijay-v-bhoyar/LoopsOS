@@ -9,7 +9,7 @@ import type { EnterpriseUser, LoopOSData, SavedWorkspace } from "../../types";
 import {
   approveGovernedRun,
   AuthorityError,
-  createDevelopmentSession,
+  createAuthoritySession,
   createGovernedRun,
   createReleaseInitiative,
   getReleaseProofPack,
@@ -63,7 +63,7 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
     setConnection("connecting");
     setError("");
     try {
-      const session = await createDevelopmentSession(user);
+      const session = await createAuthoritySession(user);
       tokenRef.current = session.access_token;
       const [records, initiatives, events] = await Promise.all([
         listGovernedRuns(session.access_token, workspace.workspace_id),

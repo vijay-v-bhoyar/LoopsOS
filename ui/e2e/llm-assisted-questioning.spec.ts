@@ -3,6 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 async function openWorkspace(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Enter Evaluation Workspace" }).click();
+  await page.getByRole("button", { name: "Open Use Case Advisor" }).click();
+  await page.getByRole("button", { name: "Load Example" }).click();
   if ((page.viewportSize()?.width ?? 1_440) < 1_024) {
     await page.getByRole("button", { name: "Open navigation" }).click();
     await page.getByRole("dialog", { name: "Navigation" }).getByRole("button", { name: "Workspaces" }).click();

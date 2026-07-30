@@ -1,12 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd ui && npm ci",
+  "devCommand": "cd ui && npm run dev -- --port $PORT",
   "buildCommand": "cd ui && npm run build",
   "outputDirectory": "ui/dist",
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/((?!assets/|favicon.ico).*)",
+      "source": "/api/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/((?!api/|assets/|favicon.ico).*)",
       "destination": "/index.html"
     }
   ],
@@ -19,12 +24,32 @@
           "value": "nosniff"
         },
         {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https:; media-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
+        },
+        {
           "key": "Referrer-Policy",
           "value": "no-referrer"
         },
         {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
           "key": "Permissions-Policy",
-          "value": "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+          "value": "camera=(), geolocation=(), microphone=(self), payment=(), usb=()"
         }
       ]
     }

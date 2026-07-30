@@ -13,6 +13,12 @@ function openWorkspaces() {
   fireEvent.click(screen.getAllByRole("button", { name: "Workspaces" })[0]);
 }
 
+function loadExampleUseCase() {
+  fireEvent.click(screen.getByText("Open Use Case Advisor"));
+  fireEvent.click(screen.getByRole("button", { name: "Load Example" }));
+  fireEvent.click(screen.getAllByRole("button", { name: "Dashboard" })[0]);
+}
+
 describe("LoopOS Enterprise UI", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -31,6 +37,7 @@ describe("LoopOS Enterprise UI", () => {
 
   it("turns dashboard actions into workspace outputs", () => {
     renderSignedIn();
+    loadExampleUseCase();
     expect(screen.getByText("SDLC Command Center")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Record Dry Run" }));
     expect(screen.getByText("latest loop output")).toBeInTheDocument();
@@ -46,6 +53,7 @@ describe("LoopOS Enterprise UI", () => {
 
   it("creates SDLC initiatives, runs checklist steps, and exports proof packs from the command center", () => {
     renderSignedIn();
+    loadExampleUseCase();
     expect(screen.getByText("SDLC Command Center")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Create SDLC Initiative" }));
     expect(screen.getByText("Actionable loop runbook")).toBeInTheDocument();
@@ -77,7 +85,11 @@ describe("LoopOS Enterprise UI", () => {
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
     expect(screen.getAllByText("Use Case Advisor").length).toBeGreaterThan(0);
     expect(screen.getByText("Recommendation Result")).toBeInTheDocument();
-    expect(screen.getAllByText(/Agent Guardrail Loop|Tool Execution Validation Loop/).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("AI scope")).toHaveValue("");
+    expect(screen.getByLabelText("Environment")).toHaveValue("");
+    expect(screen.getByLabelText("Data sensitivity")).toHaveValue("");
+    expect(screen.getByLabelText("Maturity")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Load Example" })).toBeInTheDocument();
   });
 
   it("lets users deep dive into what a loop will do", () => {
@@ -126,6 +138,7 @@ describe("LoopOS Enterprise UI", () => {
   it("saves an enterprise action plan into the active workspace", () => {
     renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
+    fireEvent.click(screen.getByRole("button", { name: "Load Example" }));
     fireEvent.click(screen.getByText("Send To Action Plan"));
     expect(screen.getByText("Enterprise Action Plan")).toBeInTheDocument();
 
@@ -175,6 +188,30 @@ describe("LoopOS Enterprise UI", () => {
     });
     expect(screen.getByText("Primary loops")).toBeInTheDocument();
     expect(screen.getAllByText(/in Typed use case/).length).toBeGreaterThan(0);
+  });
+
+  it("does not mix a real use case with the preloaded demonstration", async () => {
+    renderSignedIn();
+    fireEvent.click(screen.getByText("Open Use Case Advisor"));
+    fireEvent.change(screen.getByLabelText("Describe the use case"), {
+      target: {
+        value: "Our software team needs to reduce failed releases by checking change tickets, test results, approvals, rollback plans, and deployment evidence before promoting to production. The pilot uses internal engineering data and requires an auditable go or no-go decision.",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Analyze and review" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Apply selected fields" }));
+
+    await waitFor(() => {
+      const state = JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}");
+      expect(state.workspaces[0].use_case).toMatchObject({
+        title: "",
+        aiScope: "",
+        businessOutcome: "",
+        constraints: "",
+      });
+      expect(state.workspaces[0].use_case.description).toContain("reduce failed releases");
+    });
+    expect(screen.queryByText(/Agent Memory Loop/)).not.toBeInTheDocument();
   });
 
   it("switches to recommendation mode after applying intake and lets the user return to input", async () => {

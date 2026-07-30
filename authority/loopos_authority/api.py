@@ -14,18 +14,32 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from .auth import InvalidSession, SessionSigner
+from .auth import IdentityVerifier, InvalidSession, SessionSigner
 from .config import Settings
 from .corpus import Corpus
 from .engine import ExecutionEngine
+from .identity import OIDCIdentityVerifier
 from .models import Actor, ApprovalRequest, AuditVerification, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, DevSessionRequest, ReleaseInitiativeRecord, ReleaseProofPack, RunCommandResponse, RunRecord, SessionResponse
 from .persistence import create_authority_store
 from .store import Conflict, Forbidden, NotFound
 from .tools import ToolRegistry
 
 
-def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    transport=None,
+    identity_verifier: IdentityVerifier | None = None,
+) -> FastAPI:
     settings = settings or Settings.from_env()
+    if identity_verifier is None and settings.oidc_issuer and settings.oidc_audience and settings.oidc_jwks_url and settings.oidc_role_mapping:
+        identity_verifier = OIDCIdentityVerifier(
+            issuer=settings.oidc_issuer,
+            audience=settings.oidc_audience,
+            jwks_url=settings.oidc_jwks_url,
+            tenant_claim=settings.oidc_tenant_claim,
+            role_claim=settings.oidc_role_claim,
+            role_mapping=settings.oidc_role_mapping,
+        )
     corpus = Corpus.load(settings.repo_root)
     store = create_authority_store(settings, corpus)
     tools = ToolRegistry(settings, store, transport=transport)
@@ -170,6 +184,10 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
 
     @app.get("/health/ready")
     async def readiness() -> dict[str, object]:
+        if not settings.allow_dev_auth and identity_verifier is None:
+            raise HTTPException(status_code=503, detail="Production identity is not configured.")
+        if not settings.allow_dev_auth and settings.storage_backend != "postgres":
+            raise HTTPException(status_code=503, detail="Production persistence must use Postgres.")
         try:
             store.connection.execute("SELECT 1").fetchone()
             return {
@@ -178,17 +196,35 @@ def create_app(settings: Settings | None = None, transport=None) -> FastAPI:
                 "state_machine_invariant": corpus.state_machine["invariant"],
                 "standard_hash": corpus.standard_hash,
                 "development_auth": settings.allow_dev_auth,
+                "production_identity": identity_verifier is not None,
                 "storage_backend": settings.storage_backend,
             }
         except Exception as error:
             raise HTTPException(status_code=503, detail="Authority persistence is unavailable.") from error
 
-    @app.post("/v1/dev/sessions", response_model=SessionResponse)
-    async def create_dev_session(request: DevSessionRequest) -> SessionResponse:
-        if not settings.allow_dev_auth:
-            raise HTTPException(status_code=404, detail="Development sessions are disabled.")
-        actor = Actor.model_validate(request.model_dump(exclude={"ttl_seconds"}))
-        return SessionResponse(access_token=signer.issue(actor, request.ttl_seconds), expires_in=request.ttl_seconds, actor=actor)
+    if settings.allow_dev_auth:
+        @app.post("/v1/dev/sessions", response_model=SessionResponse)
+        async def create_dev_session(request: DevSessionRequest) -> SessionResponse:
+            actor = Actor.model_validate(request.model_dump(exclude={"ttl_seconds"}))
+            return SessionResponse(access_token=signer.issue(actor, request.ttl_seconds), expires_in=request.ttl_seconds, actor=actor)
+
+    @app.post("/v1/sessions", response_model=SessionResponse)
+    async def create_enterprise_session(request: Request) -> SessionResponse:
+        if identity_verifier is None:
+            raise HTTPException(status_code=503, detail="Production identity is not configured.")
+        assertion = request.headers.get("x-loopos-identity-token") or request.cookies.get("loopos_identity")
+        if not assertion:
+            raise HTTPException(status_code=401, detail="A verified identity assertion is required.")
+        try:
+            actor = identity_verifier.verify(assertion)
+        except Exception as error:
+            raise HTTPException(status_code=401, detail="Identity assertion verification failed.") from error
+        ttl_seconds = 900
+        return SessionResponse(
+            access_token=signer.issue(actor, ttl_seconds),
+            expires_in=ttl_seconds,
+            actor=actor,
+        )
 
     @app.get("/v1/session", response_model=Actor)
     async def session(actor: Actor = Depends(current_actor)) -> Actor:

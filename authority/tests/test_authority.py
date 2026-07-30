@@ -22,12 +22,88 @@ from loopos_authority.corpus import Corpus
 from loopos_authority.engine import ExecutionEngine
 from loopos_authority.models import Actor, ApprovalRequest, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, EvidenceRequest, ExecutionPlan, ProbeSpec
 from loopos_authority.persistence import create_authority_store
-from loopos_authority.postgres_store import split_postgres_script
+from loopos_authority.postgres_store import PostgresConnection, split_postgres_script
 from loopos_authority.store import AuthorityStore, Conflict, Forbidden
 from loopos_authority.tools import ToolRegistry
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+class PostgresConnectionContractTests(unittest.TestCase):
+    def test_disables_prepared_statements_for_transaction_poolers(self) -> None:
+        with patch("psycopg.connect") as connect:
+            PostgresConnection("postgresql://authority.example/loopos")
+
+        self.assertIsNone(connect.call_args.kwargs["prepare_threshold"])
+
+
+class ProductionIdentityApiTests(unittest.TestCase):
+    class IdentityVerifier:
+        def verify(self, assertion: str) -> Actor:
+            if assertion != "verified-identity-assertion":
+                raise ValueError("Identity assertion is invalid.")
+            return Actor(
+                tenant_id="tenant-enterprise",
+                user_id="oidc-user-42",
+                name="Enterprise Approver",
+                email="approver@example.com",
+                role="Approver",
+            )
+
+    def setUp(self) -> None:
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.settings = Settings(
+            repo_root=REPO_ROOT,
+            database_path=Path(self.tempdir.name) / "identity.db",
+            session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
+            allow_dev_auth=False,
+            allowed_http_hosts=(),
+            cors_origins=(),
+        )
+
+    def tearDown(self) -> None:
+        self.tempdir.cleanup()
+
+    def test_exchanges_a_verified_gateway_identity_for_a_short_lived_session(self) -> None:
+        with TestClient(create_app(self.settings, identity_verifier=self.IdentityVerifier())) as client:
+            response = client.post(
+                "/v1/sessions",
+                headers={"x-loopos-identity-token": "verified-identity-assertion"},
+            )
+
+            self.assertEqual(response.status_code, 200, response.text)
+            session = response.json()
+            self.assertLessEqual(session["expires_in"], 900)
+            self.assertEqual(session["actor"]["tenant_id"], "tenant-enterprise")
+            self.assertEqual(session["actor"]["user_id"], "oidc-user-42")
+            self.assertEqual(session["actor"]["email"], "approver@example.com")
+            verified = client.get(
+                "/v1/session",
+                headers={"authorization": f"Bearer {session['access_token']}"},
+            )
+            self.assertEqual(verified.status_code, 200)
+            self.assertEqual(verified.json()["role"], "Approver")
+
+    def test_production_readiness_fails_without_an_identity_provider(self) -> None:
+        with TestClient(create_app(self.settings)) as client:
+            response = client.get("/health/ready")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"], "Production identity is not configured.")
+
+    def test_development_session_route_is_absent_in_production(self) -> None:
+        with TestClient(create_app(self.settings)) as client:
+            response = client.post("/v1/dev/sessions", json={})
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_production_readiness_rejects_ephemeral_sqlite_persistence(self) -> None:
+        with TestClient(create_app(self.settings, identity_verifier=self.IdentityVerifier())) as client:
+            response = client.get("/health/ready")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"], "Production persistence must use Postgres.")
 
 
 def enterprise_context() -> dict:

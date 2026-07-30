@@ -62,7 +62,12 @@ class PostgresConnection:
             from psycopg.rows import dict_row
         except ImportError as error:
             raise RuntimeError("Postgres storage requires the optional psycopg package. Install authority/requirements.txt.") from error
-        self._connection = psycopg.connect(dsn, autocommit=True, row_factory=dict_row)
+        self._connection = psycopg.connect(
+            dsn,
+            autocommit=True,
+            row_factory=dict_row,
+            prepare_threshold=None,
+        )
 
     def cursor(self) -> PostgresCursor:
         return PostgresCursor(self._connection.cursor())

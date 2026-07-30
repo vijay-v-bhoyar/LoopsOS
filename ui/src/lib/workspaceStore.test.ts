@@ -14,6 +14,23 @@ import {
 describe("workspaceStore", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it("starts a new workspace without demo use-case classifications", () => {
+    const user = createUser("Vijay", "vijay@example.local", "Operator");
+
+    const workspace = createWorkspace(user, "Production release review");
+
+    expect(workspace.use_case).toEqual({
+      title: "",
+      description: "",
+      environment: "",
+      aiScope: "",
+      dataSensitivity: "",
+      businessOutcome: "",
+      maturity: "",
+      constraints: "",
+    });
+  });
+
   it("creates a local workspace with empty governance records", () => {
     const user = createUser("Vijay", "vijay@example.local", "Operator");
     const workspace = createWorkspace(user, "Agentic AI Workspace", DEFAULT_WORKSPACE_USE_CASE);

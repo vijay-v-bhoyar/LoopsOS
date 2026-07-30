@@ -29,7 +29,7 @@ $env:PYTHONPATH="authority"
 python -m uvicorn loopos_authority.api:app --host 127.0.0.1 --port 8787
 ```
 
-The Vite server proxies `/authority` to port `8787`. Open the Workspace Console, wait for `Authority connected`, choose a loop, and select `Run loop`. Authorized users can approve or reject exact payloads, request compensation, create recovery successors, and verify the tenant audit chain from the same panel.
+The Vite server proxies `/api` to port `8787`. Open the Workspace Console, wait for `Authority connected`, choose a loop, and select `Run loop`. Authorized users can approve or reject exact payloads, request compensation, create recovery successors, and verify the tenant audit chain from the same panel.
 
 ## Release Assurance Records
 
@@ -70,6 +70,12 @@ Local Supabase requires Docker or a compatible container runtime and is for deve
 | `LOOPOS_POSTGRES_DSN` | Postgres DSN required when `LOOPOS_STORAGE_BACKEND=postgres` |
 | `LOOPOS_SESSION_HMAC_SECRET` | Session signing secret, minimum 32 bytes outside development |
 | `LOOPOS_ALLOW_DEV_AUTH` | Enables self-service local sessions; must be `false` in enterprise environments |
+| `LOOPOS_OIDC_ISSUER` | Exact HTTPS issuer accepted for production identity assertions |
+| `LOOPOS_OIDC_AUDIENCE` | Exact audience required in production identity assertions |
+| `LOOPOS_OIDC_JWKS_URL` | HTTPS JWKS endpoint used to verify RS256 identity assertions |
+| `LOOPOS_OIDC_TENANT_CLAIM` | Claim containing the authoritative tenant ID; defaults to `tenant_id` |
+| `LOOPOS_OIDC_ROLE_CLAIM` | Claim containing external groups or roles; defaults to `groups` |
+| `LOOPOS_OIDC_ROLE_MAPPING_JSON` | Explicit map from external groups to LoopOS roles; ambiguous mappings are rejected |
 | `LOOPOS_ALLOWED_HTTP_HOSTS` | Comma-separated exact connector hostname allowlist |
 | `LOOPOS_CONNECTOR_BEARER_TOKENS_JSON` | Server-only JSON map of host to bearer token; never expose through Vite variables |
 | `LOOPOS_WEBHOOK_SECRETS_JSON` | Server-only JSON map of `tenant:system` or `system` to HMAC secret for verified webhook evidence |
@@ -77,7 +83,7 @@ Local Supabase requires Docker or a compatible container runtime and is for deve
 
 ## Production Boundary
 
-Development sessions deliberately make local evaluation easy. Enterprise deployment must disable them and place a BFF or identity-aware gateway in front of the service that issues compatible short-lived sessions from verified IdP claims. SQLite supports a durable single-instance deployment. Supabase/Postgres is the recommended beta path when teams need shared durable storage, migration history, and a clearer route to managed Postgres. Horizontal scale still requires a managed transactional database, shared work queue, backup/restore proof, and the same store invariants.
+Development sessions deliberately make local evaluation easy. Enterprise deployment must disable them and place an identity-aware gateway in front of the service. The gateway supplies a signed OIDC assertion through the same-origin session exchange; LoopOS verifies the fixed issuer, audience, RS256 signature, expiry, tenant claim, and explicit external-role mapping before issuing a 15-minute application session. Production readiness rejects missing identity configuration and SQLite persistence. Supabase/Postgres is the supported shared persistence path; horizontal scale still requires a shared work queue, backup/restore proof, and the same store invariants.
 
 The hash chain detects ordinary event mutation but is not a substitute for an externally anchored WORM/SIEM audit sink against a privileged database administrator. Export or replicate event hashes to that enterprise sink before treating the service as a compliance authority.
 

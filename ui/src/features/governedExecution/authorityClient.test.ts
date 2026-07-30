@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildConnectorEventsForRelease, buildReleaseInitiativeRecord, buildWorkspaceExecutionPlan } from "./types";
 import { createReleaseAssuranceProfile } from "../../lib/releaseAssurance";
 import { createUser, createWorkspace, DEFAULT_WORKSPACE_USE_CASE } from "../../lib/workspaceStore";
-import { createReleaseInitiative, createDevelopmentSession, getReleaseProofPack, recordConnectorEvent, streamGovernedRun } from "./authorityClient";
+import { createAuthoritySession, createEnterpriseSession, createReleaseInitiative, createDevelopmentSession, getReleaseProofPack, recordConnectorEvent, streamGovernedRun } from "./authorityClient";
 import { looposData } from "../../lib/loopos";
 import type { InitiativeWorkspace } from "../../types";
 
@@ -40,8 +40,46 @@ describe("authorityClient", () => {
     const session = await createDevelopmentSession(user);
 
     expect(session.access_token).toBe("token");
-    expect(fetchImpl).toHaveBeenCalledWith("/authority/v1/dev/sessions", expect.objectContaining({ credentials: "omit", redirect: "error" }));
+    expect(fetchImpl).toHaveBeenCalledWith("/api/v1/dev/sessions", expect.objectContaining({ credentials: "omit", redirect: "error" }));
     expect(window.localStorage.length).toBe(0);
+  });
+
+  it("exchanges only same-origin identity credentials for an enterprise session", async () => {
+    const fetchImpl = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      access_token: "enterprise-token",
+      token_type: "bearer",
+      expires_in: 900,
+      actor: {
+        tenant_id: "tenant-enterprise",
+        user_id: "oidc-user-42",
+        name: "Enterprise Approver",
+        email: "approver@example.com",
+        role: "Approver",
+      },
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+
+    const session = await createEnterpriseSession();
+
+    expect(session.actor.tenant_id).toBe("tenant-enterprise");
+    expect(fetchImpl).toHaveBeenCalledWith("/api/v1/sessions", expect.objectContaining({
+      method: "POST",
+      credentials: "same-origin",
+      redirect: "error",
+    }));
+  });
+
+  it("selects the secure session bootstrap for enterprise mode", async () => {
+    const fetchImpl = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      access_token: "enterprise-token",
+      token_type: "bearer",
+      expires_in: 900,
+      actor: { tenant_id: "tenant-enterprise", user_id: "oidc-user-42", name: "Approver", role: "Approver" },
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+    const user = createUser("Ignored local user", "ignored@example.local", "Operator");
+
+    await createAuthoritySession(user, "enterprise");
+
+    expect(fetchImpl).toHaveBeenCalledWith("/api/v1/sessions", expect.any(Object));
   });
 
   it("builds and posts a release assurance initiative record", async () => {
@@ -97,8 +135,8 @@ describe("authorityClient", () => {
     expect(record.release_assurance.gates.length).toBeGreaterThan(0);
     expect(record.freshness_summary?.status).toBe("fresh");
     expect(record.readiness_verdict?.verdict).toBe("NO_GO");
-    expect(fetchImpl).toHaveBeenNthCalledWith(1, "/authority/v1/connector-events", expect.objectContaining({ method: "POST" }));
-    expect(fetchImpl).toHaveBeenNthCalledWith(2, "/authority/v1/release-initiatives", expect.objectContaining({
+    expect(fetchImpl).toHaveBeenNthCalledWith(1, "/api/v1/connector-events", expect.objectContaining({ method: "POST" }));
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, "/api/v1/release-initiatives", expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({ authorization: "Bearer token", "idempotency-key": expect.stringContaining("release-") }),
     }));
@@ -138,7 +176,7 @@ describe("authorityClient", () => {
 
     expect(proofPack.markdown).toContain("Authority Release Proof Pack");
     expect(proofPack.markdown_hash).toHaveLength(64);
-    expect(fetchImpl).toHaveBeenCalledWith("/authority/v1/release-initiatives/initiative-authority/proof-pack", expect.objectContaining({
+    expect(fetchImpl).toHaveBeenCalledWith("/api/v1/release-initiatives/initiative-authority/proof-pack", expect.objectContaining({
       headers: expect.objectContaining({ authorization: "Bearer token" }),
     }));
   });

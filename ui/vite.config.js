@@ -4,10 +4,10 @@ export default defineConfig({
     plugins: [react()],
     server: {
         proxy: {
-            "/authority": {
+            "/api": {
                 target: "http://127.0.0.1:8787",
                 changeOrigin: false,
-                rewrite: function (path) { return path.replace(/^\/authority/, ""); },
+                rewrite: function (path) { return path.replace(/^\/api/, ""); },
             },
         },
     },

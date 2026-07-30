@@ -18,6 +18,7 @@ class Actor(BaseModel):
     tenant_id: str = Field(min_length=1, max_length=120, pattern=r"^[a-zA-Z0-9._-]+$")
     user_id: str = Field(min_length=1, max_length=160)
     name: str = Field(min_length=1, max_length=160)
+    email: str | None = Field(default=None, max_length=320)
     role: UserRole
 
 

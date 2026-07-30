@@ -14,6 +14,17 @@ import type {
 const STORAGE_KEY = "loopos.v2.workspace-state";
 export const MAX_WORKSPACE_STORAGE_BYTES = 4_000_000;
 
+export const EMPTY_WORKSPACE_USE_CASE: UseCaseInput = {
+  title: "",
+  description: "",
+  environment: "",
+  aiScope: "",
+  dataSensitivity: "",
+  businessOutcome: "",
+  maturity: "",
+  constraints: "",
+};
+
 export interface WorkspacePersistenceResult {
   status: "saved" | "skipped" | "error";
   code?: "size_limit" | "storage_unavailable";
@@ -136,11 +147,11 @@ export function createUser(name: string, email: string, role: UserRole): Enterpr
   };
 }
 
-export function createWorkspace(user: EnterpriseUser, name: string, useCase: UseCaseInput = DEFAULT_WORKSPACE_USE_CASE): SavedWorkspace {
+export function createWorkspace(user: EnterpriseUser, name: string, useCase: UseCaseInput = EMPTY_WORKSPACE_USE_CASE): SavedWorkspace {
   const timestamp = nowIso();
   return {
     workspace_id: uid("workspace"),
-    name: name.trim() || "Agentic AI Readiness Workspace",
+    name: name.trim() || "New Use Case Workspace",
     created_at: timestamp,
     updated_at: timestamp,
     owner_user_id: user.user_id,
@@ -216,7 +227,7 @@ export function useWorkspaceStore() {
     setState((current) => {
       const user = createUser(name, email, role);
       const hasWorkspace = current.workspaces.length > 0;
-      const firstWorkspace = hasWorkspace ? current.workspaces[0] : createWorkspace(user, "Agentic AI Readiness Workspace");
+      const firstWorkspace = hasWorkspace ? current.workspaces[0] : createWorkspace(user, "New Use Case Workspace");
       return {
         ...current,
         current_user: user,

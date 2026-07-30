@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 
-if (process.env.VERCEL) {
-  console.log("Vercel build detected; using checked-in loopos-data.json.");
+if (process.env.VERCEL || process.env.LOOPOS_USE_CHECKED_IN_DATA === "1") {
+  console.log("Generated-data build detected; using checked-in loopos-data.json.");
   process.exit(0);
 }
 

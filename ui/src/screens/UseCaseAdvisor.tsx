@@ -161,7 +161,7 @@ export function UseCaseAdvisor({
             </Button>
             <Button variant="ghost" onClick={() => onInputChange(DEFAULT_USE_CASE)}>
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
-              Reset Example
+              Load Example
             </Button>
           </div>
         </div>
@@ -250,6 +250,7 @@ function SelectField({ label, value, values, onChange }: { label: string; value:
   return (
     <Field label={label}>
       <select className="control min-h-10 w-full px-3 text-sm" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="" disabled>Select {label.toLowerCase()}</option>
         {values.map((item) => (
           <option key={item} value={item}>
             {item}
