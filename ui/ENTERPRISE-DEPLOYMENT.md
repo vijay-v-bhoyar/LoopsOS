@@ -29,7 +29,7 @@ Terminate TLS at the enterprise ingress, keep the supplied security headers, and
 
 ## Release Gate
 
-1. Pin the image by digest and attach SBOM, vulnerability scan, and provenance from the enterprise build service. CI retains attested OCI archives, a digest manifest, and HIGH/CRITICAL vulnerability reports in the `loopos-release-evidence-<commit>` artifact for 30 days.
+1. Pin the image by digest and attach SBOM, vulnerability scan, and provenance from the enterprise build service. CI retains attested OCI archives, a digest manifest, HIGH/CRITICAL vulnerability reports, and a hardened two-container runtime smoke report in the `loopos-release-evidence-<commit>` artifact for 30 days.
 2. Run unit, design-token, build, Playwright, corpus-validation, and practicality-audit gates.
 3. Test tenant isolation, session expiry, CSRF, audit append/retrieve, retention deletion, and restore in staging.
 4. Confirm CSP and egress allowlists contain only approved service origins.

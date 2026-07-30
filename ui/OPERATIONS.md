@@ -14,6 +14,7 @@ Proposed starting targets, subject to enterprise owner approval:
 
 - Liveness: `GET /healthz` returns `200 ok`.
 - Authority liveness: `GET /api/health/live`; authority readiness: `GET /api/health/ready`.
+- Release CI starts the UI and authority images together with read-only filesystems, dropped capabilities, no-new-privileges, and non-root users. The retained `container-runtime-smoke.json` proves both image healthchecks, NGINX-to-authority proxying, readiness semantics, and security headers.
 - Production readiness must additionally prove IdP session, tenant-scoped persistence, audit append/retrieve/external anchor, retention configuration, and outbound policy.
 - Page on sustained 5xx, session verification failure, persistence write failure, audit delivery failure, cross-tenant probe failure, or CSP violation increase.
 - Ticket on elevated client error-boundary incidents, extraction failures, or optional endpoint timeouts.

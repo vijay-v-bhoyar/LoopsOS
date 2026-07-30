@@ -63,6 +63,7 @@ jobs:
             --tag loopos-ui:${{ github.sha }} \
             --provenance=mode=max \
             --sbom=true \
+            --load \
             --output type=oci,dest=.release-evidence/loopos-ui.oci.tar \
             .
       - name: Build attested authority OCI image
@@ -72,8 +73,15 @@ jobs:
             --tag loopos-authority:${{ github.sha }} \
             --provenance=mode=max \
             --sbom=true \
+            --load \
             --output type=oci,dest=.release-evidence/loopos-authority.oci.tar \
             .
+      - name: Exercise hardened container runtime
+        run: |
+          python scripts/verify_container_runtime.py \
+            --ui-image loopos-ui:${{ github.sha }} \
+            --authority-image loopos-authority:${{ github.sha }} \
+            --output .release-evidence/container-runtime-smoke.json
       - name: Verify OCI release evidence
         run: |
           python scripts/verify_oci_attestations.py \
