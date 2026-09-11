@@ -24,7 +24,12 @@ class ExecutionJobWorker:
         self.max_attempts = max(1, max_attempts)
 
     async def run_once(self, dispatch_source: str = "internal") -> int:
-        jobs = self.store.claim_execution_jobs(self.worker_id, self.lease_seconds, self.batch_size)
+        jobs = self.store.claim_execution_jobs(
+            self.worker_id,
+            self.lease_seconds,
+            self.batch_size,
+            max_attempts=self.max_attempts,
+        )
         self.store.record_operational_signal(
             "execution_worker_dispatch",
             dispatch_source,
@@ -64,7 +69,8 @@ class ExecutionJobWorker:
             await asyncio.sleep(max(1, self.lease_seconds // 3))
             try:
                 self.store.renew_execution_job(job_id, self.worker_id, self.lease_seconds)
-            except Conflict:
+            except Exception:
+                # Stop work when lease renewal is uncertain; another worker may reclaim it.
                 if owner_task:
                     owner_task.cancel()
                 return

@@ -3,11 +3,12 @@ from __future__ import annotations
 import importlib
 import io
 import json
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -69,8 +70,55 @@ class PostgresRestoreEvidenceTests(unittest.TestCase):
 
         self.assertEqual(result, 1)
         self.assertFalse(report["verified"])
+        self.assertFalse(report["cleanup_verified"])
         self.assertNotIn("secret", json.dumps(report))
         self.assertIn("could not be executed", report["error"])
+
+    def test_container_backup_cleanup_failure_invalidates_restore_evidence(self) -> None:
+        verifier = importlib.import_module("scripts.verify_postgres_restore")
+        connection = Mock()
+        failed_cleanup = subprocess.CompletedProcess(
+            ["docker", "exec", "postgres-test", "rm", "-f", "/tmp/restore.dump"],
+            17,
+            "",
+            "permission denied",
+        )
+
+        with patch.object(verifier, "_connect", return_value=connection), patch.object(
+            verifier, "_run", return_value=failed_cleanup
+        ) as run:
+            cleanup_verified, failures = verifier._cleanup_restore(
+                container="postgres-test",
+                container_backup="/tmp/restore.dump",
+                source_dsn="postgresql://secret@127.0.0.1/postgres",
+                restore_database="loopos_restore_test",
+                restore_created=True,
+            )
+
+        self.assertFalse(cleanup_verified)
+        self.assertEqual(failures, ["container backup cleanup failed: permission denied"])
+        run.assert_called_once_with(
+            ["docker", "exec", "postgres-test", "rm", "-f", "/tmp/restore.dump"],
+            check=False,
+        )
+
+    def test_restore_error_redacts_keyword_dsn_passwords(self) -> None:
+        verifier = importlib.import_module("scripts.verify_postgres_restore")
+
+        for dsn, message in (
+            (
+                "host=db.example user=loopos password=secret dbname=postgres",
+                "connection failed password=secret",
+            ),
+            (
+                "host=db.example user=loopos password='secret value' dbname=postgres",
+                "connection failed password='secret value'",
+            ),
+        ):
+            with self.subTest(dsn=dsn):
+                rendered = verifier._safe_error(RuntimeError(message), dsn)
+                self.assertNotIn("secret", rendered)
+                self.assertIn("[redacted]", rendered)
 
 
 if __name__ == "__main__":

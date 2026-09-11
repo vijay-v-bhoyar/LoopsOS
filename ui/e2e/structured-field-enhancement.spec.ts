@@ -51,6 +51,8 @@ test("calls enterprise field enhancement only on explicit action and never chang
   expect(requestCount).toBe(0);
   await expect(page.getByText(/^deterministic:/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Enhance with enterprise AI" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enhance with enterprise AI" })).toBeDisabled();
+  await page.getByLabel("Allow enterprise AI enhancement").check();
 
   await page.getByRole("button", { name: "Enhance with enterprise AI" }).click();
   await expect.poll(() => requestCount).toBe(1);

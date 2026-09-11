@@ -3,7 +3,7 @@ import { looposData } from "./loopos";
 import { recommendLoops } from "./recommendation";
 import {
   buildIssueTicketText,
-  buildProofPackMarkdown,
+  buildEvaluationPackMarkdown,
   completeNextRunStep,
   createInitiativeFromWorkspace,
   createLoopRun,
@@ -52,16 +52,29 @@ describe("sdlcProductivity", () => {
     expect(next.validation_result).toBe("Inconclusive");
   });
 
+  it("keeps a fully completed local checklist inconclusive until authority evidence exists", () => {
+    const loop = looposData.loops[0];
+    let run = createLoopRun(loop, "initiative-1", user.name, "2026-07-23T12:00:00.000Z");
+    for (let index = 0; index < run.step_records.length; index += 1) {
+      run = completeNextRunStep(run, `2026-07-23T12:${String(index + 1).padStart(2, "0")}:00.000Z`);
+    }
+
+    expect(run.status).toBe("validated");
+    expect(run.validation_result).toBe("Inconclusive");
+  });
+
   it("generates proof pack and issue-ticket-ready text with required sections", () => {
     const initiative = createInitiativeFromWorkspace(workspace, recommendations, validation, looposData, user.name, "2026-07-23T12:00:00.000Z");
-    const proof = buildProofPackMarkdown(workspace, initiative, looposData, validation);
-    expect(proof).toContain("## Loop Bundle");
-    expect(proof).toContain("## Handoffs And Blockers");
-    expect(proof).toContain("## ROI Assumptions");
-    expect(proof).toContain("## Release Assurance Gates");
-    expect(proof).toContain("## External Evidence References");
+    const evaluationPack = buildEvaluationPackMarkdown(workspace, initiative, looposData, validation);
+    expect(evaluationPack).toContain("# LoopOS SDLC Evaluation Pack");
+    expect(evaluationPack).toContain("not an authoritative proof pack");
+    expect(evaluationPack).toContain("## Loop Bundle");
+    expect(evaluationPack).toContain("## Handoffs And Blockers");
+    expect(evaluationPack).toContain("## ROI Assumptions");
+    expect(evaluationPack).toContain("## Release Assurance Gates");
+    expect(evaluationPack).toContain("## External Evidence References");
     expect(initiative.release_assurance?.connectors.map((connector) => connector.system)).toEqual(["jira", "github", "manual"]);
-    expect(proof).toContain("## 30/60/90 Day Plan");
+    expect(evaluationPack).toContain("## 30/60/90 Day Plan");
     expect(buildIssueTicketText(initiative)).toContain("[LoopOS]");
   });
 

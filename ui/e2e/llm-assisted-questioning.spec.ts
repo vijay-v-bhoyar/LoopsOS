@@ -70,6 +70,9 @@ test("uses a configured LLM endpoint when present and saves returned questions i
   await openWorkspace(page);
 
   await expect(page.getByText(/Provider state: LLM endpoint configured\./)).toBeVisible();
+  await expect(page.getByLabel("Allow this request to send workspace details to enterprise AI")).toBeChecked({ checked: false });
+  await expect(page.getByRole("button", { name: "Generate Questions" })).toBeDisabled();
+  await page.getByLabel("Allow this request to send workspace details to enterprise AI").check();
   await page.getByRole("button", { name: "Generate Questions" }).click();
   await expect(page.getByText("LLM endpoint").first()).toBeVisible();
   await expect(page.getByText("Which evidence store will hold approval and execution records for this pilot?")).toBeVisible();

@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import scripts.verify_container_runtime as runtime_verifier
-from scripts.verify_container_runtime import verify_runtime
+from scripts.verify_container_runtime import _cleanup_runtime, verify_runtime
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -119,7 +119,22 @@ class ContainerRuntimeEvidenceTests(unittest.TestCase):
 
         self.assertEqual(result, 1)
         self.assertFalse(report["verified"])
+        self.assertFalse(report["cleanup_verified"])
         self.assertIn("could not be executed", report["error"])
+
+    def test_cleanup_failure_invalidates_runtime_evidence(self) -> None:
+        with patch(
+            "scripts.verify_container_runtime._run",
+            side_effect=[
+                subprocess.CompletedProcess([], 0, "", ""),
+                subprocess.CompletedProcess([], 1, "", "network is still present"),
+            ],
+        ):
+            verified, failures = _cleanup_runtime(("ui-container", "authority-container"), "smoke-network")
+
+        self.assertFalse(verified)
+        self.assertEqual(len(failures), 1)
+        self.assertIn("network is still present", failures[0])
 
 
 if __name__ == "__main__":

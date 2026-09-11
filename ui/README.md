@@ -6,6 +6,7 @@ Enterprise-oriented portal for exploring the LoopOS 108-loop system, mapping AI/
 
 ```powershell
 npm install
+node scripts/run-python.mjs -m pip install --requirement ../authority/requirements.txt
 npm run test
 npm run test:e2e
 npm run lint:design
@@ -17,13 +18,15 @@ Run the execution authority in a second terminal:
 
 ```powershell
 $env:PYTHONPATH="../authority"
-python -m uvicorn loopos_authority.api:app --app-dir ../authority --host 127.0.0.1 --port 8787
+node scripts/run-python.mjs -m uvicorn loopos_authority.api:app --app-dir ../authority --host 127.0.0.1 --port 8787
 ```
+
+The launcher selects Python 3.12+ portably (`py -3` on Windows, then `python3`/`python` fallbacks) and rejects an interpreter missing a requested `-m` module. Set `LOOPOS_PYTHON` to an exact interpreter path when the environment requires a pinned runtime.
 
 `pretest` and `prebuild` regenerate `src/data/loopos-data.json` from the LoopOS corpus with:
 
 ```powershell
-python ../scripts/export_ui_data.py --out ui/src/data/loopos-data.json
+node scripts/run-python.mjs ../scripts/export_ui_data.py --out ui/src/data/loopos-data.json
 ```
 
 ## Product Boundaries
@@ -31,7 +34,7 @@ python ../scripts/export_ui_data.py --out ui/src/data/loopos-data.json
 - Default `evaluation` mode may use the local governed execution authority, but development identity remains non-enterprise.
 - Local role selection is explicitly a simulation and defaults to Operator.
 - Browser-local persistence is bounded, validated, exportable, and deletable, but it is not authoritative.
-- `enterprise` mode fails closed unless identity, persistence, audit, transport, retention, support, and outbound bindings are declared and runtime-verified.
+- `enterprise` mode fails closed unless identity, persistence, audit, credential injection, transport, retention, support, and outbound bindings are declared and runtime-verified. Set `VITE_LOOPOS_CREDENTIAL_INJECTION_MODE=broker`; the authority must return positive broker verification before the UI can start an enterprise session.
 - Optional LLM-assisted questioning through `VITE_LOOPOS_LLM_ENDPOINT`; deterministic fallback is always available.
 - Optional structured-field enhancement through `VITE_LOOPOS_LLM_ENDPOINT`; it never selects loops or applies fields automatically.
 - Optional enterprise voice fallback through `VITE_LOOPOS_TRANSCRIPTION_ENDPOINT`; audio is sent only after explicit consent.

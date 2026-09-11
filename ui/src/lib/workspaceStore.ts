@@ -11,7 +11,8 @@ import {
   type AuthorityWorkspaceRecord,
 } from "../features/governedExecution/authorityClient";
 import type { AuthoritySession } from "../features/governedExecution/types";
-import { deploymentPosture, type DeploymentMode, type DeploymentRuntimeEvidence } from "./deployment";
+import { authorityConfigurationMatches, deploymentPosture, type DeploymentMode, type DeploymentPosture, type DeploymentRuntimeEvidence } from "./deployment";
+import { isSavedWorkspaceDocument } from "./workspaceDocument";
 import type {
   ApprovalRecord,
   EnterpriseActionPlan,
@@ -49,6 +50,7 @@ export interface WorkspacePersistenceResult {
 export interface EnterpriseSessionState {
   status: "idle" | "loading" | "ready" | "error";
   error?: string;
+  retryable?: boolean;
 }
 
 export interface WorkspaceAuthorityAdapter {
@@ -62,8 +64,53 @@ export interface WorkspaceAuthorityAdapter {
 
 export interface WorkspaceStoreOptions {
   mode?: DeploymentMode;
+  posture?: Pick<DeploymentPosture, "mode" | "blockers" | "allowedEndpointHosts" | "outboundPolicyMode" | "retentionPolicyUrl" | "supportContact" | "backupRestoreEvidenceUrl">;
   authority?: WorkspaceAuthorityAdapter;
   saveDebounceMs?: number;
+}
+
+export function runtimeEvidenceFromReadiness(
+  readiness: AuthorityReadiness,
+  posture: Pick<DeploymentPosture, "mode" | "allowedEndpointHosts" | "outboundPolicyMode" | "retentionPolicyUrl" | "supportContact" | "backupRestoreEvidenceUrl"> = deploymentPosture,
+): DeploymentRuntimeEvidence {
+  return {
+    apiReachable: true,
+    configurationVerified: authorityConfigurationMatches(posture, readiness.configuration_contract),
+    credentialInjectionBrokerVerified: readiness.credential_injection_broker_verified,
+    rateLimitVerified: readiness.rate_limit_configured,
+    // Readiness only proves infrastructure health; the authenticated workspace
+    // list below is the proof used for the runtime persistence binding.
+    persistenceVerified: false,
+    auditVerified: readiness.audit_anchor_configured
+      && readiness.audit_anchor_backlog === 0
+      && readiness.audit_anchor_delivery_verified
+      && readiness.audit_anchor_delivery_fresh,
+    retentionVerified: readiness.operational_bindings.retention_verified,
+    supportVerified: readiness.operational_bindings.support_verified,
+    outboundPolicyVerified: readiness.operational_bindings.outbound_policy_verified,
+    backupRestoreVerified: readiness.operational_bindings.backup_restore_verified,
+    workerVerified: readiness.execution_worker_dispatch.verified
+      && readiness.operational_bindings.worker_dispatch_verified,
+  };
+}
+
+export function readinessProofFailures(
+  readiness: AuthorityReadiness,
+  posture: Pick<DeploymentPosture, "mode" | "allowedEndpointHosts" | "outboundPolicyMode" | "retentionPolicyUrl" | "supportContact" | "backupRestoreEvidenceUrl"> = deploymentPosture,
+): string[] {
+  const evidence = runtimeEvidenceFromReadiness(readiness, posture);
+  const failures: string[] = [];
+  const persistenceReady = readiness.storage_backend === "postgres" && readiness.execution_job_backlog === 0;
+  if (readiness.development_auth !== false) failures.push("development_auth_disabled");
+  if (readiness.production_identity !== true) failures.push("production_identity");
+  if (readiness.execution_job_backlog !== 0) failures.push("execution_job_backlog");
+  if (!persistenceReady) failures.push("persistence_ready");
+  if (evidence.configurationVerified !== true) failures.push("configuration_contract");
+  for (const [name, verified] of Object.entries(evidence)) {
+    if (name === "apiReachable" || name === "persistenceVerified") continue;
+    if (verified !== true) failures.push(name);
+  }
+  return [...new Set(failures)];
 }
 
 const DEFAULT_AUTHORITY_ADAPTER: WorkspaceAuthorityAdapter = {
@@ -120,11 +167,6 @@ function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
-function isUseCase(value: unknown): value is UseCaseInput {
-  if (!isRecord(value)) return false;
-  return ["title", "description", "environment", "aiScope", "dataSensitivity", "businessOutcome", "maturity", "constraints"].every((field) => isString(value[field]));
-}
-
 function normalizeUser(value: unknown): EnterpriseUser | null {
   if (!isRecord(value)) return null;
   const validRole = value.role === "Executive" || value.role === "Approver" || value.role === "Operator" || value.role === "Auditor";
@@ -133,24 +175,22 @@ function normalizeUser(value: unknown): EnterpriseUser | null {
 }
 
 function normalizeWorkspace(value: unknown): SavedWorkspace | null {
-  if (!isRecord(value) || !isUseCase(value.use_case)) return null;
-  if (![value.workspace_id, value.name, value.created_at, value.updated_at, value.owner_user_id].every(isString)) return null;
-  return {
-    workspace_id: value.workspace_id as string,
-    name: value.name as string,
-    created_at: value.created_at as string,
-    updated_at: value.updated_at as string,
-    owner_user_id: value.owner_user_id as string,
-    use_case: value.use_case,
-    selected_loop_ids: Array.isArray(value.selected_loop_ids) ? value.selected_loop_ids.filter(isString) : [],
-    action_plan_markdown: isString(value.action_plan_markdown) ? value.action_plan_markdown : "",
-    owner_evidence_edits: Array.isArray(value.owner_evidence_edits) ? value.owner_evidence_edits.filter(isRecord) as unknown as OwnerEvidenceEdit[] : [],
-    approvals: Array.isArray(value.approvals) ? value.approvals.filter(isRecord) as unknown as ApprovalRecord[] : [],
-    execution_records: Array.isArray(value.execution_records) ? value.execution_records.filter(isRecord) as unknown as ExecutionRecord[] : [],
-    initiatives: Array.isArray(value.initiatives) ? value.initiatives.filter(isRecord) as unknown as SavedWorkspace["initiatives"] : [],
-    question_suggestions: Array.isArray(value.question_suggestions) ? value.question_suggestions.filter(isRecord) as unknown as SavedWorkspace["question_suggestions"] : [],
-    input_sources: Array.isArray(value.input_sources) ? value.input_sources.filter(isRecord) as unknown as SavedWorkspace["input_sources"] : [],
+  if (!isRecord(value)) return null;
+  const legacyDefaults = {
+    selected_loop_ids: [],
+    action_plan_markdown: "",
+    owner_evidence_edits: [],
+    approvals: [],
+    execution_records: [],
+    initiatives: [],
+    question_suggestions: [],
+    input_sources: [],
   };
+  const candidate: Record<string, unknown> = { ...value };
+  for (const [field, fallback] of Object.entries(legacyDefaults)) {
+    if (!(field in candidate)) candidate[field] = fallback;
+  }
+  return isSavedWorkspaceDocument(candidate) ? candidate : null;
 }
 
 export function normalizeWorkspaceState(value: Record<string, unknown> | Partial<WorkspaceState>): WorkspaceState {
@@ -243,6 +283,7 @@ export function canApprove(user: EnterpriseUser | null): boolean {
 
 export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
   const mode = options.mode ?? deploymentPosture.mode;
+  const posture = options.posture ?? deploymentPosture;
   const authority = options.authority ?? DEFAULT_AUTHORITY_ADAPTER;
   const saveDebounceMs = options.saveDebounceMs ?? 400;
   const [state, setState] = useState<WorkspaceState>(() => mode === "enterprise" ? EMPTY_STATE : loadWorkspaceState());
@@ -256,10 +297,12 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
   });
   const [runtimeEvidence, setRuntimeEvidence] = useState<DeploymentRuntimeEvidence>({});
   const [sessionAttempt, setSessionAttempt] = useState(0);
+  const [persistenceAttempt, setPersistenceAttempt] = useState(0);
   const tokenRef = useRef<string | null>(null);
   const revisionsRef = useRef(new Map<string, number>());
   const synchronizedDocumentsRef = useRef(new Map<string, string>());
   const authorityHydratedRef = useRef(false);
+  const bootstrapGenerationRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
@@ -303,12 +346,25 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
           });
         } catch (error) {
           const conflict = error instanceof AuthorityError && error.status === 409;
-          const unauthorized = error instanceof AuthorityError && (error.status === 401 || error.status === 403);
+          const sessionExpired = error instanceof AuthorityError && error.status === 401;
+          const unauthorized = sessionExpired || (error instanceof AuthorityError && error.status === 403);
+          if (sessionExpired) {
+            tokenRef.current = null;
+            authorityHydratedRef.current = false;
+            setRuntimeEvidence((current) => ({ ...current, sessionVerified: false }));
+            setEnterpriseSession({
+              status: "error",
+              error: "The enterprise identity session expired. Re-verify before saving.",
+              retryable: true,
+            });
+          }
           setPersistence({
             status: "error",
             code: conflict ? "authority_conflict" : unauthorized ? "authority_unauthorized" : "authority_unavailable",
             message: conflict
               ? "This workspace changed elsewhere. Reload authoritative state before making another edit."
+              : sessionExpired
+                ? "The enterprise identity session expired. Re-verify before saving."
               : unauthorized
                 ? "The verified enterprise identity is not authorized to persist this workspace."
                 : error instanceof Error ? error.message : "Authoritative workspace persistence failed.",
@@ -319,11 +375,14 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
       });
     }, saveDebounceMs);
     return () => window.clearTimeout(timeout);
-  }, [authority, enterpriseSession.status, mode, saveDebounceMs, state]);
+  }, [authority, enterpriseSession.status, mode, persistenceAttempt, saveDebounceMs, state]);
 
   useEffect(() => {
     if (mode !== "enterprise") return;
+    const bootstrapGeneration = bootstrapGenerationRef.current + 1;
+    bootstrapGenerationRef.current = bootstrapGeneration;
     let cancelled = false;
+    const isCurrentBootstrap = () => !cancelled && bootstrapGeneration === bootstrapGenerationRef.current;
     authorityHydratedRef.current = false;
     tokenRef.current = null;
     revisionsRef.current.clear();
@@ -331,40 +390,67 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
     setEnterpriseSession({ status: "loading" });
     setPersistence({ status: "skipped", bytes: 0, location: "authority", message: "Verifying enterprise identity and loading authoritative workspaces." });
 
+    if (posture.mode === "enterprise" && posture.blockers.length > 0) {
+      setEnterpriseSession({
+        status: "error",
+        error: "Enterprise activation bindings are incomplete; authority bootstrap was not attempted.",
+        retryable: false,
+      });
+      setPersistence({
+        status: "error",
+        code: "authority_unavailable",
+        message: "Configure every blocked enterprise binding before connecting to the authority plane.",
+        bytes: 0,
+        location: "authority",
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     void (async () => {
       let readinessEvidence: DeploymentRuntimeEvidence = {};
+      let readiness: AuthorityReadiness | undefined;
+      let retryableFailure = false;
       try {
-        if (authority.checkReadiness) {
-          try {
-            const readiness = await authority.checkReadiness();
-            readinessEvidence = {
-              apiReachable: true,
-              persistenceVerified: readiness.storage_backend === "postgres",
-              auditVerified: readiness.audit_anchor_configured
-                && readiness.audit_anchor_backlog === 0
-                && readiness.audit_anchor_delivery_verified,
-              retentionVerified: readiness.operational_bindings.retention_verified,
-              supportVerified: readiness.operational_bindings.support_verified,
-              outboundPolicyVerified: readiness.operational_bindings.outbound_policy_verified,
-              backupRestoreVerified: readiness.operational_bindings.backup_restore_verified,
-              workerVerified: readiness.operational_bindings.worker_dispatch_verified,
-            };
-          } catch (error) {
-            readinessEvidence = {
-              apiReachable: error instanceof AuthorityError && error.status !== undefined,
-              persistenceVerified: false,
-              auditVerified: false,
-              retentionVerified: false,
-              supportVerified: false,
-              outboundPolicyVerified: false,
-              backupRestoreVerified: false,
-              workerVerified: false,
-            };
-          }
-          if (!cancelled) setRuntimeEvidence(readinessEvidence);
+        if (!authority.checkReadiness) {
+          throw new AuthorityError("Enterprise readiness verification is unavailable.");
         }
+        try {
+          readiness = await authority.checkReadiness();
+          readinessEvidence = runtimeEvidenceFromReadiness(readiness, posture);
+        } catch (error) {
+          retryableFailure = !(error instanceof AuthorityError)
+            || (error.status !== undefined && error.status >= 500);
+          readinessEvidence = {
+            apiReachable: error instanceof AuthorityError && error.status !== undefined,
+            persistenceVerified: false,
+            auditVerified: false,
+            retentionVerified: false,
+            supportVerified: false,
+            outboundPolicyVerified: false,
+            backupRestoreVerified: false,
+            workerVerified: false,
+          };
+          throw error;
+        }
+        if (!isCurrentBootstrap()) return;
+        setRuntimeEvidence(readinessEvidence);
+        if (readinessEvidence.configurationVerified === false) {
+          throw new AuthorityError("Authority configuration does not match this UI build.");
+        }
+        const readinessFailures = readinessProofFailures(readiness, posture);
+        if (readinessFailures.length > 0) {
+          throw new AuthorityError(`Authority readiness proof is incomplete: ${readinessFailures.join(", ")}.`);
+        }
+        retryableFailure = true;
         const session = await authority.createSession();
+        if (!isCurrentBootstrap()) return;
         const records = await authority.listWorkspaces(session.access_token);
+        if (!isCurrentBootstrap()) return;
+        if (records.some((record) => record.tenant_id !== session.actor.tenant_id)) {
+          throw new AuthorityError("Authority returned a workspace for a different tenant.");
+        }
         const user: EnterpriseUser = {
           user_id: session.actor.user_id,
           name: session.actor.name,
@@ -378,7 +464,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
         if (normalized.length !== records.length) {
           throw new AuthorityError("Authority returned a malformed workspace document.");
         }
-        if (cancelled) return;
+        if (!isCurrentBootstrap()) return;
         for (const record of records) {
           revisionsRef.current.set(record.workspace_id, record.revision);
           synchronizedDocumentsRef.current.set(record.workspace_id, JSON.stringify(record.document));
@@ -394,7 +480,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
           ...readinessEvidence,
           apiReachable: true,
           sessionVerified: true,
-          persistenceVerified: readinessEvidence.persistenceVerified === true,
+          persistenceVerified: true,
           auditVerified: readinessEvidence.auditVerified === true,
           retentionVerified: readinessEvidence.retentionVerified === true,
           supportVerified: readinessEvidence.supportVerified === true,
@@ -404,15 +490,17 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
         });
         setEnterpriseSession({ status: "ready" });
       } catch (error) {
-        if (cancelled) return;
+        if (!isCurrentBootstrap()) return;
         setState(EMPTY_STATE);
         setRuntimeEvidence({
           ...readinessEvidence,
           sessionVerified: false,
+          persistenceVerified: false,
         });
         setEnterpriseSession({
           status: "error",
           error: error instanceof Error ? error.message : "Enterprise identity verification failed.",
+          retryable: retryableFailure,
         });
         setPersistence({
           status: "error",
@@ -426,6 +514,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
 
     return () => {
       cancelled = true;
+      if (bootstrapGenerationRef.current === bootstrapGeneration) bootstrapGenerationRef.current += 1;
     };
   }, [authority, mode, sessionAttempt]);
 
@@ -463,6 +552,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
 
   const signOut = useCallback(() => {
     if (mode === "enterprise") {
+      bootstrapGenerationRef.current += 1;
       tokenRef.current = null;
       authorityHydratedRef.current = false;
       revisionsRef.current.clear();
@@ -477,6 +567,16 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
   const retryEnterpriseSignIn = useCallback(() => {
     if (mode === "enterprise") setSessionAttempt((attempt) => attempt + 1);
   }, [mode]);
+
+  const retryPersistence = useCallback(() => {
+    if (mode !== "enterprise" || enterpriseSession.status !== "ready" || !tokenRef.current || !authorityHydratedRef.current) return;
+    setPersistence((current) => ({
+      ...current,
+      status: "skipped",
+      message: "Retrying the authoritative workspace save.",
+    }));
+    setPersistenceAttempt((attempt) => attempt + 1);
+  }, [enterpriseSession.status, mode]);
 
   const addWorkspace = useCallback((name: string, useCase: UseCaseInput) => {
     setState((current) => {
@@ -539,5 +639,6 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
     mutateActiveWorkspace,
     setState,
     retryEnterpriseSignIn,
+    retryPersistence,
   };
 }

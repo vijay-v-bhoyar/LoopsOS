@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { LoopRecommendation, UseCaseInput } from "../types";
 import { buildDeterministicQuestions } from "./questionAssistant";
 
@@ -45,5 +45,35 @@ describe("questionAssistant", () => {
     expect(questions.map((question) => question.target_field)).toContain("ownerEvidence");
     expect(questions.map((question) => question.target_field)).toContain("approval");
     expect(questions.map((question) => question.target_field)).toContain("execution");
+  });
+
+  it("falls back when an LLM returns an invalid question contract", async () => {
+    vi.stubEnv("VITE_LOOPOS_LLM_ENDPOINT", "https://enterprise.example/questions");
+    vi.resetModules();
+    const { getQuestionSuggestions: getSuggestions } = await import("./questionAssistant");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      questions: [{ question: "Unsafe target", why_it_matters: "bad", target_field: "admin" }],
+    }), { status: 200 }));
+
+    const questions = await getSuggestions(input, recommendations, { consent: true });
+
+    expect(questions.every((question) => question.source === "deterministic fallback")).toBe(true);
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("does not send workspace details without explicit outbound consent", async () => {
+    vi.stubEnv("VITE_LOOPOS_LLM_ENDPOINT", "https://enterprise.example/questions");
+    vi.resetModules();
+    const { getQuestionSuggestions: getSuggestions } = await import("./questionAssistant");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    fetchSpy.mockClear();
+
+    const questions = await getSuggestions(input, recommendations, { consent: false });
+
+    expect(questions.every((question) => question.source === "deterministic fallback")).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
 });

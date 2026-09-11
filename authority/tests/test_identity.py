@@ -66,6 +66,61 @@ class OIDCIdentityVerifierTests(unittest.TestCase):
         with self.assertRaises(jwt.InvalidAudienceError):
             self.verifier.verify(self.assertion(aud="another-application"))
 
+    def test_rejects_invalid_ports_in_oidc_urls(self) -> None:
+        with self.assertRaisesRegex(ValueError, "valid port"):
+            OIDCIdentityVerifier(
+                issuer="https://identity.example.com:bad",
+                audience="loopos-production",
+                jwks_url="https://identity.example.com/.well-known/jwks.json",
+                tenant_claim="tenant_id",
+                role_claim="groups",
+                role_mapping={"loopos-approvers": "Approver"},
+                jwks_client=StaticJwksClient(self.private_key.public_key()),
+            )
+        with self.assertRaisesRegex(ValueError, "valid port"):
+            OIDCIdentityVerifier(
+                issuer="https://identity.example.com/",
+                audience="loopos-production",
+                jwks_url="https://identity.example.com:bad/.well-known/jwks.json",
+                tenant_claim="tenant_id",
+                role_claim="groups",
+                role_mapping={"loopos-approvers": "Approver"},
+            )
+
+    def test_rejects_blank_claim_names(self) -> None:
+        with self.assertRaisesRegex(ValueError, "OIDC tenant claim"):
+            OIDCIdentityVerifier(
+                issuer="https://identity.example.com/",
+                audience="loopos-production",
+                jwks_url="https://identity.example.com/.well-known/jwks.json",
+                tenant_claim=" ",
+                role_claim="groups",
+                role_mapping={"loopos-approvers": "Approver"},
+                jwks_client=StaticJwksClient(self.private_key.public_key()),
+            )
+        with self.assertRaisesRegex(ValueError, "OIDC role claim"):
+            OIDCIdentityVerifier(
+                issuer="https://identity.example.com/",
+                audience="loopos-production",
+                jwks_url="https://identity.example.com/.well-known/jwks.json",
+                tenant_claim="tenant_id",
+                role_claim="",
+                role_mapping={"loopos-approvers": "Approver"},
+                jwks_client=StaticJwksClient(self.private_key.public_key()),
+            )
+
+    def test_rejects_blank_audiences(self) -> None:
+        with self.assertRaisesRegex(ValueError, "OIDC audience"):
+            OIDCIdentityVerifier(
+                issuer="https://identity.example.com/",
+                audience="  ",
+                jwks_url="https://identity.example.com/.well-known/jwks.json",
+                tenant_claim="tenant_id",
+                role_claim="groups",
+                role_mapping={"loopos-approvers": "Approver"},
+                jwks_client=StaticJwksClient(self.private_key.public_key()),
+            )
+
 
 class IdentityEnvironmentTests(unittest.TestCase):
     def test_partial_oidc_configuration_is_rejected(self) -> None:
@@ -78,6 +133,71 @@ class IdentityEnvironmentTests(unittest.TestCase):
             },
             clear=True,
         ):
+            with self.assertRaisesRegex(ValueError, "OIDC configuration"):
+                Settings.from_env()
+
+    def test_oidc_configuration_rejects_blank_external_role_names(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "LOOPOS_ALLOW_DEV_AUTH": "false",
+                "LOOPOS_SESSION_HMAC_SECRET": "identity-environment-secret-at-least-thirty-two-bytes",
+                "LOOPOS_OIDC_ISSUER": "https://identity.example.com/",
+                "LOOPOS_OIDC_AUDIENCE": "loopos-production",
+                "LOOPOS_OIDC_JWKS_URL": "https://identity.example.com/.well-known/jwks.json",
+                "LOOPOS_OIDC_ROLE_MAPPING_JSON": '{"": "Executive"}',
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "non-blank external role names"):
+                Settings.from_env()
+
+    def test_oidc_configuration_rejects_invalid_ports(self) -> None:
+        base_environment = {
+            "LOOPOS_ALLOW_DEV_AUTH": "false",
+            "LOOPOS_SESSION_HMAC_SECRET": "identity-environment-secret-at-least-thirty-two-bytes",
+            "LOOPOS_OIDC_ISSUER": "https://identity.example.com/",
+            "LOOPOS_OIDC_AUDIENCE": "loopos-production",
+            "LOOPOS_OIDC_JWKS_URL": "https://identity.example.com/.well-known/jwks.json",
+            "LOOPOS_OIDC_ROLE_MAPPING_JSON": '{"loopos-operators":"Operator"}',
+        }
+        for variable in ("LOOPOS_OIDC_ISSUER", "LOOPOS_OIDC_JWKS_URL"):
+            with self.subTest(variable=variable):
+                environment = {
+                    **base_environment,
+                    variable: "https://identity.example.com:bad/.well-known/jwks.json"
+                    if variable.endswith("JWKS_URL")
+                    else "https://identity.example.com:bad/",
+                }
+                with patch.dict("os.environ", environment, clear=True):
+                    with self.assertRaisesRegex(ValueError, "credential-free HTTPS URL"):
+                        Settings.from_env()
+
+    def test_oidc_configuration_rejects_blank_claim_names(self) -> None:
+        base_environment = {
+            "LOOPOS_ALLOW_DEV_AUTH": "false",
+            "LOOPOS_SESSION_HMAC_SECRET": "identity-environment-secret-at-least-thirty-two-bytes",
+            "LOOPOS_OIDC_ISSUER": "https://identity.example.com/",
+            "LOOPOS_OIDC_AUDIENCE": "loopos-production",
+            "LOOPOS_OIDC_JWKS_URL": "https://identity.example.com/.well-known/jwks.json",
+            "LOOPOS_OIDC_ROLE_MAPPING_JSON": '{"loopos-operators":"Operator"}',
+        }
+        for variable in ("LOOPOS_OIDC_TENANT_CLAIM", "LOOPOS_OIDC_ROLE_CLAIM"):
+            with self.subTest(variable=variable):
+                with patch.dict("os.environ", {**base_environment, variable: "  "}, clear=True):
+                    with self.assertRaisesRegex(ValueError, "claim names must be non-blank"):
+                        Settings.from_env()
+
+    def test_oidc_configuration_rejects_blank_audience(self) -> None:
+        environment = {
+            "LOOPOS_ALLOW_DEV_AUTH": "false",
+            "LOOPOS_SESSION_HMAC_SECRET": "identity-environment-secret-at-least-thirty-two-bytes",
+            "LOOPOS_OIDC_ISSUER": "https://identity.example.com/",
+            "LOOPOS_OIDC_AUDIENCE": "  ",
+            "LOOPOS_OIDC_JWKS_URL": "https://identity.example.com/.well-known/jwks.json",
+            "LOOPOS_OIDC_ROLE_MAPPING_JSON": '{"loopos-operators":"Operator"}',
+        }
+        with patch.dict("os.environ", environment, clear=True):
             with self.assertRaisesRegex(ValueError, "OIDC configuration"):
                 Settings.from_env()
 

@@ -110,6 +110,20 @@ def _container_address(inspection: dict[str, Any], network: str) -> str:
     return address
 
 
+def _cleanup_runtime(containers: tuple[str, ...], network: str) -> tuple[bool, list[str]]:
+    failures: list[str] = []
+    commands = [
+        ["docker", "rm", "--force", *containers],
+        ["docker", "network", "rm", network],
+    ]
+    for command in commands:
+        result = _run(command, check=False)
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or f"exit code {result.returncode}"
+            failures.append(f"{' '.join(command[:3])} failed: {detail}")
+    return not failures, failures
+
+
 def _release_config_digests(manifest_path: Path) -> dict[str, str]:
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -254,8 +268,12 @@ def verify_runtime(ui_image: str, authority_image: str, oci_manifest: Path, outp
             if logs.stderr:
                 print(logs.stderr, file=sys.stderr)
     finally:
-        _run(["docker", "rm", "--force", ui, authority], check=False)
-        _run(["docker", "network", "rm", network], check=False)
+        cleanup_verified, cleanup_failures = _cleanup_runtime((ui, authority), network)
+        report["cleanup_verified"] = cleanup_verified
+        if not cleanup_verified:
+            report["verified"] = False
+            cleanup_detail = f"Runtime smoke cleanup failed: {'; '.join(cleanup_failures)}"
+            report["error"] = f"{report['error']} {cleanup_detail}" if report.get("error") else cleanup_detail
         output.parent.mkdir(parents=True, exist_ok=True)
         rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
         output.write_text(rendered, encoding="utf-8")

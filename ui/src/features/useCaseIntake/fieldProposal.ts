@@ -97,6 +97,18 @@ export function proposeUseCaseFields(source: UseCaseSource, _current: UseCaseInp
       method: "deterministic",
     }];
   });
+  if (!fields.length) {
+    const fallbackDescription = source.accepted_text.replace(/\s+/g, " ").trim().slice(0, MAX_LENGTH.description);
+    if (fallbackDescription) {
+      fields.push({
+        field: "description",
+        value: fallbackDescription,
+        evidence_excerpt: evidenceFor(source.accepted_text, fallbackDescription),
+        source_ids: [source.source_id],
+        method: "deterministic",
+      });
+    }
+  }
   return { draft_id: uid("draft"), source_ids: [source.source_id], fields, method: "deterministic", created_at: nowIso() };
 }
 
@@ -110,6 +122,7 @@ export function applyUseCaseDraft(current: UseCaseInput, draft: UseCaseDraft, se
 
 interface EnhancementOptions {
   endpoint: string;
+  consent: boolean;
   fetchImpl?: typeof fetch;
 }
 
@@ -123,16 +136,18 @@ export async function enhanceUseCaseProposal(
   deterministic: UseCaseDraft,
   options: EnhancementOptions,
 ): Promise<UseCaseDraft> {
+  if (!options.consent) return deterministic;
   try {
-    const payload = await secureJsonRequest<unknown>(options.endpoint, {
+    const payload = await secureJsonRequest<Record<string, unknown>>(options.endpoint, {
       fetchImpl: options.fetchImpl,
       init: {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ task: "loopos_use_case_structuring", source, currentUseCase: current }),
       },
+      validate: isRecord,
     });
-    if (!isRecord(payload) || !isRecord(payload.proposal)) return deterministic;
+    if (!isRecord(payload.proposal)) return deterministic;
     const replacements = new Map<keyof UseCaseInput, UseCaseFieldProposal>();
     for (const field of FIELD_ORDER) {
       const raw = payload.proposal[field];

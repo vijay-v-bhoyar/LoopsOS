@@ -7,7 +7,7 @@ export function buildFirst30Days(recommendations: LoopRecommendation[], validati
   return [
     `Days 1-3: Confirm business outcome and scope for ${primary.map((item) => item.name).join(", ") || "the primary loop bundle"}.`,
     `Days 4-7: Assign named owners and evidence sources for ${governance.map((item) => item.name).join(", ") || "governance loops"}.`,
-    `Days 8-14: Build the first proof packet with ${validationLoops.map((item) => item.name).join(", ") || "validation loops"}.`,
+    `Days 8-14: Build the first evaluation packet with ${validationLoops.map((item) => item.name).join(", ") || "validation loops"}.`,
     "Days 15-21: Execute one bounded pilot event and record trigger, evidence, controls, verdict, and state transition.",
     `Days 22-30: Resolve readiness result ${validation.readiness} by closing gaps before standardizing or expanding.`,
   ];
@@ -23,6 +23,10 @@ export function buildEnterpriseActionPlan(
   const summary = input.description || "No description supplied.";
   const markdown = [
     `# LoopOS Enterprise Action Plan: ${title}`,
+    "",
+    "Artifact status: LOCAL EVALUATION DRAFT - not an authoritative release record.",
+    "Authority evidence: none. Human approval: not recorded.",
+    "Use this plan to prepare review; bind it to the tenant authority plane before real-world execution.",
     "",
     `Readiness: ${validation.readiness}`,
     `Corpus status: ${validation.corpusStatus}`,

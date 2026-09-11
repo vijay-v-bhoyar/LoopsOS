@@ -10,6 +10,7 @@ describe("binary document parsers", () => {
       }),
     }));
     const loadPdf = vi.fn(async () => ({
+      GlobalWorkerOptions: { workerSrc: "" },
       getDocument: () => ({ promise: Promise.resolve({ numPages: 2, getPage }) }),
     }));
 
@@ -22,6 +23,7 @@ describe("binary document parsers", () => {
 
   it("maps PDF password failures to an encrypted intake error", async () => {
     const loadPdf = vi.fn(async () => ({
+      GlobalWorkerOptions: { workerSrc: "" },
       getDocument: () => ({ promise: Promise.reject({ name: "PasswordException" }) }),
     }));
 

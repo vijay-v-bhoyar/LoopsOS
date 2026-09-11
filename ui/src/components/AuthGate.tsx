@@ -28,7 +28,11 @@ export function AuthGate({
   const [email, setEmail] = useState("operator@example.local");
   const [role, setRole] = useState<UserRole>("Operator");
 
-  if (posture.mode === "enterprise" && !posture.enterpriseReady) {
+  const retryableEnterpriseFailure = posture.mode === "enterprise"
+    && enterpriseSession.status === "error"
+    && enterpriseSession.retryable === true;
+
+  if (posture.mode === "enterprise" && !posture.enterpriseReady && !retryableEnterpriseFailure) {
     const pendingBindings = posture.bindings.filter((binding) => binding.status !== "bound");
     return (
       <main className="flex min-h-screen items-center justify-center bg-bg2 p-4">
@@ -45,7 +49,7 @@ export function AuthGate({
             </div>
           </div>
           <InlineNote tone="warning">
-            LoopOS will not start an enterprise session until identity, persistence, audit, transport, retention, support, and endpoint policy bindings are configured and verified.
+            LoopOS will not start an enterprise session until every required production binding, including identity, persistence, audit, rate limiting, worker dispatch, restore evidence, and endpoint policy, is configured and verified.
           </InlineNote>
           <ul className="mt-5 space-y-2 text-sm text-fg2">
             {pendingBindings.map((binding) => (

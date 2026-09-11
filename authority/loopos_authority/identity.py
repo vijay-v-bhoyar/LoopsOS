@@ -9,10 +9,32 @@ from .models import Actor, UserRole
 
 
 def _https_url(value: str, label: str) -> str:
-    parsed = urlparse(value)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
-        raise ValueError(f"{label} must be an HTTPS URL without embedded credentials.")
+    try:
+        parsed = urlparse(value)
+    except ValueError as error:
+        raise ValueError(f"{label} must be a valid HTTPS URL.") from error
+    try:
+        parsed.port
+    except ValueError as error:
+        raise ValueError(f"{label} must use a valid port.") from error
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+        or "\\" in value
+    ):
+        raise ValueError(f"{label} must be an HTTPS URL without credentials, query, fragment, or backslash.")
     return value
+
+
+def _claim_name(value: str, label: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError(f"{label} must be a non-blank claim name.")
+    return normalized
 
 
 class OIDCIdentityVerifier:
@@ -28,9 +50,11 @@ class OIDCIdentityVerifier:
         jwks_client: Any | None = None,
     ) -> None:
         self.issuer = _https_url(issuer, "OIDC issuer")
-        self.audience = audience
-        self.tenant_claim = tenant_claim
-        self.role_claim = role_claim
+        if not isinstance(audience, str) or not audience.strip():
+            raise ValueError("OIDC audience must be a non-blank value.")
+        self.audience = audience.strip()
+        self.tenant_claim = _claim_name(tenant_claim, "OIDC tenant claim")
+        self.role_claim = _claim_name(role_claim, "OIDC role claim")
         self.role_mapping = role_mapping
         self.jwks_client = jwks_client or jwt.PyJWKClient(
             _https_url(jwks_url, "OIDC JWKS URL"),

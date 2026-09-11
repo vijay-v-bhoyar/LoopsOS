@@ -211,6 +211,13 @@ def validate_registries_and_runtime_assets(errors: list[str], ok: list[str]) -> 
     stack = read("runtime/architecture_stack.yaml")
 
     check(count(r"^\s*owner_ref: owner-category-", owners) == 13, "owner registry has 13 category owner records", errors, ok)
+    for owner_field in ["policy_owner", "gate_owner", "risk_owner", "executor_owner", "validator_owner", "backup_owner"]:
+        check(
+            count(rf"^\s*{owner_field}: ", owners) == 13,
+            f"owner registry declares {owner_field} for all 13 categories",
+            errors,
+            ok,
+        )
     check(count(r"^\s*evidence_ref: evidence-category-", evidence) == 13, "evidence registry has 13 category evidence records", errors, ok)
     check(count(r"^\s*probe_id:", probes) >= 5, "probe registry has at least 5 probes", errors, ok)
     check(count(r"^\s*golden_task_ref: golden-loop-", golden) == 108, "golden task registry has 108 loop task groups", errors, ok)

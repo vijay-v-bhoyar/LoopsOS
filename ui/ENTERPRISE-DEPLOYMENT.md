@@ -8,7 +8,7 @@ LoopOS has two explicit postures: `evaluation` and `enterprise`. Evaluation mode
 | --- | --- | --- |
 | Identity | BFF-managed session; IdP groups mapped server-side to LoopOS roles | Session endpoint verifies issuer, audience, signature, expiry, tenant, subject, and one explicit role mapping |
 | Persistence | LoopOS authority service and tenant-scoped durable Postgres database | Authority readiness reports Postgres and the authenticated workspace list succeeds; enterprise mode never uses browser workspace storage |
-| Durable worker | Database-leased execution jobs and a protected worker/cron dispatch route | Authority readiness reports a fresh durable heartbeat from the configured internal or external dispatch mode |
+| Durable worker | Database-leased execution jobs and a protected worker dispatch route invoked by an external scheduler | Authority readiness reports a fresh durable heartbeat from the configured internal or external dispatch mode |
 | Audit | Authority hash chain delivered through the durable outbox to an external append-only sink | Authority readiness reports a configured sink, at least one accepted signed envelope, and zero undelivered anchors |
 | Transport | HTTPS for every non-local origin | Certificate, reachability, redirect, and hostname checks pass |
 | Retention | Approved retention and deletion policy URL | Legal/security owners approve the policy and deletion evidence path |
@@ -16,7 +16,7 @@ LoopOS has two explicit postures: `evaluation` and `enterprise`. Evaluation mode
 | Outbound policy | Exact host allowlist for AI/transcription endpoints | Egress policy and endpoint data-processing terms are approved |
 | Backup and restore | Credential-free HTTPS reference, SHA-256, and timestamp for a recent restore exercise | Authority binds readiness to the immutable digest; the handover verifier independently validates the exact evidence bytes |
 
-The required `VITE_` values are documented in `.env.example`. They are public build configuration, never secrets. Tokens and service credentials belong only in the BFF or service runtime.
+The required `VITE_` values are documented in `.env.example`. They are public build configuration, never secrets. Tokens and service credentials belong only in the BFF or service runtime. The production environment preflight requires the public retention, support, outbound, and restore bindings to match the authority environment and constrains every optional service endpoint to the server allowlist.
 
 ## Production Build
 
@@ -25,16 +25,17 @@ docker compose build
 docker compose up -d
 ```
 
-Terminate TLS at the enterprise ingress, keep the supplied security headers, and narrow `connect-src` in `nginx.conf` to approved origins. Set `VITE_LOOPOS_AUTHORITY_URL` to the exact HTTPS authority origin or to `/api` behind a same-origin ingress. Enterprise mode probes `/health/ready`, exchanges the managed identity session, and loads the tenant workspace register before it can transition to `enterprise_ready`.
+Terminate TLS at the enterprise ingress and keep the supplied security headers. The shipped Vercel and Nginx policies default `connect-src` to `'self'`; use the same-origin `/api` route for authority and optional services where possible. If a deployment intentionally calls a direct optional HTTPS service, add only that exact origin to both `vercel.json` and `nginx.conf` for the deployment, then rerun the production preflight and browser boundary tests. Set `VITE_LOOPOS_AUTHORITY_URL` to `/api` behind a same-origin ingress, or set it to an exact HTTPS authority origin and list that hostname in `VITE_LOOPOS_AUTHORITY_HOST_ALLOWLIST`. For a remote authority, include the UI origin in `LOOPOS_CORS_ORIGINS`; the authority enables credentialed CORS only for those exact origins. Enterprise mode probes `/health/ready`, exchanges the managed identity session, and loads the tenant workspace register before it can transition to `enterprise_ready`.
 
 ## Release Gate
 
-1. Pin the image by digest and attach SBOM, vulnerability scan, and provenance from the enterprise build service. CI retains attested OCI archives, a digest manifest, HIGH/CRITICAL vulnerability reports, and a hardened two-container runtime smoke report in the `loopos-release-evidence-<commit>` artifact for 30 days.
-2. Run unit, design-token, build, Playwright, corpus-validation, and practicality-audit gates.
-3. Test tenant isolation, session expiry, CSRF, audit append/retrieve, retention deletion, and restore in staging.
-4. Confirm CSP and egress allowlists contain only approved service origins.
-5. Record security, privacy, legal, product, and operations approval references.
-6. Canary to an internal cohort; promote only when errors, latency, persistence, and audit delivery meet the runbook thresholds.
+1. Run `python scripts/verify_production_environment.py --output output/production-configuration.json`; continue only when it reports `READY_FOR_LIVE_VERIFICATION`.
+2. Pin the image by digest and attach SBOM, vulnerability scan, and provenance from the enterprise build service. CI retains attested OCI archives, a digest manifest, HIGH/CRITICAL vulnerability reports, and a hardened two-container runtime smoke report in the `loopos-release-evidence-<commit>` artifact for 30 days.
+3. Run `npm audit --audit-level=high`, unit, design-token, build, Playwright, corpus-validation, and practicality-audit gates. From `ui`, run `npm run test:e2e:enterprise-gate` for the enterprise fail-closed browser gate; it supplies public test bindings explicitly and never supplies credentials.
+4. Test tenant isolation, session expiry, CSRF, audit append/retrieve, retention deletion, and restore in staging.
+5. Confirm CSP and egress allowlists contain only approved service origins.
+6. Record security, privacy, legal, product, and operations approval references.
+7. Canary to an internal cohort; promote only when errors, latency, persistence, and audit delivery meet the runbook thresholds.
 
 ## Live Handover Proof
 
@@ -63,4 +64,4 @@ python -c "from loopos_authority.config import Settings, operational_binding_fin
 
 ## Current Boundary
 
-This repository supplies the portal, deterministic recommendation engine, governed execution authority, tenant-scoped SQLite/Postgres store contract, authoritative workspace revisions, database-leased execution jobs, protected worker/cron dispatch, tool/probe runtime, audit chain with a durable external-anchor outbox, and hardened containers. It does not supply the organization IdP/BFF, a provisioned managed Postgres instance, the independently administered WORM/SIEM sink, secrets manager, or organization-specific retention/backup implementation. Production activation remains blocked until those bindings are provisioned and verified.
+This repository supplies the portal, deterministic recommendation engine, governed execution authority, tenant-scoped SQLite/Postgres store contract, authoritative workspace revisions, database-leased execution jobs, protected worker dispatch, tool/probe runtime, audit chain with a durable external-anchor outbox, and hardened containers. It does not supply the organization IdP/BFF, a provisioned managed Postgres instance, the independently administered WORM/SIEM sink, secrets manager, external scheduler, or organization-specific retention/backup implementation. Production activation remains blocked until those bindings are provisioned and verified.

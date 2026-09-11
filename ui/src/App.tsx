@@ -5,7 +5,7 @@ import { looposData } from "./lib/loopos";
 import { recommendLoops } from "./lib/recommendation";
 import { validateUseCase } from "./lib/validation";
 import { buildEnterpriseActionPlan } from "./lib/actionPlan";
-import { buildProofPackMarkdown, completeNextRunStep, createInitiativeFromWorkspace, refreshInitiative } from "./lib/sdlcProductivity";
+import { buildEvaluationPackMarkdown, completeNextRunStep, createInitiativeFromWorkspace, refreshInitiative } from "./lib/sdlcProductivity";
 import { consumeCrashAuthenticatedView } from "./lib/runtimeConfig";
 import { deploymentPostureForRuntime } from "./lib/deployment";
 import { createExecution, EMPTY_WORKSPACE_USE_CASE, useWorkspaceStore } from "./lib/workspaceStore";
@@ -143,6 +143,7 @@ export default function App() {
   };
 
   const recordDashboardDryRun = () => {
+    if (posture.mode === "enterprise") return;
     const recommendation = recommendations[0];
     const loop = recommendation ? looposData.loops.find((item) => item.loop_id === recommendation.loop_id) : null;
     if (!loop || !workspace.activeWorkspace || !currentUser) return;
@@ -157,8 +158,9 @@ export default function App() {
         `readiness:${validation.readiness}`,
         `controls:${loop.control_profile.applicable_control_ids.length}`,
       ].join(" | "),
-      validation_result: validation.readiness === "Blocked" ? "Inconclusive" : "Passed",
-      proof_state: validation.readiness === "Blocked" ? "Effectiveness Pending" : "Proof Green",
+      // Browser-local dry runs never produce authoritative validation or proof.
+      validation_result: "Inconclusive",
+      proof_state: "Effectiveness Pending",
       owner: currentUser.name,
     });
     workspace.mutateActiveWorkspace((current) => ({
@@ -179,6 +181,7 @@ export default function App() {
   };
 
   const completeSdlcRunStep = () => {
+    if (posture.mode === "enterprise") return;
     const initiative = workspace.activeWorkspace?.initiatives[0];
     if (!initiative) return;
     workspace.mutateActiveWorkspace((current) => ({
@@ -193,13 +196,13 @@ export default function App() {
     }));
   };
 
-  const exportSdlcProofPack = () => {
+  const exportSdlcEvaluationPack = () => {
     const active = workspace.activeWorkspace;
     const initiative = active?.initiatives[0];
     if (!active || !initiative) return;
-    const markdown = buildProofPackMarkdown(active, initiative, looposData, validation);
-    const base = initiative.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "loopos-proof-pack";
-    downloadMarkdown(`${base}-proof-pack.md`, markdown);
+    const markdown = buildEvaluationPackMarkdown(active, initiative, looposData, validation);
+    const base = initiative.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "loopos-evaluation-pack";
+    downloadMarkdown(`${base}-evaluation-pack.md`, markdown);
     workspace.mutateActiveWorkspace((current) => ({ ...current, action_plan_markdown: markdown }));
   };
 
@@ -223,7 +226,7 @@ export default function App() {
           onRecordDryRun={recordDashboardDryRun}
           onCreateInitiative={createSdlcInitiative}
           onCompleteRunStep={completeSdlcRunStep}
-          onExportProofPack={exportSdlcProofPack}
+          onExportEvaluationPack={exportSdlcEvaluationPack}
           posture={posture}
         />
       );
@@ -260,6 +263,8 @@ export default function App() {
           onMutateWorkspace={workspace.mutateActiveWorkspace}
           onUseCaseChange={workspace.updateUseCase}
           onDeleteWorkspace={workspace.deleteWorkspace}
+          onSessionExpired={workspace.signOut}
+          onRetryPersistence={workspace.retryPersistence}
           persistence={workspace.persistence}
         />
       );

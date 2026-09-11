@@ -63,6 +63,45 @@ export interface CreateGovernedRun {
   plan: GovernedExecutionPlan;
 }
 
+export type GovernedRunState =
+  | "TRIGGERED"
+  | "QUALIFIED"
+  | "INPUT_INCOMPLETE"
+  | "BLOCKED"
+  | "OBSERVED"
+  | "DIAGNOSED"
+  | "INPUT_STALE"
+  | "INPUT_CONFLICTED"
+  | "INPUT_UNTRUSTED"
+  | "PRIORITIZED"
+  | "PLANNED"
+  | "PAUSED"
+  | "AUTHORIZED"
+  | "ACTION_IN_PROGRESS"
+  | "ACTION_APPLIED"
+  | "VALIDATION_FAILED"
+  | "ROLLED_BACK"
+  | "VALIDATION_PASSED"
+  | "PROOF_GREEN"
+  | "PROOF_FAILED"
+  | "EFFECTIVENESS_PENDING"
+  | "EFFECTIVENESS_PROVEN"
+  | "EFFECTIVENESS_FAILED"
+  | "INSUFFICIENT_EVIDENCE"
+  | "CONDITIONAL_ACTIVE"
+  | "CONDITIONAL_EXPIRED"
+  | "RETIRED";
+
+export type GovernedRunnerStatus =
+  | "idle"
+  | "queued"
+  | "running"
+  | "awaiting_approval"
+  | "awaiting_effectiveness"
+  | "completed"
+  | "failed"
+  | "rolled_back";
+
 export interface GovernedRun {
   run_id: string;
   tenant_id: string;
@@ -70,8 +109,8 @@ export interface GovernedRun {
   loop_id: string;
   title: string;
   trigger: string;
-  state: string;
-  runner_status: string;
+  state: GovernedRunState;
+  runner_status: GovernedRunnerStatus;
   risk_tier: RiskTier;
   requires_approval: boolean;
   payload_hash: string;
@@ -91,6 +130,36 @@ export interface AuditVerification {
   valid: boolean;
   event_count: number;
   first_invalid_sequence?: number | null;
+}
+
+export interface RunCommandResponse {
+  run_id: string;
+  state: GovernedRunState;
+  runner_status: GovernedRunnerStatus;
+}
+
+export interface ApprovalCommandResponse {
+  approval_id: string;
+  status: "approved";
+}
+
+export interface RejectionCommandResponse {
+  decision_id: string;
+  status: "rejected";
+}
+
+export interface KillSwitchStatus {
+  tenant_id: string;
+  scope: "tenant";
+  active: boolean;
+  activation_id: string | null;
+  reason: string | null;
+  actor_id: string | null;
+  activated_at: string | null;
+  deactivated_at: string | null;
+  deactivated_by: string | null;
+  deactivation_reason: string | null;
+  semantics: "pre_dispatch_block_and_in_flight_interrupt";
 }
 
 export interface CreateReleaseInitiative {
@@ -172,11 +241,18 @@ export interface ConnectorEventRecord extends ConnectorEventInput {
   created_at: string;
 }
 
+export interface RecordReleaseInitiativeResponse {
+  initiative: ReleaseInitiativeRecord;
+  connector_events: ConnectorEventRecord[];
+}
+
 export interface AuthorityEvent {
   sequence: number;
   event_id: string;
+  tenant_id: string;
+  run_id: string;
   event_type: string;
-  state?: string;
+  state: string | null;
   actor_id: string;
   created_at: string;
   event_hash: string;

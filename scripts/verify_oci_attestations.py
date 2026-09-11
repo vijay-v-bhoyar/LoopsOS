@@ -24,9 +24,12 @@ class EvidenceError(RuntimeError):
 
 def _file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
+    try:
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError as error:
+        raise EvidenceError(f"OCI archive could not be read: {path.name}.") from error
     return digest.hexdigest()
 
 
@@ -82,6 +85,20 @@ def _is_attestation(descriptor: dict[str, Any]) -> bool:
         and platform.get("architecture") == "unknown"
         and platform.get("os") == "unknown"
     )
+
+
+def _statement_binds_to_image(statement: dict[str, Any], image_digest: str) -> bool:
+    expected_sha256 = image_digest.removeprefix("sha256:")
+    subjects = statement.get("subject")
+    if not isinstance(subjects, list):
+        raise EvidenceError("OCI attestation statement is missing its subject list.")
+    for subject in subjects:
+        if not isinstance(subject, dict):
+            continue
+        digest = subject.get("digest")
+        if isinstance(digest, dict) and digest.get("sha256") == expected_sha256:
+            return True
+    return False
 
 
 def _leaf_descriptors(
@@ -173,25 +190,42 @@ def verify_oci_archive(path: Path, *, sbom_output: Path | None = None) -> dict[s
             if not isinstance(digest, str):
                 raise EvidenceError("Attestation manifest descriptor is missing its digest.")
             manifest = _blob(archive, digest)
+            config_descriptor = manifest.get("config")
+            if (
+                not isinstance(config_descriptor, dict)
+                or not isinstance(config_descriptor.get("digest"), str)
+            ):
+                raise EvidenceError("Attestation manifest config is missing its digest.")
+            try:
+                _blob_content(archive, config_descriptor["digest"])
+            except EvidenceError as error:
+                raise EvidenceError(f"Attestation manifest config is invalid: {error}") from error
             layers = manifest.get("layers")
             if not isinstance(layers, list):
                 raise EvidenceError("Attestation manifest must contain layers.")
             bound_attestations += 1
             for layer in layers:
                 if not isinstance(layer, dict):
-                    continue
+                    raise EvidenceError("Attestation manifest layer must be a JSON object.")
                 layer_digest = layer.get("digest")
                 if not isinstance(layer_digest, str):
-                    continue
+                    raise EvidenceError("Attestation manifest layer is missing its digest.")
                 statement = _blob(archive, layer_digest)
                 predicate_type = statement.get("predicateType")
                 if isinstance(predicate_type, str):
                     predicate_types.add(predicate_type)
                     if "spdx" in predicate_type.lower() or "cyclonedx" in predicate_type.lower():
+                        if not _statement_binds_to_image(statement, image_digest):
+                            raise EvidenceError(f"SBOM attestation {layer_digest} is not bound to the image digest.")
                         predicate = statement.get("predicate")
                         if not isinstance(predicate, dict):
                             raise EvidenceError(f"SBOM attestation {layer_digest} has no JSON object predicate.")
                         sbom_documents.append((predicate_type, predicate))
+                    elif "slsa.dev/provenance" in predicate_type.lower():
+                        if not _statement_binds_to_image(statement, image_digest):
+                            raise EvidenceError(f"Provenance attestation {layer_digest} is not bound to the image digest.")
+                        if not isinstance(statement.get("predicate"), dict):
+                            raise EvidenceError(f"Provenance attestation {layer_digest} has no JSON object predicate.")
 
         if not bound_attestations:
             raise EvidenceError("No attestation manifest is bound to the image digest.")

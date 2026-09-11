@@ -46,6 +46,19 @@ create index if not exists idx_execution_jobs_claim
 create index if not exists idx_execution_jobs_run
   on execution_jobs(tenant_id, run_id, created_at);
 
+create table if not exists kill_switches (
+  tenant_id text primary key,
+  active boolean not null default false,
+  activation_id text not null,
+  reason text not null,
+  actor_id text not null,
+  actor_role text not null,
+  activated_at text not null,
+  deactivated_at text,
+  deactivated_by text,
+  deactivation_reason text
+);
+
 create table if not exists operational_signals (
   signal_name text not null,
   source text not null,
@@ -53,6 +66,15 @@ create table if not exists operational_signals (
   observed_at text not null,
   primary key(signal_name, source)
 );
+
+create table if not exists request_rate_limits (
+  bucket_key text primary key,
+  window_started_at bigint not null,
+  request_count integer not null
+);
+
+create index if not exists idx_request_rate_limits_window
+  on request_rate_limits(window_started_at);
 
 create table if not exists approvals (
   approval_id text primary key,
@@ -241,7 +263,9 @@ for each row execute function deny_audit_event_mutation();
 
 alter table runs enable row level security;
 alter table execution_jobs enable row level security;
+alter table kill_switches enable row level security;
 alter table operational_signals enable row level security;
+alter table request_rate_limits enable row level security;
 alter table approvals enable row level security;
 alter table evidence enable row level security;
 alter table tool_invocations enable row level security;
@@ -260,7 +284,7 @@ begin
   for role_name in
     select rolname from pg_roles where rolname in ('anon', 'authenticated')
   loop
-    execute format('revoke all on runs, execution_jobs, operational_signals, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from %I', role_name);
+    execute format('revoke all on runs, execution_jobs, kill_switches, operational_signals, request_rate_limits, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from %I', role_name);
   end loop;
 end;
 $$;

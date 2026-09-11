@@ -2,10 +2,10 @@
 
 ## Summary
 
-- Files scanned: 269
-- Lines scanned: 230258
+- Files scanned: 279
+- Lines scanned: 232472
 - Blockers: 0
-- Action-required findings: 1577
+- Action-required findings: 1603
 - Warnings: 715
 
 ## Practical Readout
@@ -16,7 +16,7 @@ The corpus is structurally usable when blockers are zero. Action-required findin
 
 | Issue | Count |
 |---|---:|
-| activation placeholder | 1253 |
+| activation placeholder | 1279 |
 | very long line | 715 |
 | loop remains in DRAFT | 216 |
 | metric target is unset | 108 |

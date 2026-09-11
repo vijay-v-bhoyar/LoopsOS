@@ -4,27 +4,33 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .auth import IdentityVerifier, InvalidSession, SessionSigner
 from .audit_anchor import AuditAnchorDispatcher
-from .config import Settings, operational_binding_fingerprint, operational_binding_status
+from .config import Settings, _connector_credentials_allowlisted, _connector_credentials_are_brokered, _outbound_policy_valid, _secure_cors_origins, _validate_audit_anchor, operational_binding_fingerprint, operational_binding_status
 from .corpus import Corpus
 from .engine import ExecutionEngine
 from .identity import OIDCIdentityVerifier
-from .models import Actor, ApprovalRequest, AuditVerification, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, DevSessionRequest, ReleaseInitiativeRecord, ReleaseProofPack, RunCommandResponse, RunRecord, SessionResponse, WorkspaceDocumentRequest, WorkspaceRecord
+from .models import Actor, ApprovalCommandResponse, ApprovalRequest, AuditVerification, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, DevSessionRequest, EnterpriseSessionResponse, KillSwitchRequest, KillSwitchStatus, RecordReleaseInitiativeRequest, RecordReleaseInitiativeResponse, RejectionCommandResponse, ReleaseInitiativeRecord, ReleaseProofPack, RunCommandResponse, RunRecord, SessionResponse, WorkspaceDocumentRequest, WorkspaceRecord, ENTERPRISE_SESSION_MAX_SECONDS
 from .persistence import create_authority_store
 from .store import Conflict, Forbidden, NotFound
 from .tools import ToolRegistry
 from .worker import ExecutionJobWorker
+
+logger = logging.getLogger(__name__)
+_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
 
 def create_app(
@@ -33,6 +39,12 @@ def create_app(
     identity_verifier: IdentityVerifier | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
+    if not settings.allow_dev_auth:
+        _validate_audit_anchor(
+            settings.audit_anchor_url,
+            settings.audit_anchor_hmac_secret,
+            allow_local_http=False,
+        )
     if identity_verifier is None and settings.oidc_issuer and settings.oidc_audience and settings.oidc_jwks_url and settings.oidc_role_mapping:
         identity_verifier = OIDCIdentityVerifier(
             issuer=settings.oidc_issuer,
@@ -85,6 +97,16 @@ def create_app(
                 await audit_anchor.drain()
                 await asyncio.sleep(settings.audit_anchor_poll_seconds)
         audit_anchor_task = asyncio.create_task(schedule_audit_anchors()) if audit_anchor else None
+        if not settings.allow_dev_auth and audit_anchor:
+            store.append_event(
+                "system",
+                None,
+                "AUDIT_ANCHOR_READINESS_PROBE",
+                None,
+                "system",
+                {"source": "authority_startup"},
+            )
+            await audit_anchor.drain()
         yield
         if execution_worker_task:
             execution_worker_task.cancel()
@@ -114,16 +136,72 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
-        allow_credentials=False,
+        allow_credentials=bool(settings.cors_origins),
         allow_methods=["DELETE", "GET", "POST", "PUT"],
-        allow_headers=["authorization", "content-type", "idempotency-key", "if-match", "if-none-match", "last-event-id"],
+        allow_headers=[
+            "authorization",
+            "content-type",
+            "idempotency-key",
+            "if-match",
+            "if-none-match",
+            "last-event-id",
+            "x-loopos-identity-token",
+        ],
         expose_headers=["etag"],
     )
 
     @app.middleware("http")
-    async def security_headers(request: Request, call_next):
-        request_id = request.headers.get("x-request-id") or f"request-{uuid.uuid4()}"
+    async def request_rate_limit(request: Request, call_next):
+        if (
+            settings.rate_limit_requests is None
+            or settings.rate_limit_window_seconds is None
+            or request.method == "OPTIONS"
+            or request.url.path in {"/health/live", "/health/ready"}
+        ):
+            return await call_next(request)
+        client_key = request.client.host if request.client else "unknown"
+        try:
+            decision = store.consume_request_rate_limit(
+                client_key,
+                settings.rate_limit_requests,
+                settings.rate_limit_window_seconds,
+            )
+        except Exception:
+            logger.exception("Request rate limiter unavailable; rejecting request.")
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={"detail": "Request rate limiting is temporarily unavailable."},
+            )
+        if not decision["allowed"]:
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={"detail": "Request rate limit exceeded. Retry after the advertised interval."},
+                headers={
+                    "retry-after": str(decision["retry_after"]),
+                    "x-ratelimit-limit": str(decision["limit"]),
+                    "x-ratelimit-remaining": "0",
+                },
+            )
         response = await call_next(request)
+        response.headers["x-ratelimit-limit"] = str(decision["limit"])
+        response.headers["x-ratelimit-remaining"] = str(decision["remaining"])
+        return response
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        supplied_request_id = request.headers.get("x-request-id", "")
+        request_id = supplied_request_id if _REQUEST_ID_PATTERN.fullmatch(supplied_request_id) else f"request-{uuid.uuid4()}"
+        request.state.request_id = request_id
+        try:
+            response = await call_next(request)
+        except Exception:
+            logger.exception(
+                "Unhandled authority request failure request_id=%s method=%s path=%s",
+                request_id,
+                request.method,
+                request.url.path,
+            )
+            raise
         response.headers["cache-control"] = "no-store"
         response.headers["content-security-policy"] = "default-src 'none'; frame-ancestors 'none'"
         response.headers["permissions-policy"] = "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
@@ -164,9 +242,43 @@ def create_app(
             raise HTTPException(status_code=400, detail="If-Match must contain a quoted non-negative revision.")
         return revision
 
+    def request_origin_is_allowed(request: Request) -> bool:
+        origin = request.headers.get("origin")
+        if not origin:
+            return True
+        if origin in settings.cors_origins:
+            return True
+        if settings.cors_origins:
+            return False
+        parsed = urlparse(origin)
+        if (
+            parsed.scheme.lower() not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.path not in {"", "/"}
+            or parsed.params
+            or parsed.query
+            or parsed.fragment
+            or parsed.username
+            or parsed.password
+        ):
+            return False
+        return (
+            parsed.scheme.lower() == request.url.scheme.lower()
+            and parsed.netloc.casefold() == request.url.netloc.casefold()
+        )
+
+    def require_authoritative_workspace(tenant_id: str, workspace_id: str) -> None:
+        if settings.allow_dev_auth:
+            return
+        # Production writes must reference a workspace already owned by the
+        # authenticated tenant; evaluation mode intentionally permits fixtures.
+        store.get_workspace(tenant_id, workspace_id)
+
     def webhook_secret(tenant_id: str, system: str) -> str:
         secrets = settings.webhook_secrets or {}
-        secret = secrets.get(f"{tenant_id}:{system}") or secrets.get(system)
+        secret = secrets.get(f"{tenant_id}:{system}")
+        if settings.allow_dev_auth:
+            secret = secret or secrets.get(system)
         if not secret:
             raise HTTPException(status_code=403, detail="Webhook secret is not configured.")
         return secret
@@ -183,10 +295,16 @@ def create_app(
             raise HTTPException(status_code=403, detail="Webhook signature verification failed.")
         return hashlib.sha256(body).hexdigest()
 
-    def normalize_webhook_event(system: str, workspace_id: str, payload: dict[str, object], headers, payload_hash: str) -> ConnectorEventRequest:
+    def require_webhook_delivery_id(system: str, headers) -> str:
+        header_name = "x-github-delivery" if system == "github" else "x-atlassian-webhook-identifier"
+        delivery_id = str(headers.get(header_name, "")).strip()
+        if not delivery_id or len(delivery_id) > 300:
+            raise HTTPException(status_code=400, detail=f"Webhook {header_name} header is required and must be at most 300 characters.")
+        return delivery_id
+
+    def normalize_webhook_event(system: str, workspace_id: str, payload: dict[str, object], headers, payload_hash: str, delivery_id: str) -> ConnectorEventRequest:
         if system == "github":
             event_name = headers.get("x-github-event", "manual_note")
-            delivery_id = headers.get("x-github-delivery")
             repository = payload.get("repository") if isinstance(payload.get("repository"), dict) else {}
             pull_request = payload.get("pull_request") if isinstance(payload.get("pull_request"), dict) else {}
             workflow_run = payload.get("workflow_run") if isinstance(payload.get("workflow_run"), dict) else {}
@@ -204,7 +322,7 @@ def create_app(
             }.get(event_name, "manual_note")
             url = str(pull_request.get("html_url") or workflow_run.get("html_url") or check_run.get("html_url") or release.get("html_url") or repository.get("html_url") or "")
         else:
-            event_name = headers.get("x-atlassian-webhook-identifier", "jira-webhook")
+            event_name = delivery_id
             issue = payload.get("issue") if isinstance(payload.get("issue"), dict) else {}
             fields = issue.get("fields") if isinstance(issue.get("fields"), dict) else {}
             external_id = str(issue.get("key") or event_name or payload_hash)
@@ -231,14 +349,46 @@ def create_app(
 
     @app.get("/health/ready")
     async def readiness() -> dict[str, object]:
+        if not settings.allow_dev_auth and (
+            settings.rate_limit_requests is None or settings.rate_limit_window_seconds is None
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail="Production request rate limiting is not configured.",
+            )
         if not settings.allow_dev_auth and identity_verifier is None:
             raise HTTPException(status_code=503, detail="Production identity is not configured.")
+        if not settings.allow_dev_auth and not _secure_cors_origins(settings.cors_origins):
+            raise HTTPException(
+                status_code=503,
+                detail="Production CORS origins must use credential-free HTTPS or be empty.",
+            )
+        if not settings.allow_dev_auth and not _connector_credentials_allowlisted(settings):
+            raise HTTPException(
+                status_code=503,
+                detail="Production connector credentials must belong to the outbound host allowlist.",
+            )
+        if not settings.allow_dev_auth and not _connector_credentials_are_brokered(settings):
+            raise HTTPException(
+                status_code=503,
+                detail="Production connector credentials require an approved short-lived credential injection broker; static bearer tokens are not supported.",
+            )
+        if (
+            not settings.allow_dev_auth
+            and settings.outbound_policy_mode is not None
+            and not _outbound_policy_valid(settings)
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail="Production outbound policy must be deny_all with no hosts or allowlist with valid hosts.",
+            )
         if not settings.allow_dev_auth and settings.storage_backend != "postgres":
             raise HTTPException(status_code=503, detail="Production persistence must use Postgres.")
         if not settings.allow_dev_auth and audit_anchor is None:
             raise HTTPException(status_code=503, detail="Production audit anchoring is not configured.")
         try:
             store.connection.execute("SELECT 1").fetchone()
+            store.verify_schema()
             worker_dispatch = store.operational_signal_status(
                 "execution_worker_dispatch",
                 settings.execution_worker_heartbeat_max_age_seconds,
@@ -268,24 +418,42 @@ def create_app(
             anchor_backlog = store.audit_anchor_backlog()
             if not settings.allow_dev_auth and anchor_backlog:
                 raise HTTPException(status_code=503, detail=f"Production audit anchor backlog contains {anchor_backlog} event(s).")
-            anchor_delivery = store.audit_anchor_delivery_status()
+            anchor_delivery = store.audit_anchor_delivery_status(settings.audit_anchor_delivery_max_age_seconds)
             if not settings.allow_dev_auth and not anchor_delivery["verified"]:
-                raise HTTPException(status_code=503, detail="Production audit anchoring has not completed a verified delivery.")
+                raise HTTPException(status_code=503, detail="Production audit anchoring has not completed a recent verified delivery.")
+            execution_job_backlog = store.execution_job_backlog()
+            if not settings.allow_dev_auth and execution_job_backlog:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Production execution job backlog contains {execution_job_backlog} job(s).",
+                )
             return {
                 "status": "ready",
                 "loops": len(corpus.loop_descriptors),
                 "state_machine_invariant": corpus.state_machine["invariant"],
                 "standard_hash": corpus.standard_hash,
                 "development_auth": settings.allow_dev_auth,
+                "rate_limit_configured": settings.rate_limit_requests is not None and settings.rate_limit_window_seconds is not None,
                 "production_identity": identity_verifier is not None,
+                # No broker implementation is present in this release. Keep
+                # readiness fail-closed until an approved broker is integrated.
+                "credential_injection_broker_verified": False,
                 "storage_backend": settings.storage_backend,
                 "audit_anchor_configured": audit_anchor is not None,
                 "audit_anchor_backlog": anchor_backlog,
                 "audit_anchor_delivery_verified": anchor_delivery["verified"],
+                "audit_anchor_delivery_fresh": anchor_delivery["fresh"],
                 "audit_anchor_last_delivered_at": anchor_delivery["last_delivered_at"],
-                "execution_job_backlog": store.execution_job_backlog(),
+                "execution_job_backlog": execution_job_backlog,
                 "execution_worker_dispatch": worker_dispatch,
                 "operational_bindings": operational_bindings,
+                "configuration_contract": {
+                    "allowed_http_hosts": sorted(set(settings.allowed_http_hosts)),
+                    "outbound_policy_mode": settings.outbound_policy_mode,
+                    "retention_policy_url": settings.retention_policy_url,
+                    "support_contact": settings.support_contact,
+                    "backup_restore_evidence_url": settings.backup_restore_evidence_url,
+                },
                 "backup_restore_evidence": {
                     "url": settings.backup_restore_evidence_url,
                     "sha256": settings.backup_restore_evidence_sha256,
@@ -301,7 +469,31 @@ def create_app(
         except HTTPException:
             raise
         except Exception as error:
-            raise HTTPException(status_code=503, detail="Authority persistence is unavailable.") from error
+                raise HTTPException(status_code=503, detail="Authority persistence is unavailable.") from error
+
+    @app.middleware("http")
+    async def production_readiness_gate(request: Request, call_next):
+        if (
+            not settings.allow_dev_auth
+            and request.method != "OPTIONS"
+            and request.url.path.startswith("/v1/")
+            and request.url.path
+            not in {
+                "/v1/dev/sessions",
+                "/v1/audit/anchors/drain",
+                "/v1/operations/jobs/drain",
+            }
+        ):
+            try:
+                await readiness()
+            except HTTPException as error:
+                return JSONResponse(status_code=503, content={"detail": error.detail})
+            except Exception:
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "Production readiness could not be verified."},
+                )
+        return await call_next(request)
 
     if settings.allow_dev_auth:
         @app.post("/v1/dev/sessions", response_model=SessionResponse)
@@ -309,10 +501,12 @@ def create_app(
             actor = Actor.model_validate(request.model_dump(exclude={"ttl_seconds"}))
             return SessionResponse(access_token=signer.issue(actor, request.ttl_seconds), expires_in=request.ttl_seconds, actor=actor)
 
-    @app.post("/v1/sessions", response_model=SessionResponse)
-    async def create_enterprise_session(request: Request) -> SessionResponse:
+    @app.post("/v1/sessions", response_model=EnterpriseSessionResponse)
+    async def create_enterprise_session(request: Request) -> EnterpriseSessionResponse:
         if identity_verifier is None:
             raise HTTPException(status_code=503, detail="Production identity is not configured.")
+        if not request_origin_is_allowed(request):
+            raise HTTPException(status_code=403, detail="The session origin is not authorized.")
         assertion = request.headers.get("x-loopos-identity-token") or request.cookies.get("loopos_identity")
         if not assertion:
             raise HTTPException(status_code=401, detail="A verified identity assertion is required.")
@@ -330,8 +524,8 @@ def create_app(
         )
         if audit_anchor:
             await audit_anchor.drain()
-        ttl_seconds = 900
-        return SessionResponse(
+        ttl_seconds = ENTERPRISE_SESSION_MAX_SECONDS
+        return EnterpriseSessionResponse(
             access_token=signer.issue(actor, ttl_seconds),
             expires_in=ttl_seconds,
             actor=actor,
@@ -340,6 +534,24 @@ def create_app(
     @app.get("/v1/session", response_model=Actor)
     async def session(actor: Actor = Depends(current_actor)) -> Actor:
         return actor
+
+    @app.get("/v1/controls/kill-switch", response_model=KillSwitchStatus)
+    async def get_kill_switch(actor: Actor = Depends(current_actor)) -> KillSwitchStatus:
+        return KillSwitchStatus.model_validate(store.kill_switch_status(actor.tenant_id))
+
+    @app.post("/v1/controls/kill-switch", response_model=KillSwitchStatus)
+    async def activate_kill_switch(request: KillSwitchRequest, actor: Actor = Depends(current_actor)) -> KillSwitchStatus:
+        try:
+            return KillSwitchStatus.model_validate(store.activate_kill_switch(actor, request.reason))
+        except Exception as error:
+            raise map_store_error(error) from error
+
+    @app.post("/v1/controls/kill-switch/deactivate", response_model=KillSwitchStatus)
+    async def deactivate_kill_switch(request: KillSwitchRequest, actor: Actor = Depends(current_actor)) -> KillSwitchStatus:
+        try:
+            return KillSwitchStatus.model_validate(store.deactivate_kill_switch(actor, request.reason))
+        except Exception as error:
+            raise map_store_error(error) from error
 
     @app.get("/v1/workspaces", response_model=list[WorkspaceRecord])
     async def list_workspaces(
@@ -413,6 +625,7 @@ def create_app(
         if not idempotency_key or len(idempotency_key) < 8 or len(idempotency_key) > 200:
             raise HTTPException(status_code=400, detail="Idempotency-Key must contain 8 to 200 characters.")
         try:
+            require_authoritative_workspace(actor.tenant_id, request.workspace_id)
             return store.create_run(actor, request, idempotency_key)
         except Exception as error:
             raise map_store_error(error) from error
@@ -436,7 +649,27 @@ def create_app(
         if not idempotency_key or len(idempotency_key) < 8 or len(idempotency_key) > 200:
             raise HTTPException(status_code=400, detail="Idempotency-Key must contain 8 to 200 characters.")
         try:
+            require_authoritative_workspace(actor.tenant_id, request.workspace_id)
             return store.create_release_initiative(actor, request, idempotency_key)
+        except Exception as error:
+            raise map_store_error(error) from error
+
+    @app.post("/v1/release-initiatives/record", response_model=RecordReleaseInitiativeResponse, status_code=201)
+    async def record_release_initiative(
+        request: RecordReleaseInitiativeRequest,
+        actor: Actor = Depends(current_actor),
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> RecordReleaseInitiativeResponse:
+        if actor.role not in {"Operator", "Approver", "Executive"}:
+            raise HTTPException(status_code=403, detail="Auditors cannot record release initiatives.")
+        if not idempotency_key or len(idempotency_key) < 8 or len(idempotency_key) > 200:
+            raise HTTPException(status_code=400, detail="Idempotency-Key must contain 8 to 200 characters.")
+        if any(event.verification_status != "session_authenticated" or event.delivery_id is not None for event in request.connector_events):
+            raise HTTPException(status_code=400, detail="Provider-verified connector events must arrive through signed webhook ingestion.")
+        try:
+            require_authoritative_workspace(actor.tenant_id, request.initiative.workspace_id)
+            initiative, events = store.record_release_initiative(actor, request, idempotency_key)
+            return RecordReleaseInitiativeResponse(initiative=initiative, connector_events=events)
         except Exception as error:
             raise map_store_error(error) from error
 
@@ -466,7 +699,13 @@ def create_app(
     async def record_connector_event(request: ConnectorEventRequest, actor: Actor = Depends(current_actor)) -> ConnectorEventRecord:
         if actor.role not in {"Operator", "Approver", "Executive"}:
             raise HTTPException(status_code=403, detail="Auditors cannot record connector events.")
+        if request.verification_status != "session_authenticated" or request.delivery_id is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="Provider-verified connector events must arrive through signed webhook ingestion.",
+            )
         try:
+            require_authoritative_workspace(actor.tenant_id, request.workspace_id)
             return store.record_connector_event(actor, request)
         except Exception as error:
             raise map_store_error(error) from error
@@ -494,6 +733,7 @@ def create_app(
             raise HTTPException(status_code=413, detail="Webhook payload exceeds the configured size limit.")
         secret = webhook_secret(tenant_id, normalized_system)
         payload_hash = verify_hmac_signature(normalized_system, body, secret, request.headers)
+        delivery_id = require_webhook_delivery_id(normalized_system, request.headers)
         try:
             payload = json.loads(body.decode("utf-8"))
         except json.JSONDecodeError as error:
@@ -502,7 +742,8 @@ def create_app(
             raise HTTPException(status_code=400, detail="Webhook payload must be a JSON object.")
         actor = Actor(tenant_id=tenant_id, user_id=f"{normalized_system}-webhook", name=f"{normalized_system.title()} Webhook", role="Operator")
         try:
-            event_request = normalize_webhook_event(normalized_system, workspace_id, payload, request.headers, payload_hash)
+            require_authoritative_workspace(actor.tenant_id, workspace_id)
+            event_request = normalize_webhook_event(normalized_system, workspace_id, payload, request.headers, payload_hash, delivery_id)
             return store.record_connector_event(actor, event_request)
         except Exception as error:
             raise map_store_error(error) from error
@@ -517,19 +758,19 @@ def create_app(
         except Exception as error:
             raise map_store_error(error) from error
 
-    @app.post("/v1/runs/{run_id}/approve")
-    async def approve_run(run_id: str, request: ApprovalRequest, actor: Actor = Depends(current_actor)) -> dict[str, str]:
+    @app.post("/v1/runs/{run_id}/approve", response_model=ApprovalCommandResponse)
+    async def approve_run(run_id: str, request: ApprovalRequest, actor: Actor = Depends(current_actor)) -> ApprovalCommandResponse:
         try:
             approval_id = store.approve(actor, run_id, request)
-            return {"approval_id": approval_id, "status": "approved"}
+            return ApprovalCommandResponse(approval_id=approval_id, status="approved")
         except Exception as error:
             raise map_store_error(error) from error
 
-    @app.post("/v1/runs/{run_id}/reject")
-    async def reject_run(run_id: str, request: ApprovalRequest, actor: Actor = Depends(current_actor)) -> dict[str, str]:
+    @app.post("/v1/runs/{run_id}/reject", response_model=RejectionCommandResponse)
+    async def reject_run(run_id: str, request: ApprovalRequest, actor: Actor = Depends(current_actor)) -> RejectionCommandResponse:
         try:
             decision_id = store.reject(actor, run_id, request)
-            return {"decision_id": decision_id, "status": "rejected"}
+            return RejectionCommandResponse(decision_id=decision_id, status="rejected")
         except Exception as error:
             raise map_store_error(error) from error
 
@@ -656,7 +897,11 @@ def create_app(
             raise HTTPException(status_code=403, detail="Audit anchor status requires Auditor or Executive role.")
         return {
             "configured": audit_anchor is not None,
-            "backlog": store.audit_anchor_backlog(),
+            "backlog": store.audit_anchor_backlog(actor.tenant_id),
+            "delivery": store.audit_anchor_delivery_status(
+                settings.audit_anchor_delivery_max_age_seconds,
+                tenant_id=actor.tenant_id,
+            ),
         }
 
     @app.post("/v1/audit/anchors/drain")
@@ -665,15 +910,15 @@ def create_app(
             raise HTTPException(status_code=403, detail="Audit anchor delivery requires Executive role.")
         if audit_anchor is None:
             raise HTTPException(status_code=503, detail="External audit anchoring is not configured.")
-        delivered = await audit_anchor.drain()
-        return {"delivered": delivered, "backlog": store.audit_anchor_backlog()}
+        delivered = await audit_anchor.drain(tenant_id=actor.tenant_id)
+        return {"delivered": delivered, "backlog": store.audit_anchor_backlog(actor.tenant_id)}
 
     @app.get("/v1/operations/jobs/status")
     async def execution_job_status(actor: Actor = Depends(current_actor)) -> dict[str, object]:
         if actor.role not in {"Auditor", "Executive"}:
             raise HTTPException(status_code=403, detail="Execution job status requires Auditor or Executive role.")
         return {
-            "backlog": store.execution_job_backlog(),
+            "backlog": store.execution_job_backlog(actor.tenant_id),
             "dispatch": store.operational_signal_status(
                 "execution_worker_dispatch",
                 settings.execution_worker_heartbeat_max_age_seconds,
@@ -695,14 +940,9 @@ def create_app(
             and hmac.compare_digest(supplied_worker_token, settings.worker_token)
         )
         if not worker_authorized:
-            if credentials is None or credentials.scheme.lower() != "bearer":
-                raise HTTPException(status_code=401, detail="Worker token or Executive session is required.")
-            try:
-                actor = signer.verify(credentials.credentials)
-            except InvalidSession as error:
-                raise HTTPException(status_code=401, detail=str(error)) from error
-            if actor.role != "Executive":
-                raise HTTPException(status_code=403, detail="Execution job drain requires Executive role.")
+            raise HTTPException(status_code=401, detail="A valid worker token is required.")
+        if not settings.allow_dev_auth and settings.execution_worker_mode != "external":
+            raise HTTPException(status_code=503, detail="External worker dispatch is not configured.")
         store.queue_due_effectiveness()
         processed = await execution_worker.run_once(dispatch_source="external")
         audit_delivered = await audit_anchor.drain() if audit_anchor else 0

@@ -65,7 +65,7 @@ test("shows contextual help for why, risk, readiness, evidence, and export witho
   await expect(page.getByText(/These browser-local drafts cannot authorize tools or change an authority run\./)).toBeVisible();
 
   await openNavDestination(page, "Action Plan");
-  await expect(page.getByRole("heading", { name: "Enterprise Action Plan" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enterprise Evaluation Action Plan" })).toBeVisible();
   await expectHelp(
     page,
     "Help: Export",

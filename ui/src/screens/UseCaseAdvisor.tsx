@@ -18,7 +18,7 @@ const ENVIRONMENTS = ["development", "pilot", "production", "enterprise portfoli
 
 export type AdvisorPane = "input" | "results";
 
-export const DEFAULT_USE_CASE: UseCaseInput = {
+const DEFAULT_USE_CASE: UseCaseInput = {
   title: "Prepare enterprise for agentic AI",
   description: "We want to assess whether our enterprise is ready to let AI agents use tools, memory, retrieval, and delegated workflows while keeping security, audit, and human approval controls clear.",
   environment: "enterprise portfolio",

@@ -7,14 +7,23 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.verify_oci_attestations import EvidenceError, verify_oci_archive
+from scripts.verify_oci_attestations import EvidenceError, main, verify_oci_archive
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class SupplyChainEvidenceTests(unittest.TestCase):
-    def _archive(self, root: Path, *, include_sbom: bool = True) -> Path:
+    def _archive(
+        self,
+        root: Path,
+        *,
+        include_sbom: bool = True,
+        subject_digest: str | None = None,
+        malformed_provenance: bool = False,
+        malformed_attestation_config: bool = False,
+        malformed_attestation_layer: bool = False,
+    ) -> Path:
         layout = root / "layout"
         blobs = layout / "blobs" / "sha256"
         blobs.mkdir(parents=True)
@@ -36,19 +45,20 @@ class SupplyChainEvidenceTests(unittest.TestCase):
             },
             "layers": [],
         })
+        subject_sha256 = subject_digest or image_digest.split(":", 1)[1]
         statements = [
             {
                 "_type": "https://in-toto.io/Statement/v0.1",
                 "predicateType": "https://slsa.dev/provenance/v1",
-                "subject": [{"name": "pkg:docker/loopos", "digest": {"sha256": image_digest.split(":", 1)[1]}}],
-                "predicate": {"buildDefinition": {}, "runDetails": {}},
+                "subject": [{"name": "pkg:docker/loopos", "digest": {"sha256": subject_sha256}}],
+                "predicate": None if malformed_provenance else {"buildDefinition": {}, "runDetails": {}},
             }
         ]
         if include_sbom:
             statements.append({
                 "_type": "https://in-toto.io/Statement/v0.1",
                 "predicateType": "https://spdx.dev/Document",
-                "subject": [{"name": "pkg:docker/loopos", "digest": {"sha256": image_digest.split(":", 1)[1]}}],
+                "subject": [{"name": "pkg:docker/loopos", "digest": {"sha256": subject_sha256}}],
                 "predicate": {"spdxVersion": "SPDX-2.3", "packages": []},
             })
         layers = []
@@ -59,13 +69,19 @@ class SupplyChainEvidenceTests(unittest.TestCase):
                 "digest": statement_digest,
                 "size": 1,
             })
+        if malformed_attestation_layer:
+            layers.append({"mediaType": "application/vnd.in-toto+json"})
         attestation_config = blob({"architecture": "unknown", "os": "unknown"})
         attestation_digest = blob({
             "schemaVersion": 2,
             "mediaType": "application/vnd.oci.image.manifest.v1+json",
             "config": {
                 "mediaType": "application/vnd.oci.image.config.v1+json",
-                "digest": attestation_config,
+                "digest": (
+                    "sha256:" + "0" * 64
+                    if malformed_attestation_config
+                    else attestation_config
+                ),
                 "size": 1,
             },
             "layers": layers,
@@ -129,11 +145,51 @@ class SupplyChainEvidenceTests(unittest.TestCase):
         self.assertEqual(report["provenance_predicate"], "https://slsa.dev/provenance/v1")
         self.assertEqual(len(report["archive_sha256"]), 64)
 
+    def test_missing_oci_archive_emits_a_fail_closed_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            output = root / "manifest.json"
+
+            result = main([str(root / "missing.oci.tar"), "--output", str(output)])
+            report = json.loads(output.read_text(encoding="utf-8"))
+
+        self.assertEqual(result, 1)
+        self.assertFalse(report["verified"])
+        self.assertIn("could not be read", report["error"])
+
     def test_rejects_an_oci_archive_without_an_sbom(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             archive = self._archive(Path(temporary_directory), include_sbom=False)
 
             with self.assertRaisesRegex(EvidenceError, "SBOM"):
+                verify_oci_archive(archive)
+
+    def test_rejects_attestations_whose_subject_does_not_match_the_image(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            archive = self._archive(Path(temporary_directory), subject_digest="0" * 64)
+
+            with self.assertRaisesRegex(EvidenceError, "not bound to the image digest"):
+                verify_oci_archive(archive)
+
+    def test_rejects_provenance_attestations_without_a_json_predicate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            archive = self._archive(Path(temporary_directory), malformed_provenance=True)
+
+            with self.assertRaisesRegex(EvidenceError, "Provenance attestation.*JSON object predicate"):
+                verify_oci_archive(archive)
+
+    def test_rejects_attestation_manifests_with_missing_config_blobs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            archive = self._archive(Path(temporary_directory), malformed_attestation_config=True)
+
+            with self.assertRaisesRegex(EvidenceError, "Attestation manifest config"):
+                verify_oci_archive(archive)
+
+    def test_rejects_attestation_manifests_with_malformed_layers(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            archive = self._archive(Path(temporary_directory), malformed_attestation_layer=True)
+
+            with self.assertRaisesRegex(EvidenceError, "Attestation manifest layer"):
                 verify_oci_archive(archive)
 
     def test_ci_builds_and_retains_attested_oci_archives(self) -> None:

@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -30,6 +31,9 @@ EXPECTED_TABLES = (
     "workspaces",
 )
 EXPECTED_AUDIT_TRIGGERS = {"audit_events_no_delete", "audit_events_no_update"}
+KEYWORD_PASSWORD_PATTERN = re.compile(
+    r"(?i)(?:^|\s)password\s*=\s*(?P<value>'(?:\\.|[^'])*'|\"(?:\\.|[^\"])*\"|[^\s]+)"
+)
 
 
 class RestoreEvidenceError(RuntimeError):
@@ -182,7 +186,48 @@ def _safe_error(error: Exception, dsn: str) -> str:
     if parsed.password:
         rendered = rendered.replace(parsed.password, "[redacted]")
         rendered = rendered.replace(unquote(parsed.password), "[redacted]")
+    keyword_password = KEYWORD_PASSWORD_PATTERN.search(dsn)
+    if keyword_password:
+        raw_value = keyword_password.group("value")
+        values = {raw_value}
+        if raw_value[:1] in {"'", '"'} and raw_value[-1:] == raw_value[:1]:
+            values.add(raw_value[1:-1])
+        for value in values:
+            if value:
+                rendered = rendered.replace(value, "[redacted]")
     return rendered
+
+
+def _cleanup_restore(
+    *,
+    container: str,
+    container_backup: str,
+    source_dsn: str,
+    restore_database: str,
+    restore_created: bool,
+) -> tuple[bool, list[str]]:
+    failures: list[str] = []
+    if restore_created:
+        try:
+            admin = _connect(source_dsn)
+            try:
+                from psycopg import sql
+
+                admin.execute(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s",
+                    (restore_database,),
+                )
+                admin.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(restore_database)))
+            finally:
+                admin.close()
+        except Exception as error:
+            failures.append(f"restored database cleanup failed: {_safe_error(error, source_dsn)}")
+
+    backup_cleanup = _run(["docker", "exec", container, "rm", "-f", container_backup], check=False)
+    if backup_cleanup.returncode != 0:
+        detail = backup_cleanup.stderr.strip() or backup_cleanup.stdout.strip() or f"exit code {backup_cleanup.returncode}"
+        failures.append(f"container backup cleanup failed: {detail}")
+    return not failures, failures
 
 
 def verify_postgres_restore(
@@ -281,26 +326,18 @@ def verify_postgres_restore(
     except Exception as error:
         report["error"] = _safe_error(error, source_dsn)
     finally:
-        if restore_created:
-            try:
-                admin = _connect(source_dsn)
-                try:
-                    from psycopg import sql
-
-                    admin.execute(
-                        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s",
-                        (restore_database,),
-                    )
-                    admin.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(restore_database)))
-                finally:
-                    admin.close()
-            except Exception:
-                report["cleanup_verified"] = False
-                report["verified"] = False
-                report["error"] = "The restored database could not be removed after verification."
-            else:
-                report["cleanup_verified"] = True
-        _run(["docker", "exec", container, "rm", "-f", container_backup], check=False)
+        cleanup_verified, cleanup_failures = _cleanup_restore(
+            container=container,
+            container_backup=container_backup,
+            source_dsn=source_dsn,
+            restore_database=restore_database,
+            restore_created=restore_created,
+        )
+        report["cleanup_verified"] = cleanup_verified
+        if not cleanup_verified:
+            report["verified"] = False
+            cleanup_detail = f"Postgres restore cleanup failed: {'; '.join(cleanup_failures)}"
+            report["error"] = f"{report['error']} {cleanup_detail}" if report.get("error") else cleanup_detail
         output.parent.mkdir(parents=True, exist_ok=True)
         rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
         output.write_text(rendered, encoding="utf-8")

@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { CheckCircle2, CirclePlus, ClipboardList, Download, FilePenLine, HelpCircle, Save, Trash2, X, XCircle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge, riskTone } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Card, SectionHeader } from "../components/Card";
@@ -32,6 +32,8 @@ export function WorkspaceConsole({
   onMutateWorkspace,
   onUseCaseChange,
   onDeleteWorkspace,
+  onSessionExpired,
+  onRetryPersistence,
   persistence,
 }: {
   data: LoopOSData;
@@ -43,6 +45,8 @@ export function WorkspaceConsole({
   onMutateWorkspace: (updater: (workspace: SavedWorkspace) => SavedWorkspace) => void;
   onUseCaseChange: (useCase: UseCaseInput) => void;
   onDeleteWorkspace: (workspaceId: string) => void;
+  onSessionExpired?: () => void;
+  onRetryPersistence?: () => void;
   persistence: WorkspacePersistenceResult;
 }) {
   const workspace = activeWorkspace;
@@ -51,7 +55,7 @@ export function WorkspaceConsole({
   if (!workspace) {
     return (
       <Card>
-        <SectionHeader title="Saved Workspaces" description="Create a workspace to persist use-case analysis, approvals, edits, and execution records." />
+        <SectionHeader title="Saved Workspaces" description="Create a workspace to persist use-case analysis, approval drafts, edits, and execution drafts." />
         <div className="flex gap-2">
           <input className="control min-h-10 flex-1 px-3 text-sm" value={newWorkspaceName} onChange={(event) => setNewWorkspaceName(event.target.value)} />
           <Button variant="primary" onClick={() => onCreateWorkspace(newWorkspaceName, data.use_cases[0] ? { title: data.use_cases[0].title, description: data.use_cases[0].summary, environment: "enterprise portfolio", aiScope: "AI readiness", dataSensitivity: "sensitive", businessOutcome: "Prepare an enterprise action path.", maturity: "discovery", constraints: "Created from v2 workspace." } : workspaceSeed())}>
@@ -68,9 +72,16 @@ export function WorkspaceConsole({
       <Card>
         <SectionHeader
           title="Saved Workspace Console"
-          description="Persisted browser-local workspace for v2 governance work. Use this to bind LoopOS recommendations to enterprise owners, evidence, approvals, and execution records."
+          description={persistence.location === "authority"
+            ? "Tenant-scoped authoritative workspace for v2 governance work. Use this to persist proposed owners, evidence references, approval drafts, and governed execution records."
+            : "Persisted browser-local workspace for evaluation work. Use this to prepare proposed owners, evidence references, approval drafts, and evaluation records before authority activation."}
           action={<HelpPopover helpKey="evidence" />}
         />
+        <InlineNote tone={persistence.location === "authority" ? "info" : "warning"}>
+          {persistence.location === "authority"
+            ? "Authoritative records still require role, evidence, approval, and execution gates before any governed action."
+            : "These browser-local drafts cannot authorize tools or change an authority run."}
+        </InlineNote>
         <div className="grid gap-3 lg:grid-cols-3">
           <label className="block">
             <span className="mb-1 block text-sm font-semibold text-fg1">Active workspace</span>
@@ -96,8 +107,8 @@ export function WorkspaceConsole({
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <WorkspaceMetric label="Signed in as" value={`${user.name} (${user.role})`} />
           <WorkspaceMetric label="Saved loops" value={String(workspace.selected_loop_ids.length)} />
-          <WorkspaceMetric label="Approvals" value={String(workspace.approvals.length)} />
-          <WorkspaceMetric label="Legacy local executions" value={String(workspace.execution_records.length)} />
+          <WorkspaceMetric label="Approval drafts" value={String(workspace.approvals.length)} />
+          <WorkspaceMetric label={persistence.location === "authority" ? "Execution drafts" : "Legacy local executions"} value={String(workspace.execution_records.length)} />
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border2 pt-4">
           <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-fg2">
@@ -111,11 +122,16 @@ export function WorkspaceConsole({
               : <span>{Math.ceil(persistence.bytes / 1024)} KB {persistence.location === "authority" ? "authoritative record" : "browser-local record"}</span>}
           </div>
           <div className="flex flex-wrap gap-2">
+            {persistence.location === "authority" && persistence.status === "error" && persistence.code === "authority_unavailable" && onRetryPersistence ? (
+              <Button variant="primary" onClick={onRetryPersistence}>
+                Retry save
+              </Button>
+            ) : null}
             <Button onClick={() => downloadWorkspaceExport(workspace)}>
               <Download className="h-4 w-4" aria-hidden="true" />
               Export data
             </Button>
-            <DeleteWorkspaceDialog workspace={workspace} onDelete={onDeleteWorkspace} />
+            <DeleteWorkspaceDialog workspace={workspace} onDelete={onDeleteWorkspace} location={persistence.location} />
           </div>
         </div>
       </Card>
@@ -132,13 +148,13 @@ export function WorkspaceConsole({
 
       <div className="grid gap-6 xl:grid-cols-2">
         <ApprovalPanel data={data} user={user} workspace={workspace} onMutateWorkspace={onMutateWorkspace} />
-        <GovernedExecutionPanel data={data} user={user} workspace={workspace} />
+        <GovernedExecutionPanel data={data} user={user} workspace={workspace} onSessionExpired={onSessionExpired} />
       </div>
     </div>
   );
 }
 
-function DeleteWorkspaceDialog({ workspace, onDelete }: { workspace: SavedWorkspace; onDelete: (workspaceId: string) => void }) {
+function DeleteWorkspaceDialog({ workspace, onDelete, location }: { workspace: SavedWorkspace; onDelete: (workspaceId: string) => void; location?: WorkspacePersistenceResult["location"] }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
@@ -154,7 +170,9 @@ function DeleteWorkspaceDialog({ workspace, onDelete }: { workspace: SavedWorksp
             <div>
               <Dialog.Title className="text-lg font-semibold text-fg1">Delete workspace?</Dialog.Title>
               <Dialog.Description id="delete-workspace-description" className="mt-2 text-sm text-fg2">
-                This permanently removes {workspace.name} from this browser. Export it first when a record must be retained.
+                 {location === "authority"
+                   ? <>This permanently removes {workspace.name} from tenant-scoped authority storage. Export it first when a record must be retained.</>
+                   : <>This permanently removes {workspace.name} from this browser. Export it first when a record must be retained.</>}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -210,14 +228,22 @@ function QuestionAssistantCard({
   onUseCaseChange: (useCase: UseCaseInput) => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [outboundAiConsent, setOutboundAiConsent] = useState(false);
   const recommendations = useMemo(() => recommendLoops(workspace.use_case, data), [workspace.use_case, data]);
   const questionEndpoint = llmEndpoint();
+  const outboundAiConsentKey = JSON.stringify({ useCase: workspace.use_case, recommendationIds: recommendations.map((item) => item.loop_id) });
+
+  useEffect(() => {
+    setOutboundAiConsent(false);
+  }, [outboundAiConsentKey]);
 
   const ask = async () => {
+    if (questionEndpoint && !outboundAiConsent) return;
     setLoading(true);
-    const questions = await getQuestionSuggestions(workspace.use_case, recommendations);
+    const questions = await getQuestionSuggestions(workspace.use_case, recommendations, { consent: outboundAiConsent });
     onMutateWorkspace((current) => ({ ...current, question_suggestions: questions }));
     setLoading(false);
+    if (questionEndpoint) setOutboundAiConsent(false);
   };
 
   const applyQuestion = (question: QuestionSuggestion) => {
@@ -235,7 +261,18 @@ function QuestionAssistantCard({
       <InlineNote>
         Provider state: {questionEndpoint ? "LLM endpoint configured" : "deterministic fallback active"}. Questions are saved into the active workspace.
       </InlineNote>
-      <Button variant="primary" className="mt-4" onClick={ask} disabled={loading}>
+      {questionEndpoint ? (
+        <label className="mt-3 flex items-start gap-2 text-sm text-fg2">
+          <input
+            type="checkbox"
+            aria-label="Allow this request to send workspace details to enterprise AI"
+            checked={outboundAiConsent}
+            onChange={(event) => setOutboundAiConsent(event.target.checked)}
+          />
+          <span>Allow this request to send the current use-case fields, including data sensitivity, and selected recommendations to the configured enterprise AI endpoint.</span>
+        </label>
+      ) : null}
+      <Button variant="primary" className="mt-4" onClick={ask} disabled={loading || Boolean(questionEndpoint && !outboundAiConsent)}>
         <HelpCircle className="h-4 w-4" aria-hidden="true" />
         {loading ? "Generating..." : "Generate Questions"}
       </Button>
@@ -297,13 +334,13 @@ function OwnerEvidenceEditor({
 
   return (
     <Card>
-      <SectionHeader title="Owner And Evidence Editing" description="Workspace overlay edits preserve the immutable source corpus while binding loops to enterprise owners and evidence." action={<HelpPopover helpKey="evidence" />} />
+      <SectionHeader title="Owner And Evidence Draft Editing" description="Workspace overlay edits preserve the immutable source corpus while proposing enterprise owners and evidence references." action={<HelpPopover helpKey="evidence" />} />
       <div className="space-y-3">
         <SelectLoop data={data} value={loopId} onChange={setLoopId} />
         <TextField label="Policy owner" value={policyOwner} onChange={setPolicyOwner} />
         <TextField label="Gate owner" value={gateOwner} onChange={setGateOwner} />
         <TextField label="Risk owner" value={riskOwner} onChange={setRiskOwner} />
-        <TextField label="Authoritative evidence location" value={location} onChange={setLocation} />
+        <TextField label="Proposed evidence location" value={location} onChange={setLocation} />
         <Button variant="primary" onClick={save}>
           <Save className="h-4 w-4" aria-hidden="true" />
           Save Owner/Evidence Edit
@@ -353,7 +390,7 @@ function ApprovalPanel({
       ...current,
       approvals: current.approvals.map((approval) =>
         approval.approval_id === approvalId
-          ? { ...approval, status, approver: user.name, decision_reason: status === "Approved" ? "Approved in local workspace gate." : "Rejected in local workspace gate.", decided_at: new Date().toISOString() }
+          ? { ...approval, status, approver: user.name, decision_reason: status === "Approved" ? "Approved in a non-authoritative workspace draft gate." : "Rejected in a non-authoritative workspace draft gate.", decided_at: new Date().toISOString() }
           : approval,
       ),
     }));
@@ -361,8 +398,8 @@ function ApprovalPanel({
 
   return (
     <Card>
-      <SectionHeader title="Local Approval Drafts" description="Prepare non-authoritative decision notes. Only a payload-bound decision inside Governed Execution Authority can authorize a run." action={<HelpPopover helpKey="readiness" />} />
-      <InlineNote tone="warning">These browser-local drafts cannot authorize tools or change an authority run.</InlineNote>
+      <SectionHeader title="Approval Drafts (Non-authoritative)" description="Prepare non-authoritative decision notes. Only a payload-bound decision inside Governed Execution Authority can authorize a run." action={<HelpPopover helpKey="readiness" />} />
+      <InlineNote tone="warning">These workspace drafts cannot authorize tools or change an authority run.</InlineNote>
       <div className="space-y-3">
         <SelectLoop data={data} value={loopId} onChange={setLoopId} />
         <TextField label="Approval title" value={title} onChange={setTitle} />

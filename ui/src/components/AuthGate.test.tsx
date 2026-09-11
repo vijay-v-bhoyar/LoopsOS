@@ -9,10 +9,28 @@ const ENTERPRISE_READY: DeploymentPosture = {
   enterpriseReady: true,
   environmentName: "Production",
   apiBaseUrl: "/api",
+  authorityAllowedHosts: [],
   allowedEndpointHosts: ["api.example.com"],
+  outboundPolicyMode: "allowlist",
+  retentionPolicyUrl: "https://policy.example.com/retention",
+  supportContact: "loopos-ops@example.com",
+  backupRestoreEvidenceUrl: "https://evidence.example.com/restore-test",
   bindings: [],
   blockers: [],
   reviews: [],
+};
+
+const ENTERPRISE_RUNTIME_FAILURE: DeploymentPosture = {
+  ...ENTERPRISE_READY,
+  status: "verification_required",
+  enterpriseReady: false,
+  bindings: [{
+    id: "identity",
+    label: "Enterprise identity",
+    status: "review",
+    detail: "The authority did not verify the current identity session.",
+  }],
+  reviews: ["identity"],
 };
 
 describe("AuthGate", () => {
@@ -58,5 +76,52 @@ describe("AuthGate", () => {
     expect(screen.getByText("Identity assertion verification failed.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry Enterprise Sign-In" }));
     expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it("keeps transient authority failures recoverable when runtime posture is not ready", () => {
+    const retry = vi.fn();
+
+    render(
+      <AuthGate
+        user={null}
+        onSignIn={vi.fn()}
+        enterpriseSession={{ status: "error", error: "Authority returned 503.", retryable: true }}
+        onEnterpriseSignIn={retry}
+        posture={ENTERPRISE_RUNTIME_FAILURE}
+      >
+        <div>Authenticated application</div>
+      </AuthGate>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Enterprise Sign-In Failed" })).toBeInTheDocument();
+    expect(screen.getByText("Authority returned 503.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry Enterprise Sign-In" }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it("names the operational bindings that block enterprise activation", () => {
+    render(
+      <AuthGate
+        user={null}
+        onSignIn={vi.fn()}
+        posture={{
+          ...ENTERPRISE_READY,
+          status: "activation_blocked",
+          enterpriseReady: false,
+          bindings: [
+            { id: "rate_limit", label: "Request rate limiting", status: "blocked", detail: "Configure request limits." },
+            { id: "worker", label: "Worker dispatch", status: "blocked", detail: "Configure external dispatch." },
+            { id: "backup_restore", label: "Restore evidence", status: "blocked", detail: "Provide recent restore evidence." },
+          ],
+        }}
+      >
+        <div>Authenticated application</div>
+      </AuthGate>,
+    );
+
+    expect(screen.getByText(/including identity, persistence, audit, rate limiting, worker dispatch, restore evidence, and endpoint policy/)).toBeInTheDocument();
+    expect(screen.getByText("Request rate limiting:")).toBeInTheDocument();
+    expect(screen.getByText("Worker dispatch:")).toBeInTheDocument();
+    expect(screen.getByText("Restore evidence:")).toBeInTheDocument();
   });
 });

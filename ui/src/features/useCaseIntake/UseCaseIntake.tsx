@@ -80,6 +80,7 @@ export function UseCaseIntake({
   const [enhancing, setEnhancing] = useState(false);
   const [message, setMessage] = useState("");
   const [enterpriseConsent, setEnterpriseConsent] = useState(false);
+  const [llmConsent, setLlmConsent] = useState(false);
   const reviewTriggerRef = useRef<HTMLElement | null>(null);
   const acceptedCharacters = useMemo(() => sources.reduce((total, source) => total + source.character_count, 0), [sources]);
   const documentCount = sources.filter((source) => source.kind === "document").length;
@@ -92,6 +93,7 @@ export function UseCaseIntake({
     setActiveSource(source);
     setDraft(nextDraft);
     setSelectedFields(new Set(nextDraft.fields.map((field) => field.field)));
+    setLlmConsent(false);
     setMessage(`${source.label} is ready for review.`);
   }, [input]);
 
@@ -162,12 +164,13 @@ export function UseCaseIntake({
   };
 
   const enhanceDraft = async () => {
-    if (!activeSource || !draft || !llmServiceEndpoint) return;
+    if (!activeSource || !draft || !llmServiceEndpoint || !llmConsent) return;
     setEnhancing(true);
-    const enhanced = await enhanceUseCaseProposal(activeSource, input, draft, { endpoint: llmServiceEndpoint });
+    const enhanced = await enhanceUseCaseProposal(activeSource, input, draft, { endpoint: llmServiceEndpoint, consent: llmConsent });
     setDraft(enhanced);
     setSelectedFields(new Set(enhanced.fields.map((field) => field.field)));
     setEnhancing(false);
+    setLlmConsent(false);
     setMessage(enhanced.method === "enterprise LLM" ? "Enterprise AI suggestions are ready for review." : "Enterprise AI was unavailable. Deterministic suggestions were preserved.");
   };
 
@@ -373,10 +376,21 @@ export function UseCaseIntake({
               <div className="text-xs text-fg3">{selectedFields.size} of {draft?.fields.length ?? 0} fields selected</div>
               <div className="flex flex-wrap gap-2">
                 {llmServiceEndpoint ? (
-                  <Button onClick={() => void enhanceDraft()} disabled={enhancing}>
-                    {enhancing ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <WandSparkles className="h-4 w-4" aria-hidden="true" />}
-                    Enhance with enterprise AI
-                  </Button>
+                  <div className="flex max-w-xl flex-col items-stretch gap-2">
+                    <label className="flex items-start gap-2 text-xs text-fg2">
+                      <input
+                        type="checkbox"
+                        aria-label="Allow enterprise AI enhancement"
+                        checked={llmConsent}
+                        onChange={(event) => setLlmConsent(event.target.checked)}
+                      />
+                      <span>Allow this request to send the reviewed source text and current use-case fields to the configured enterprise AI endpoint.</span>
+                    </label>
+                    <Button onClick={() => void enhanceDraft()} disabled={enhancing || !llmConsent}>
+                      {enhancing ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <WandSparkles className="h-4 w-4" aria-hidden="true" />}
+                      Enhance with enterprise AI
+                    </Button>
+                  </div>
                 ) : null}
                 <Dialog.Close asChild><Button variant="ghost">Discard</Button></Dialog.Close>
                 <Button variant="primary" onClick={applyDraft} disabled={!selectedFields.size}>Apply selected fields</Button>

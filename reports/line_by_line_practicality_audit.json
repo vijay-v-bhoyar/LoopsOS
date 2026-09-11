@@ -1,14 +1,14 @@
 {
   "summary": {
-    "files_scanned": 269,
-    "lines_scanned": 230258,
+    "files_scanned": 279,
+    "lines_scanned": 232472,
     "by_severity": {
       "warning": 715,
-      "action_required": 1577
+      "action_required": 1603
     },
     "by_issue": {
       "very long line": 715,
-      "activation placeholder": 1253,
+      "activation placeholder": 1279,
       "loop remains in DRAFT": 216,
       "metric target is unset": 108
     }
@@ -13149,14 +13149,14 @@
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 16,
+      "line": 12,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 17,
+      "line": 13,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
@@ -13177,28 +13177,56 @@
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 24,
+      "line": 20,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 25,
+      "line": 21,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 26,
+      "line": 22,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 27,
+      "line": 23,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 28,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 29,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 30,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 31,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
@@ -13219,14 +13247,14 @@
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 34,
+      "line": 38,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 35,
+      "line": 39,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
@@ -13289,14 +13317,14 @@
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 56,
+      "line": 52,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 57,
+      "line": 53,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
@@ -13317,28 +13345,56 @@
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 64,
+      "line": 60,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 65,
+      "line": 61,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 66,
+      "line": 62,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 67,
+      "line": 63,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 68,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 69,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 70,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 71,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
@@ -13359,14 +13415,14 @@
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 74,
+      "line": 78,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 75,
+      "line": 79,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
@@ -13429,14 +13485,14 @@
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 96,
+      "line": 92,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 97,
+      "line": 93,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
@@ -13457,28 +13513,154 @@
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 104,
+      "line": 100,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 105,
+      "line": 101,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 106,
+      "line": 102,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },
     {
       "severity": "action_required",
       "file": "owners/OWNER_REGISTRY.yaml",
-      "line": 107,
+      "line": 103,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 108,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 109,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 110,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 111,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 112,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 113,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 118,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 119,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 120,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 121,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 122,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 123,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 128,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 129,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 130,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 131,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 132,
+      "issue": "activation placeholder",
+      "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
+    },
+    {
+      "severity": "action_required",
+      "file": "owners/OWNER_REGISTRY.yaml",
+      "line": 133,
       "issue": "activation placeholder",
       "recommendation": "replace with named owner, accountable team, or authoritative evidence location before ACTIVE use"
     },

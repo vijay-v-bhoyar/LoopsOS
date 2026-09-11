@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, CheckCircle2, FileCheck2, PlayCircle, Radio, RefreshCw, RotateCcw, Server, ShieldCheck, SquareTerminal } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, FileCheck2, PlayCircle, Power, Radio, RefreshCw, RotateCcw, Server, ShieldCheck, Square, SquareTerminal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, riskTone } from "../../components/Badge";
 import { Button } from "../../components/Button";
@@ -9,15 +9,17 @@ import type { EnterpriseUser, LoopOSData, SavedWorkspace } from "../../types";
 import {
   approveGovernedRun,
   AuthorityError,
+  activateKillSwitch,
   createAuthoritySession,
   createGovernedRun,
-  createReleaseInitiative,
+  recordReleaseInitiative as recordReleaseInitiativeAtomically,
+  deactivateKillSwitch,
+  getKillSwitchStatus,
   getReleaseProofPack,
   getGovernedRun,
   listConnectorEvents,
   listGovernedRuns,
   listReleaseInitiatives,
-  recordConnectorEvent,
   recoverGovernedRun,
   rejectGovernedRun,
   rollbackGovernedRun,
@@ -25,15 +27,27 @@ import {
   streamGovernedRun,
   verifyAuthorityAudit,
 } from "./authorityClient";
-import { buildConnectorEventsForRelease, buildReleaseInitiativeRecord, buildWorkspaceExecutionPlan, type AuditVerification, type AuthorityEvent, type ConnectorEventRecord, type GovernedRun, type ReleaseInitiativeRecord } from "./types";
+import { requireConnectorUrl } from "./endpointValidation";
+import { buildConnectorEventsForRelease, buildReleaseInitiativeRecord, buildWorkspaceExecutionPlan, type AuditVerification, type AuthorityEvent, type ConnectorEventRecord, type GovernedRun, type KillSwitchStatus, type ReleaseInitiativeRecord } from "./types";
 
 type ConnectionState = "connecting" | "available" | "unavailable";
 
-export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOSData; user: EnterpriseUser; workspace: SavedWorkspace }) {
+export function GovernedExecutionPanel({
+  data,
+  user,
+  workspace,
+  onSessionExpired,
+}: {
+  data: LoopOSData;
+  user: EnterpriseUser;
+  workspace: SavedWorkspace;
+  onSessionExpired?: () => void;
+}) {
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [runs, setRuns] = useState<GovernedRun[]>([]);
   const [releaseInitiatives, setReleaseInitiatives] = useState<ReleaseInitiativeRecord[]>([]);
   const [connectorEvents, setConnectorEvents] = useState<ConnectorEventRecord[]>([]);
+  const [killSwitch, setKillSwitch] = useState<KillSwitchStatus | null>(null);
   const [selectedRunId, setSelectedRunId] = useState("");
   const [loopId, setLoopId] = useState(workspace.selected_loop_ids[0] ?? data.loops[0]?.loop_id ?? "");
   const [targetMode, setTargetMode] = useState<"record" | "http">("record");
@@ -47,11 +61,16 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
   const [observationDelay, setObservationDelay] = useState(0);
   const [events, setEvents] = useState<AuthorityEvent[]>([]);
   const [approvalReason, setApprovalReason] = useState("Executable payload, evidence scope, risk tier, and validation probes reviewed.");
+  const [killSwitchReason, setKillSwitchReason] = useState("Emergency stop requested after an unsafe or unexpected execution condition.");
   const [busy, setBusy] = useState(false);
+  const [followingRunId, setFollowingRunId] = useState<string | null>(null);
+  const [observationNotice, setObservationNotice] = useState("");
   const [error, setError] = useState("");
   const [auditVerification, setAuditVerification] = useState<AuditVerification | null>(null);
   const tokenRef = useRef("");
+  const tenantRef = useRef("");
   const streamControllerRef = useRef<AbortController | null>(null);
+  const connectionGenerationRef = useRef(0);
   const eventCursorRef = useRef<Record<string, number>>({});
   const selectedRun = runs.find((run) => run.run_id === selectedRunId) ?? runs[0] ?? null;
   const selectedLoop = data.loops.find((loop) => loop.loop_id === loopId) ?? data.loops[0];
@@ -59,59 +78,97 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
   const verifiedConnectorEvents = connectorEvents.filter((event) => event.verification_status === "verified_webhook").length;
   const sessionConnectorEvents = connectorEvents.filter((event) => event.verification_status === "session_authenticated").length;
 
+  const handleAuthorityFailure = useCallback((reason: unknown) => {
+    if (reason instanceof AuthorityError && reason.status === 401) {
+      tokenRef.current = "";
+      tenantRef.current = "";
+      streamControllerRef.current?.abort();
+      onSessionExpired?.();
+    }
+    setError(messageFor(reason));
+  }, [onSessionExpired]);
+
   const connect = useCallback(async () => {
+    const connectionGeneration = connectionGenerationRef.current + 1;
+    connectionGenerationRef.current = connectionGeneration;
     setConnection("connecting");
     setError("");
     try {
       const session = await createAuthoritySession(user);
-      tokenRef.current = session.access_token;
+      if (connectionGeneration !== connectionGenerationRef.current) return;
+      const accessToken = session.access_token;
+      const tenantId = session.actor.tenant_id;
+      tokenRef.current = accessToken;
+      tenantRef.current = tenantId;
       const [records, initiatives, events] = await Promise.all([
-        listGovernedRuns(session.access_token, workspace.workspace_id),
-        listReleaseInitiatives(session.access_token, workspace.workspace_id),
-        listConnectorEvents(session.access_token, workspace.workspace_id),
+        listGovernedRuns(accessToken, workspace.workspace_id, tenantId),
+        listReleaseInitiatives(accessToken, workspace.workspace_id, tenantId),
+        listConnectorEvents(accessToken, workspace.workspace_id, tenantId),
       ]);
+      const control = await getKillSwitchStatus(accessToken, tenantId);
+      if (connectionGeneration !== connectionGenerationRef.current) return;
       setRuns(records);
       setReleaseInitiatives(initiatives);
       setConnectorEvents(events);
+      setKillSwitch(control);
       setSelectedRunId((current) => current || records[0]?.run_id || "");
       setConnection("available");
     } catch (reason) {
+      if (connectionGeneration !== connectionGenerationRef.current) return;
       tokenRef.current = "";
+      tenantRef.current = "";
       setConnection("unavailable");
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
     }
-  }, [user, workspace.workspace_id]);
+  }, [handleAuthorityFailure, user, workspace.workspace_id]);
 
   useEffect(() => {
     void connect();
-    return () => streamControllerRef.current?.abort();
+    return () => {
+      connectionGenerationRef.current += 1;
+      streamControllerRef.current?.abort();
+    };
   }, [connect]);
 
-  const refresh = useCallback(async (runId?: string) => {
-    if (!tokenRef.current) return;
-    const [records, initiatives, events] = await Promise.all([
-      listGovernedRuns(tokenRef.current, workspace.workspace_id),
-      listReleaseInitiatives(tokenRef.current, workspace.workspace_id),
-      listConnectorEvents(tokenRef.current, workspace.workspace_id),
-    ]);
-    setRuns(records);
-    setReleaseInitiatives(initiatives);
-    setConnectorEvents(events);
-    if (runId) setSelectedRunId(runId);
-  }, [workspace.workspace_id]);
+  const refresh = useCallback(async (runId?: string): Promise<boolean> => {
+    if (!tokenRef.current) return false;
+    const connectionGeneration = connectionGenerationRef.current;
+    try {
+      const [records, initiatives, events] = await Promise.all([
+        listGovernedRuns(tokenRef.current, workspace.workspace_id, tenantRef.current),
+        listReleaseInitiatives(tokenRef.current, workspace.workspace_id, tenantRef.current),
+        listConnectorEvents(tokenRef.current, workspace.workspace_id, tenantRef.current),
+      ]);
+      const control = await getKillSwitchStatus(tokenRef.current, tenantRef.current);
+      if (connectionGeneration !== connectionGenerationRef.current) return false;
+      setRuns(records);
+      setReleaseInitiatives(initiatives);
+      setConnectorEvents(events);
+      setKillSwitch(control);
+      if (runId) setSelectedRunId(runId);
+      return true;
+    } catch (reason) {
+      handleAuthorityFailure(reason);
+      return false;
+    }
+  }, [handleAuthorityFailure, workspace.workspace_id]);
 
   const recordReleaseInitiative = async () => {
     if (!activeInitiative?.release_assurance || !tokenRef.current) return;
     setBusy(true);
     setError("");
     try {
-      const events = await Promise.all(buildConnectorEventsForRelease(workspace, activeInitiative).map((event) => recordConnectorEvent(tokenRef.current, event)));
-      const eventIds = events.map((event) => event.connector_event_id);
-      const record = await createReleaseInitiative(tokenRef.current, buildReleaseInitiativeRecord(workspace, activeInitiative, eventIds));
-      setConnectorEvents((current) => [...events, ...current.filter((item) => !eventIds.includes(item.connector_event_id))]);
-      setReleaseInitiatives((current) => [record, ...current.filter((item) => item.initiative_id !== record.initiative_id)]);
+      const response = await recordReleaseInitiativeAtomically(
+        tokenRef.current,
+        buildReleaseInitiativeRecord(workspace, activeInitiative),
+        buildConnectorEventsForRelease(workspace, activeInitiative),
+        tenantRef.current,
+      );
+      const eventIds = response.connector_events.map((event) => event.connector_event_id);
+      setConnectorEvents((current) => [...response.connector_events, ...current.filter((item) => !eventIds.includes(item.connector_event_id))]);
+      setReleaseInitiatives((current) => [response.initiative, ...current.filter((item) => item.initiative_id !== response.initiative.initiative_id)]);
     } catch (reason) {
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
     } finally {
       setBusy(false);
     }
@@ -123,31 +180,48 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
     setBusy(true);
     setError("");
     try {
-      const proofPack = await getReleaseProofPack(tokenRef.current, initiative.initiative_id);
+      const proofPack = await getReleaseProofPack(tokenRef.current, initiative.initiative_id, tenantRef.current);
       const base = proofPack.release_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "release-proof-pack";
       downloadMarkdown(`${base}-authority-proof-pack.md`, proofPack.markdown);
     } catch (reason) {
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
     } finally {
       setBusy(false);
     }
   };
 
-  const follow = async (runId: string) => {
+  const follow = async (runId: string, stopAtApproval = false) => {
+    const connectionGeneration = connectionGenerationRef.current;
     streamControllerRef.current?.abort();
     const controller = new AbortController();
     streamControllerRef.current = controller;
+    setFollowingRunId(runId);
+    setObservationNotice("");
     try {
-      await streamGovernedRun(tokenRef.current, runId, (event) => {
+      await streamGovernedRun(tokenRef.current, runId, tenantRef.current, (event) => {
+        if (connectionGeneration !== connectionGenerationRef.current) return;
         eventCursorRef.current[runId] = Math.max(eventCursorRef.current[runId] ?? 0, event.sequence);
         setEvents((current) => current.some((item) => item.sequence === event.sequence) ? current : [...current, event].slice(-100));
-      }, controller.signal, eventCursorRef.current[runId] ?? 0);
-      const run = await getGovernedRun(tokenRef.current, runId);
+      }, controller.signal, eventCursorRef.current[runId] ?? 0, stopAtApproval);
+      if (connectionGeneration !== connectionGenerationRef.current) return;
+      const run = await getGovernedRun(tokenRef.current, runId, tenantRef.current);
+      if (connectionGeneration !== connectionGenerationRef.current) return;
       setRuns((current) => [run, ...current.filter((item) => item.run_id !== run.run_id)]);
       setSelectedRunId(run.run_id);
     } catch (reason) {
-      if (!controller.signal.aborted) setError(messageFor(reason));
+      if (!controller.signal.aborted && connectionGeneration === connectionGenerationRef.current) handleAuthorityFailure(reason);
+    } finally {
+      if (streamControllerRef.current === controller) {
+        streamControllerRef.current = null;
+        setFollowingRunId(null);
+      }
     }
+  };
+
+  const stopFollowing = () => {
+    if (!streamControllerRef.current) return;
+    streamControllerRef.current.abort();
+    setObservationNotice("Stopping observation does not cancel a remote request or change its remote execution state.");
   };
 
   const execute = async () => {
@@ -157,26 +231,43 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
     try {
       const target = targetMode === "http" ? {
         mode: "http" as const,
-        endpoint: requireUrl(endpoint, "Action endpoint"),
+        endpoint: requireConnectorUrl(endpoint, "Action endpoint"),
         method: "POST" as const,
         body: parseObject(requestBody, "Request body"),
-        rollbackEndpoint: requireUrl(rollbackEndpoint, "Compensation endpoint"),
+        rollbackEndpoint: requireConnectorUrl(rollbackEndpoint, "Compensation endpoint"),
         rollbackBody: parseObject(rollbackBody, "Compensation body"),
-        verificationEndpoint: requireUrl(verificationEndpoint, "Verification endpoint"),
+        verificationEndpoint: requireConnectorUrl(verificationEndpoint, "Verification endpoint"),
         verificationPath: verificationPath.trim(),
         verificationExpected: parseJsonValue(verificationExpected),
         observationDelaySeconds: observationDelay,
       } : { mode: "record" as const };
       const input = buildWorkspaceExecutionPlan(workspace, selectedLoop.loop_id, selectedLoop.name, selectedLoop.baseline_risk_tier, target);
-      const run = await createGovernedRun(tokenRef.current, input);
+      const run = await createGovernedRun(tokenRef.current, input, tenantRef.current);
       eventCursorRef.current[run.run_id] = 0;
       setEvents([]);
       setRuns((current) => [run, ...current.filter((item) => item.run_id !== run.run_id)]);
       setSelectedRunId(run.run_id);
       await startGovernedRun(tokenRef.current, run.run_id);
-      await follow(run.run_id);
+      await follow(run.run_id, run.requires_approval);
     } catch (reason) {
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeKillSwitch = async (activate: boolean) => {
+    if (!tokenRef.current || user.role !== "Executive" || killSwitchReason.trim().length < 3) return;
+    setBusy(true);
+    setError("");
+    try {
+      const control = activate
+        ? await activateKillSwitch(tokenRef.current, killSwitchReason, tenantRef.current)
+        : await deactivateKillSwitch(tokenRef.current, killSwitchReason, tenantRef.current);
+      setKillSwitch(control);
+      await refresh();
+    } catch (reason) {
+      handleAuthorityFailure(reason);
     } finally {
       setBusy(false);
     }
@@ -189,9 +280,9 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
     try {
       await approveGovernedRun(tokenRef.current, selectedRun, approvalReason);
       await startGovernedRun(tokenRef.current, selectedRun.run_id);
-      await follow(selectedRun.run_id);
+      await follow(selectedRun.run_id, false);
     } catch (reason) {
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
     } finally {
       setBusy(false);
     }
@@ -203,10 +294,10 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
     setError("");
     try {
       await rejectGovernedRun(tokenRef.current, selectedRun, approvalReason);
-      await refresh(selectedRun.run_id);
+      if (!await refresh(selectedRun.run_id)) return;
       await follow(selectedRun.run_id);
     } catch (reason) {
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
     } finally {
       setBusy(false);
     }
@@ -219,7 +310,7 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
     try {
       setAuditVerification(await verifyAuthorityAudit(tokenRef.current));
     } catch (reason) {
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
     } finally {
       setBusy(false);
     }
@@ -233,11 +324,11 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
       const successor = await recoverGovernedRun(tokenRef.current, selectedRun.run_id);
       eventCursorRef.current[successor.run_id] = 0;
       setEvents([]);
-      await refresh(successor.run_id);
+      if (!await refresh(successor.run_id)) return;
       await startGovernedRun(tokenRef.current, successor.run_id);
-      await follow(successor.run_id);
+      await follow(successor.run_id, successor.requires_approval);
     } catch (reason) {
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
     } finally {
       setBusy(false);
     }
@@ -251,7 +342,7 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
       await rollbackGovernedRun(tokenRef.current, selectedRun.run_id);
       await follow(selectedRun.run_id);
     } catch (reason) {
-      setError(messageFor(reason));
+      handleAuthorityFailure(reason);
     } finally {
       setBusy(false);
     }
@@ -259,6 +350,8 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
 
   const canApprove = user.role === "Approver" || user.role === "Executive";
   const canExecute = user.role !== "Auditor";
+  const killSwitchActive = killSwitch?.active === true;
+  const canStartExecution = canExecute && !killSwitchActive;
   const canVerifyAudit = user.role === "Auditor" || user.role === "Executive";
   const canRecover = canExecute && selectedRun && (["BLOCKED", "ROLLED_BACK", "EFFECTIVENESS_FAILED"].includes(selectedRun.state) || selectedRun.runner_status === "failed");
   const canRollback = selectedRun?.plan.rollback && ["ACTION_IN_PROGRESS", "ACTION_APPLIED", "VALIDATION_FAILED", "PROOF_FAILED"].includes(selectedRun.state);
@@ -274,7 +367,11 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
 
       {connection === "unavailable" ? (
         <InlineNote tone="warning">
-          Authority unavailable. No execution was simulated or recorded locally. Start the authority service and reconnect. {error}
+          <div>Authority unavailable. No execution was simulated or recorded locally. Start the authority service and reconnect. {error}</div>
+          <Button variant="primary" className="mt-3" onClick={() => void connect()}>
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Reconnect authority
+          </Button>
         </InlineNote>
       ) : null}
       {connection === "connecting" ? <InlineNote>Connecting to the governed execution authority...</InlineNote> : null}
@@ -288,17 +385,51 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
               </select>
             </label>
             <div className="flex items-end gap-2">
-              <Button variant="primary" onClick={execute} disabled={busy || !selectedLoop || !canExecute} title={canExecute ? "Run the selected loop" : "Auditor sessions are read-only"}>
+              <Button variant="primary" onClick={execute} disabled={busy || !selectedLoop || !canStartExecution} title={killSwitchActive ? "Tenant execution is stopped by the active kill switch" : canExecute ? "Run the selected loop" : "Auditor sessions are read-only"}>
                 <PlayCircle className="h-4 w-4" aria-hidden="true" />
                 {busy ? "Running..." : "Run loop"}
               </Button>
+              {followingRunId ? (
+                <Button variant="danger" onClick={stopFollowing} title="Stop local event observation only; this does not cancel remote execution">
+                  <Square className="h-4 w-4" aria-hidden="true" />
+                  Stop following events
+                </Button>
+              ) : null}
               <Button variant="ghost" onClick={() => void refresh()} disabled={busy} aria-label="Refresh governed runs" title="Refresh governed runs">
                 <RefreshCw className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
 
+          {observationNotice ? <InlineNote tone="warning">{observationNotice}</InlineNote> : null}
+
           {!canExecute ? <InlineNote>Auditor sessions are read-only. You can inspect runs, follow events, and verify the audit chain.</InlineNote> : null}
+
+          <div className={`rounded-panel border p-3 ${killSwitchActive ? "border-danger bg-dangerBg" : "border-border2 bg-bg2"}`} aria-label="Tenant execution control">
+            <div className="flex flex-wrap items-center gap-2">
+              <Power className="h-4 w-4 text-fg1" aria-hidden="true" />
+              <div className="font-semibold text-fg1">Tenant execution control</div>
+              <Badge tone={killSwitchActive ? "danger" : "success"}>{killSwitchActive ? "STOPPED" : "RUNNING"}</Badge>
+            </div>
+            <div className="mt-1 text-sm text-fg2">
+              {killSwitchActive
+                ? "New runs and queued dispatch are blocked. Runs already in an external request may finish; this authority does not claim remote cancellation or credential revocation. Deactivation does not resume blocked runs; restart requires a new run and approval."
+                : "Executive-authorized emergency stop for this tenant. It prevents new and queued execution and records the decision in the append-only audit chain."}
+            </div>
+            {killSwitch?.activation_id ? <div className="mt-2 break-all font-mono text-xs text-fg3">activation {killSwitch.activation_id}</div> : null}
+            {user.role === "Executive" ? (
+              <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-semibold text-fg1">Control decision note</span>
+                  <textarea className="control min-h-16 w-full px-3 py-2 text-sm" value={killSwitchReason} onChange={(event) => setKillSwitchReason(event.target.value)} />
+                </label>
+                <Button variant={killSwitchActive ? "primary" : "danger"} onClick={() => void changeKillSwitch(!killSwitchActive)} disabled={busy || killSwitchReason.trim().length < 3}>
+                  <Power className="h-4 w-4" aria-hidden="true" />
+                  {killSwitchActive ? "Restore tenant execution" : "Stop tenant execution"}
+                </Button>
+              </div>
+            ) : <div className="mt-2 text-sm text-fg3">Only an Executive session can change this control. Other roles can inspect its status.</div>}
+          </div>
 
           {activeInitiative?.release_assurance ? (
             <div className="rounded-panel border border-border2 bg-bg2 p-3">
@@ -442,10 +573,10 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
                         <textarea className="control min-h-20 w-full px-3 py-2 text-sm" value={approvalReason} onChange={(event) => setApprovalReason(event.target.value)} />
                       </label>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Button variant="primary" onClick={approve} disabled={busy || !canApprove || approvalReason.trim().length < 3}>
+                        <Button variant="primary" onClick={approve} disabled={busy || killSwitchActive || !canApprove || approvalReason.trim().length < 3}>
                           <CheckCircle2 className="h-4 w-4" aria-hidden="true" />Approve exact payload and continue
                         </Button>
-                        <Button variant="danger" onClick={reject} disabled={busy || !canApprove || approvalReason.trim().length < 3}>
+                        <Button variant="danger" onClick={reject} disabled={busy || killSwitchActive || !canApprove || approvalReason.trim().length < 3}>
                           <Ban className="h-4 w-4" aria-hidden="true" />Reject and block
                         </Button>
                       </div>
@@ -454,8 +585,8 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
                   ) : null}
                   <div className="flex flex-wrap gap-2">
                     {canRecover ? <Button onClick={recover} disabled={busy}><RotateCcw className="h-4 w-4" aria-hidden="true" />Create recovery run</Button> : null}
-                    {canRollback ? <Button variant="danger" onClick={rollback} disabled={busy || !canApprove}><RotateCcw className="h-4 w-4" aria-hidden="true" />Run compensation</Button> : null}
-                    <Button onClick={() => void follow(selectedRun.run_id)} disabled={busy}><Radio className="h-4 w-4" aria-hidden="true" />Follow events</Button>
+                    {canRollback ? <Button variant="danger" onClick={rollback} disabled={busy || killSwitchActive || !canApprove}><RotateCcw className="h-4 w-4" aria-hidden="true" />Run compensation</Button> : null}
+                    <Button onClick={() => void follow(selectedRun.run_id, selectedRun.runner_status === "awaiting_approval")} disabled={busy}><Radio className="h-4 w-4" aria-hidden="true" />Follow events</Button>
                     {canVerifyAudit ? <Button onClick={verifyAudit} disabled={busy}><FileCheck2 className="h-4 w-4" aria-hidden="true" />Verify audit chain</Button> : null}
                   </div>
                   {auditVerification ? (
@@ -464,7 +595,7 @@ export function GovernedExecutionPanel({ data, user, workspace }: { data: LoopOS
                       {auditVerification.first_invalid_sequence ? `; first invalid sequence ${auditVerification.first_invalid_sequence}` : ""}.
                     </InlineNote>
                   ) : null}
-                  {selectedRun.output ? <RunOutput output={selectedRun.output} /> : null}
+                  {selectedRun.output ? <RunOutput output={selectedRun.output} verified={selectedRun.state === "EFFECTIVENESS_PROVEN"} /> : null}
                   <EventTimeline events={eventSummary} />
                 </div>
               ) : null}
@@ -502,10 +633,10 @@ function RunSummary({ run, data }: { run: GovernedRun; data: LoopOSData }) {
   );
 }
 
-function RunOutput({ output }: { output: Record<string, unknown> }) {
+function RunOutput({ output, verified }: { output: Record<string, unknown>; verified: boolean }) {
   return (
     <div>
-      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-fg1"><SquareTerminal className="h-4 w-4" aria-hidden="true" />Verified output</div>
+      <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-fg1"><SquareTerminal className="h-4 w-4" aria-hidden="true" />{verified ? "Verified output" : "Action output, not effectiveness-proven"}</div>
       <pre className="max-h-80 overflow-auto rounded-panel border border-border2 bg-bg3 p-3 text-xs text-fg1">{JSON.stringify(output, null, 2)}</pre>
     </div>
   );
@@ -567,19 +698,6 @@ function parseJsonValue(value: string): unknown {
     return JSON.parse(value);
   } catch {
     return value;
-  }
-}
-
-function requireUrl(value: string, label: string): string {
-  const candidate = value.trim();
-  if (!candidate) throw new Error(`${label} is required.`);
-  try {
-    const parsed = new URL(candidate);
-    if (parsed.username || parsed.password) throw new Error(`${label} cannot contain embedded credentials.`);
-    return parsed.toString();
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("embedded credentials")) throw error;
-    throw new Error(`${label} must be a valid URL.`);
   }
 }
 
