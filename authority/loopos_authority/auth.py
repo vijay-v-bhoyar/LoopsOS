@@ -6,13 +6,18 @@ import hmac
 import json
 import time
 import uuid
-from typing import Any
+from typing import Any, Protocol
 
 from .models import Actor
 
 
 class InvalidSession(ValueError):
     pass
+
+
+class IdentityVerifier(Protocol):
+    def verify(self, assertion: str) -> Actor:
+        ...
 
 
 def _encode(value: bytes) -> str:
@@ -35,6 +40,7 @@ class SessionSigner:
             "sub": actor.user_id,
             "tenant": actor.tenant_id,
             "name": actor.name,
+            "email": actor.email,
             "role": actor.role,
             "iat": now,
             "exp": now + ttl_seconds,
@@ -57,7 +63,13 @@ class SessionSigner:
                 raise InvalidSession("Session issuer or algorithm is invalid.")
             if int(payload.get("exp", 0)) <= int(time.time()):
                 raise InvalidSession("Session has expired.")
-            return Actor(tenant_id=payload["tenant"], user_id=payload["sub"], name=payload["name"], role=payload["role"])
+            return Actor(
+                tenant_id=payload["tenant"],
+                user_id=payload["sub"],
+                name=payload["name"],
+                email=payload.get("email"),
+                role=payload["role"],
+            )
         except InvalidSession:
             raise
         except Exception as error:

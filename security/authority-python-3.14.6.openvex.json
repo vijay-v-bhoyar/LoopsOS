@@ -1,0 +1,45 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/vijay-v-bhoyar/LoopsOS/security/vex/authority-python-3.14.6",
+  "author": "LoopsOS maintainers",
+  "timestamp": "2026-07-30T05:49:30Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "name": "CVE-2026-11940"
+      },
+      "products": [
+        {
+          "@id": "pkg:generic/python@3.14.6"
+        }
+      ],
+      "status": "fixed",
+      "timestamp": "2026-07-30T05:49:30Z"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-11972"
+      },
+      "products": [
+        {
+          "@id": "pkg:generic/python@3.14.6"
+        }
+      ],
+      "status": "fixed",
+      "timestamp": "2026-07-30T05:49:30Z"
+    },
+    {
+      "vulnerability": {
+        "name": "CVE-2026-15308"
+      },
+      "products": [
+        {
+          "@id": "pkg:generic/python@3.14.6"
+        }
+      ],
+      "status": "fixed",
+      "timestamp": "2026-07-30T05:49:30Z"
+    }
+  ]
+}

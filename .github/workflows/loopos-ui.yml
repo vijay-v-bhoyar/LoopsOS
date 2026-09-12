@@ -12,12 +12,26 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      LOOPOS_TEST_POSTGRES_DSN: postgresql://postgres:loopos-ci-restore@127.0.0.1:5432/postgres
+    services:
+      postgres:
+        image: postgres:17.10-alpine3.24@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_PASSWORD: loopos-ci-restore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username postgres --dbname postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
@@ -36,6 +50,13 @@ jobs:
         env:
           PYTHONPATH: authority
         run: python -m unittest discover -s authority/tests -v
+      - name: Verify reversible Postgres restore
+        run: |
+          mkdir -p .release-evidence
+          python scripts/verify_postgres_restore.py \
+            --container ${{ job.services.postgres.id }} \
+            --output .release-evidence/postgres-restore.json \
+            --backup-output .release-evidence/postgres-backup.dump
       - name: Audit loop practicality
         run: python scripts/audit_loop_practicality.py
       - name: Unit and integration tests
@@ -53,7 +74,82 @@ jobs:
       - name: Dependency audit
         working-directory: ui
         run: npm audit --audit-level=high
-      - name: Build hardened image
-        run: docker build -f ui/Dockerfile -t loopos-ui:ci .
-      - name: Build authority image
-        run: docker build -f authority/Dockerfile -t loopos-authority:ci .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      - name: Build attested UI OCI image
+        run: |
+          mkdir -p .release-evidence
+          docker buildx build \
+            --file ui/Dockerfile \
+            --tag loopos-ui:${{ github.sha }} \
+            --provenance=mode=max \
+            --sbom=true \
+            --output type=oci,dest=.release-evidence/loopos-ui.oci.tar \
+            .
+      - name: Build attested authority OCI image
+        run: |
+          docker buildx build \
+            --file authority/Dockerfile \
+            --tag loopos-authority:${{ github.sha }} \
+            --provenance=mode=max \
+            --sbom=true \
+            --output type=oci,dest=.release-evidence/loopos-authority.oci.tar \
+            .
+      - name: Verify OCI release evidence
+        run: |
+          python scripts/verify_oci_attestations.py \
+            .release-evidence/loopos-ui.oci.tar \
+            .release-evidence/loopos-authority.oci.tar \
+            --output .release-evidence/manifest.json
+          cp security/authority-python-3.14.6.openvex.json .release-evidence/
+      - name: Load release-equivalent runtime images
+        run: |
+          docker buildx build \
+            --file ui/Dockerfile \
+            --tag loopos-ui:${{ github.sha }} \
+            --provenance=false \
+            --sbom=false \
+            --load \
+            .
+          docker buildx build \
+            --file authority/Dockerfile \
+            --tag loopos-authority:${{ github.sha }} \
+            --provenance=false \
+            --sbom=false \
+            --load \
+            .
+      - name: Exercise hardened container runtime
+        run: |
+          python scripts/verify_container_runtime.py \
+            --ui-image loopos-ui:${{ github.sha }} \
+            --authority-image loopos-authority:${{ github.sha }} \
+            --oci-manifest .release-evidence/manifest.json \
+            --output .release-evidence/container-runtime-smoke.json
+      - name: Scan UI image vulnerabilities
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          sbom: .release-evidence/loopos-ui.sbom.spdx.json
+          fail-build: true
+          severity-cutoff: high
+          cache-db: true
+          output-format: json
+          output-file: .release-evidence/loopos-ui.vulnerabilities.json
+      - name: Scan authority image vulnerabilities
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          sbom: .release-evidence/loopos-authority.sbom.spdx.json
+          vex: security/authority-python-3.14.6.openvex.json
+          fail-build: true
+          severity-cutoff: high
+          cache-db: true
+          output-format: json
+          output-file: .release-evidence/loopos-authority.vulnerabilities.json
+      - name: Retain OCI release evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: loopos-release-evidence-${{ github.sha }}
+          path: .release-evidence
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 30

@@ -43,6 +43,7 @@ test("calls enterprise field enhancement only on explicit action and never chang
   await page.goto("/");
   await page.getByRole("button", { name: "Enter Evaluation Workspace" }).click();
   await page.getByRole("button", { name: "Open Use Case Advisor" }).click();
+  await page.getByRole("button", { name: "Load Example" }).click();
   await page.getByLabel("Describe the use case").fill(brief);
   await page.getByRole("button", { name: "Analyze and review" }).click();
 
@@ -50,6 +51,8 @@ test("calls enterprise field enhancement only on explicit action and never chang
   expect(requestCount).toBe(0);
   await expect(page.getByText(/^deterministic:/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Enhance with enterprise AI" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enhance with enterprise AI" })).toBeDisabled();
+  await page.getByLabel("Allow enterprise AI enhancement").check();
 
   await page.getByRole("button", { name: "Enhance with enterprise AI" }).click();
   await expect.poll(() => requestCount).toBe(1);

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "./Button";
-import { deploymentPosture, DEPLOYMENT_STATUS_LABELS } from "../lib/deployment";
+import { deploymentPosture, DEPLOYMENT_STATUS_LABELS, type DeploymentPosture } from "../lib/deployment";
 
 export type ViewId = "dashboard" | "workspace" | "loops" | "advisor" | "usecases" | "validation" | "readiness" | "plan";
 
@@ -47,6 +47,7 @@ export function Shell({
   onSignOut,
   canGoBack,
   onBack,
+  posture = deploymentPosture,
   children,
 }: {
   activeView: ViewId;
@@ -60,6 +61,7 @@ export function Shell({
   onSignOut?: () => void;
   canGoBack?: boolean;
   onBack?: () => void;
+  posture?: DeploymentPosture;
   children: ReactNode;
 }) {
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
@@ -143,9 +145,9 @@ export function Shell({
               <button
                 type="button"
                 onClick={() => onViewChange("readiness")}
-                className={`hidden min-h-9 items-center rounded-control border px-3 text-xs font-semibold md:inline-flex ${deploymentPosture.enterpriseReady ? "border-success bg-successBg text-success" : "border-border2 bg-warningBg text-warning"}`}
+                className={`hidden min-h-9 items-center rounded-control border px-3 text-xs font-semibold md:inline-flex ${posture.enterpriseReady ? "border-success bg-successBg text-success" : "border-border2 bg-warningBg text-warning"}`}
               >
-                {DEPLOYMENT_STATUS_LABELS[deploymentPosture.status]}
+                {DEPLOYMENT_STATUS_LABELS[posture.status]}
               </button>
               <Dialog.Root>
                 <Dialog.Trigger asChild>
@@ -159,7 +161,7 @@ export function Shell({
                     <div className="mb-5 flex items-center justify-between gap-3 border-b border-border2 pb-4">
                       <div>
                         <Dialog.Title className="text-lg font-semibold text-fg1">Navigation</Dialog.Title>
-                        <div className="mt-1 text-xs text-fg3">{DEPLOYMENT_STATUS_LABELS[deploymentPosture.status]}</div>
+                        <div className="mt-1 text-xs text-fg3">{DEPLOYMENT_STATUS_LABELS[posture.status]}</div>
                       </div>
                       <Dialog.Close asChild>
                         <Button variant="ghost" aria-label="Close navigation">

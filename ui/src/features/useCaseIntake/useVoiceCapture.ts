@@ -57,6 +57,22 @@ function permissionMessage(error: string): string {
   return "Voice recognition stopped before a transcript was produced.";
 }
 
+interface EnterpriseTranscriptionResponse {
+  transcript: string;
+  language?: string;
+  provider?: string;
+}
+
+function isEnterpriseTranscriptionResponse(value: unknown): value is EnterpriseTranscriptionResponse {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const payload = value as Record<string, unknown>;
+  return typeof payload.transcript === "string"
+    && payload.transcript.trim().length > 0
+    && payload.transcript.length <= 500_000
+    && (payload.language === undefined || typeof payload.language === "string")
+    && (payload.provider === undefined || typeof payload.provider === "string");
+}
+
 export function useVoiceCapture(options: VoiceCaptureOptions = {}) {
   const dependencies = options.dependencies ?? {};
   const speechCtor = Object.prototype.hasOwnProperty.call(dependencies, "speechRecognitionCtor")
@@ -96,6 +112,27 @@ export function useVoiceCapture(options: VoiceCaptureOptions = {}) {
     streamRef.current = null;
     recorderRef.current = null;
     chunksRef.current = [];
+  }, []);
+
+  const resolveEnterpriseCompletion = useCallback(() => {
+    enterpriseResolveRef.current?.();
+    enterpriseResolveRef.current = null;
+    enterpriseCompletionRef.current = null;
+  }, []);
+
+  const disposeRecognition = useCallback(() => {
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (!recognition) return;
+    recognition.onstart = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    try {
+      recognition.abort();
+    } catch {
+      // The browser may have already stopped recognition.
+    }
   }, []);
 
   const startDurationTimer = useCallback((stopAction: () => void) => {
@@ -147,8 +184,16 @@ export function useVoiceCapture(options: VoiceCaptureOptions = {}) {
       setInterimTranscript("");
       setState((current) => current === "error" ? current : "review");
     };
-    recognition.start();
-  }, [clearDurationTimer, enterpriseSupported, language, speechCtor, startDurationTimer]);
+    try {
+      recognition.start();
+    } catch {
+      clearDurationTimer();
+      disposeRecognition();
+      modeRef.current = null;
+      setError("Voice recognition could not start. You can try again or type the use case.");
+      setState("error");
+    }
+  }, [clearDurationTimer, disposeRecognition, enterpriseSupported, language, speechCtor, startDurationTimer]);
 
   const transcribeEnterpriseRecording = useCallback(async (blob: Blob) => {
     try {
@@ -157,13 +202,13 @@ export function useVoiceCapture(options: VoiceCaptureOptions = {}) {
       body.append("audio", blob, "loopos-voice.webm");
       body.append("language", language);
       body.append("workspaceId", options.workspaceId ?? "local-workspace");
-      const payload = await secureJsonRequest<{ transcript?: unknown; language?: unknown; provider?: unknown }>(options.endpoint, {
+      const payload = await secureJsonRequest<EnterpriseTranscriptionResponse>(options.endpoint, {
         fetchImpl: dependencies.fetchImpl,
         init: { method: "POST", body },
         maxResponseBytes: 500_000,
         timeoutMs: 30_000,
+        validate: isEnterpriseTranscriptionResponse,
       });
-      if (typeof payload.transcript !== "string" || !payload.transcript.trim()) throw new Error("The transcription response did not contain text.");
       setTranscript(payload.transcript.trim());
       setInterimTranscript("");
       const provider = typeof payload.provider === "string" && payload.provider.trim() ? payload.provider.trim() : "configured endpoint";
@@ -176,10 +221,9 @@ export function useVoiceCapture(options: VoiceCaptureOptions = {}) {
     } finally {
       clearDurationTimer();
       disposeStream();
-      enterpriseResolveRef.current?.();
-      enterpriseResolveRef.current = null;
+      resolveEnterpriseCompletion();
     }
-  }, [clearDurationTimer, dependencies.fetchImpl, disposeStream, language, options.endpoint, options.workspaceId]);
+  }, [clearDurationTimer, dependencies.fetchImpl, disposeStream, language, options.endpoint, options.workspaceId, resolveEnterpriseCompletion]);
 
   const startEnterprise = useCallback(async (consented: boolean) => {
     if (!consented) {
@@ -214,29 +258,51 @@ export function useVoiceCapture(options: VoiceCaptureOptions = {}) {
       setState("listening");
       startDurationTimer(() => recorder.stop());
     } catch {
+      const recorderSetupFailed = Boolean(streamRef.current);
       disposeStream();
-      setError("Microphone permission was not granted.");
+      resolveEnterpriseCompletion();
+      modeRef.current = null;
+      setError(recorderSetupFailed
+        ? "Enterprise microphone recording could not start. You can try again or type the use case."
+        : "Microphone permission was not granted.");
       setState("error");
     }
-  }, [browserSupported, disposeStream, enterpriseSupported, mediaDevices, recorderCtor, startDurationTimer, transcribeEnterpriseRecording]);
+  }, [browserSupported, disposeStream, enterpriseSupported, mediaDevices, recorderCtor, resolveEnterpriseCompletion, startDurationTimer, transcribeEnterpriseRecording]);
 
   const stop = useCallback(async () => {
     clearDurationTimer();
     if (modeRef.current === "browser" && recognitionRef.current) {
+      const recognition = recognitionRef.current;
       setState("stopped");
-      recognitionRef.current.stop();
+      try {
+        recognition.stop();
+      } catch {
+        disposeRecognition();
+        modeRef.current = null;
+        setError("Voice recognition could not stop. You can try again or type the use case.");
+        setState("error");
+      }
       return;
     }
     if (modeRef.current === "enterprise" && recorderRef.current) {
-      recorderRef.current.stop();
-      await enterpriseCompletionRef.current;
+      const recorder = recorderRef.current;
+      setState("stopped");
+      try {
+        recorder.stop();
+        await enterpriseCompletionRef.current;
+      } catch {
+        disposeStream();
+        resolveEnterpriseCompletion();
+        modeRef.current = null;
+        setError("Enterprise microphone recording could not stop. You can try again or type the use case.");
+        setState("error");
+      }
     }
-  }, [clearDurationTimer]);
+  }, [clearDurationTimer, disposeRecognition, disposeStream, resolveEnterpriseCompletion]);
 
   const reset = useCallback(() => {
     clearDurationTimer();
-    recognitionRef.current?.abort();
-    recognitionRef.current = null;
+    disposeRecognition();
     disposeStream();
     modeRef.current = null;
     setTranscript("");
@@ -248,9 +314,9 @@ export function useVoiceCapture(options: VoiceCaptureOptions = {}) {
 
   useEffect(() => () => {
     clearDurationTimer();
-    recognitionRef.current?.abort();
+    disposeRecognition();
     disposeStream();
-  }, [clearDurationTimer, disposeStream]);
+  }, [clearDurationTimer, disposeRecognition, disposeStream]);
 
   return useMemo(() => ({
     state,

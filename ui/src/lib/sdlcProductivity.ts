@@ -116,7 +116,8 @@ export function completeNextRunStep(run: LoopRun, timestamp = nowIso()): LoopRun
     current_step: next?.step_key ?? "validated",
     step_records,
     evidence_refs: Array.from(new Set([...run.evidence_refs, step_records[openIndex].required_evidence])),
-    validation_result: next ? "Inconclusive" : "Passed",
+    // Completing the local checklist is not an authority validation result.
+    validation_result: "Inconclusive",
     updated_at: timestamp,
   };
 }
@@ -213,10 +214,14 @@ export function refreshInitiative(initiative: InitiativeWorkspace, validation: U
   };
 }
 
-export function buildProofPackMarkdown(workspace: SavedWorkspace, initiative: InitiativeWorkspace, data: LoopOSData, validation: UseCaseValidationResult): string {
+export function buildEvaluationPackMarkdown(workspace: SavedWorkspace, initiative: InitiativeWorkspace, data: LoopOSData, validation: UseCaseValidationResult): string {
   const loops = initiative.loop_bundle_ids.map((id) => data.loops.find((loop) => loop.loop_id === id)).filter((loop): loop is LoopDetail => Boolean(loop));
   return [
-    `# LoopOS SDLC Proof Pack: ${initiative.title}`,
+    `# LoopOS SDLC Evaluation Pack: ${initiative.title}`,
+    "",
+    "Evidence status: LOCAL DRAFT - not an authoritative proof pack.",
+    "Authority record: none. Human approval: not recorded.",
+    "Use this artifact to prepare review; rely on the tenant-bound authority proof pack for release decisions.",
     "",
     `Status: ${initiative.status}`,
     `Workflow: ${workflowLabel(initiative.workflow_type)}`,

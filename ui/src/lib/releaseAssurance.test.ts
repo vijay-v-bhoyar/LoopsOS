@@ -48,9 +48,22 @@ describe("releaseAssurance", () => {
     expect(profile.connectors.map((connector) => connector.system)).toEqual(["jira", "github", "manual"]);
     expect(profile.connectors.every((connector) => connector.trust_boundary.length > 0)).toBe(true);
     expect(profile.external_refs.map((ref) => ref.system)).toEqual(["jira", "github", "manual"]);
+    expect(profile.external_refs.every((ref) => /^[a-f0-9]{64}$/.test(ref.evidence_hash))).toBe(true);
+    expect(profile.external_refs.every((ref) => !ref.evidence_hash.startsWith("local-fnv1a-"))).toBe(true);
     expect(profile.gates.length).toBeGreaterThan(5);
     expect(counts.blocked).toBeGreaterThan(0);
+    expect(counts.passed).toBe(0);
+    expect(profile.evidence_artifacts.every((artifact) => artifact.freshness === "missing" && !artifact.observed_at)).toBe(true);
     expect(profile.gates.every((gate) => gate.last_decision?.source_ref_ids.length)).toBe(true);
     expect(profile.metric_observations.every((metric) => !metric.basis.match(/\d+% confidence/i))).toBe(true);
+  });
+
+  it("uses the exact SHA-256 digest for external evidence references", async () => {
+    const profile = createReleaseAssuranceProfile(workspace, initiative, looposData, user.name, "2026-07-23T12:00:00.000Z");
+    const source = `${workspace.workspace_id}:jira:${profile.release_name}`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+    const expected = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+
+    expect(profile.external_refs[0].evidence_hash).toBe(expected);
   });
 });

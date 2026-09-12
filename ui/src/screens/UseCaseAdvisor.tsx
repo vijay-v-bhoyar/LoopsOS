@@ -18,7 +18,7 @@ const ENVIRONMENTS = ["development", "pilot", "production", "enterprise portfoli
 
 export type AdvisorPane = "input" | "results";
 
-export const DEFAULT_USE_CASE: UseCaseInput = {
+const DEFAULT_USE_CASE: UseCaseInput = {
   title: "Prepare enterprise for agentic AI",
   description: "We want to assess whether our enterprise is ready to let AI agents use tools, memory, retrieval, and delegated workflows while keeping security, audit, and human approval controls clear.",
   environment: "enterprise portfolio",
@@ -161,7 +161,7 @@ export function UseCaseAdvisor({
             </Button>
             <Button variant="ghost" onClick={() => onInputChange(DEFAULT_USE_CASE)}>
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
-              Reset Example
+              Load Example
             </Button>
           </div>
         </div>
@@ -250,6 +250,7 @@ function SelectField({ label, value, values, onChange }: { label: string; value:
   return (
     <Field label={label}>
       <select className="control min-h-10 w-full px-3 text-sm" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="" disabled>Select {label.toLowerCase()}</option>
         {values.map((item) => (
           <option key={item} value={item}>
             {item}

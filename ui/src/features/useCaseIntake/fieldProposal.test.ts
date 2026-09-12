@@ -65,6 +65,20 @@ describe("proposeUseCaseFields", () => {
     expect(current.title).toBe("Current title");
   });
 
+  it("offers a bounded source-backed description for a short unlabeled source", () => {
+    const shortSource = { ...source, source_id: "source-short", accepted_text: "Enterprise claims triage with approval" };
+    const draft = proposeUseCaseFields(shortSource, current);
+
+    expect(draft.fields).toHaveLength(1);
+    expect(draft.fields[0]).toMatchObject({
+      field: "description",
+      value: "Enterprise claims triage with approval",
+      method: "deterministic",
+      source_ids: ["source-short"],
+    });
+    expect(draft.fields[0].evidence_excerpt).toContain("Enterprise claims triage with approval");
+  });
+
   it("uses a validated enterprise response only when enhancement is explicitly called", async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
@@ -82,6 +96,7 @@ describe("proposeUseCaseFields", () => {
 
     const enhanced = await enhanceUseCaseProposal(source, current, deterministic, {
       endpoint: "https://enterprise.example/intake",
+      consent: true,
       fetchImpl: fetchImpl as never,
     });
 
@@ -94,14 +109,30 @@ describe("proposeUseCaseFields", () => {
     const deterministic = proposeUseCaseFields(source, current);
     const failed = await enhanceUseCaseProposal(source, current, deterministic, {
       endpoint: "https://enterprise.example/intake",
+      consent: true,
       fetchImpl: vi.fn().mockRejectedValue(new Error("offline")) as never,
     });
     const malformed = await enhanceUseCaseProposal(source, current, deterministic, {
       endpoint: "https://enterprise.example/intake",
+      consent: true,
       fetchImpl: vi.fn().mockResolvedValue({ ok: true, json: async () => ({ proposal: "bad" }) }) as never,
     });
 
     expect(failed).toEqual(deterministic);
     expect(malformed).toEqual(deterministic);
+  });
+
+  it("does not send source text without explicit outbound consent", async () => {
+    const deterministic = proposeUseCaseFields(source, current);
+    const fetchImpl = vi.fn();
+
+    const result = await enhanceUseCaseProposal(source, current, deterministic, {
+      endpoint: "https://enterprise.example/intake",
+      consent: false,
+      fetchImpl: fetchImpl as never,
+    });
+
+    expect(result).toEqual(deterministic);
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

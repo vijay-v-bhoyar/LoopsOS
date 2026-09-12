@@ -13,6 +13,12 @@ function openWorkspaces() {
   fireEvent.click(screen.getAllByRole("button", { name: "Workspaces" })[0]);
 }
 
+function loadExampleUseCase() {
+  fireEvent.click(screen.getByText("Open Use Case Advisor"));
+  fireEvent.click(screen.getByRole("button", { name: "Load Example" }));
+  fireEvent.click(screen.getAllByRole("button", { name: "Dashboard" })[0]);
+}
+
 describe("LoopOS Enterprise UI", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -26,40 +32,52 @@ describe("LoopOS Enterprise UI", () => {
     expect(screen.getByText("LoopOS Enterprise Console")).toBeInTheDocument();
     expect(screen.getByText("108")).toBeInTheDocument();
     expect(screen.getByText("109")).toBeInTheDocument();
+    expect(screen.getByText("Controlled evaluation only")).toBeInTheDocument();
+    expect(screen.queryByText("Beta pilot ready")).not.toBeInTheDocument();
     expect(screen.getAllByText(/Evaluation only/i).length).toBeGreaterThan(0);
   });
 
   it("turns dashboard actions into workspace outputs", () => {
     renderSignedIn();
+    loadExampleUseCase();
     expect(screen.getByText("SDLC Command Center")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Record Dry Run" }));
-    expect(screen.getByText("latest loop output")).toBeInTheDocument();
+    expect(screen.getByText("latest local dry run")).toBeInTheDocument();
+    expect(screen.getAllByText("Inconclusive").length).toBeGreaterThan(0);
+    expect(screen.getByText("Effectiveness Pending")).toBeInTheDocument();
     let state = JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}");
     expect(state.workspaces[0].execution_records).toHaveLength(1);
     expect(state.workspaces[0].selected_loop_ids.length).toBeGreaterThan(0);
+    expect(state.workspaces[0].execution_records[0]).toMatchObject({
+      validation_result: "Inconclusive",
+      proof_state: "Effectiveness Pending",
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Build Action Plan" }));
-    expect(screen.getByText("Enterprise Action Plan")).toBeInTheDocument();
+    expect(screen.getByText("Enterprise Evaluation Action Plan")).toBeInTheDocument();
     state = JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}");
     expect(state.workspaces[0].action_plan_markdown).toContain("LoopOS Enterprise Action Plan");
+    expect(state.workspaces[0].action_plan_markdown).toContain("LOCAL EVALUATION DRAFT");
   });
 
-  it("creates SDLC initiatives, runs checklist steps, and exports proof packs from the command center", () => {
+  it("creates SDLC initiatives, runs evaluation checklist steps, and exports evaluation packs from the command center", () => {
     renderSignedIn();
+    loadExampleUseCase();
     expect(screen.getByText("SDLC Command Center")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Create SDLC Initiative" }));
-    expect(screen.getByText("Actionable loop runbook")).toBeInTheDocument();
+    expect(screen.getByText("Evaluation loop runbook")).toBeInTheDocument();
     expect(screen.getByText("Handoff And Blocker Control")).toBeInTheDocument();
-    expect(screen.getByText("SDLC Productivity Scorecard")).toBeInTheDocument();
+    expect(screen.getByText("SDLC Productivity Planning")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Complete step" })[0]);
     expect(screen.getByText(/1\/14 steps/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Export Proof Pack" }));
+    fireEvent.click(screen.getByRole("button", { name: "Export Evaluation Pack" }));
     const state = JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}");
     expect(state.workspaces[0].initiatives).toHaveLength(1);
     expect(state.workspaces[0].initiatives[0].execution_records[0].step_records[0].status).toBe("done");
-    expect(state.workspaces[0].action_plan_markdown).toContain("LoopOS SDLC Proof Pack");
+    expect(state.workspaces[0].action_plan_markdown).toContain("LoopOS SDLC Evaluation Pack");
+    expect(state.workspaces[0].action_plan_markdown).toContain("not an authoritative proof pack");
     expect(screen.getByText("Issue-ticket-ready output")).toBeInTheDocument();
   });
 
@@ -77,7 +95,11 @@ describe("LoopOS Enterprise UI", () => {
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
     expect(screen.getAllByText("Use Case Advisor").length).toBeGreaterThan(0);
     expect(screen.getByText("Recommendation Result")).toBeInTheDocument();
-    expect(screen.getAllByText(/Agent Guardrail Loop|Tool Execution Validation Loop/).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("AI scope")).toHaveValue("");
+    expect(screen.getByLabelText("Environment")).toHaveValue("");
+    expect(screen.getByLabelText("Data sensitivity")).toHaveValue("");
+    expect(screen.getByLabelText("Maturity")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Load Example" })).toBeInTheDocument();
   });
 
   it("lets users deep dive into what a loop will do", () => {
@@ -126,8 +148,9 @@ describe("LoopOS Enterprise UI", () => {
   it("saves an enterprise action plan into the active workspace", () => {
     renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
+    fireEvent.click(screen.getByRole("button", { name: "Load Example" }));
     fireEvent.click(screen.getByText("Send To Action Plan"));
-    expect(screen.getByText("Enterprise Action Plan")).toBeInTheDocument();
+    expect(screen.getByText("Enterprise Evaluation Action Plan")).toBeInTheDocument();
 
     openWorkspaces();
     expect(screen.getByText("Saved loops")).toBeInTheDocument();
@@ -177,6 +200,30 @@ describe("LoopOS Enterprise UI", () => {
     expect(screen.getAllByText(/in Typed use case/).length).toBeGreaterThan(0);
   });
 
+  it("does not mix a real use case with the preloaded demonstration", async () => {
+    renderSignedIn();
+    fireEvent.click(screen.getByText("Open Use Case Advisor"));
+    fireEvent.change(screen.getByLabelText("Describe the use case"), {
+      target: {
+        value: "Our software team needs to reduce failed releases by checking change tickets, test results, approvals, rollback plans, and deployment evidence before promoting to production. The pilot uses internal engineering data and requires an auditable go or no-go decision.",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Analyze and review" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Apply selected fields" }));
+
+    await waitFor(() => {
+      const state = JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}");
+      expect(state.workspaces[0].use_case).toMatchObject({
+        title: "",
+        aiScope: "",
+        businessOutcome: "",
+        constraints: "",
+      });
+      expect(state.workspaces[0].use_case.description).toContain("reduce failed releases");
+    });
+    expect(screen.queryByText(/Agent Memory Loop/)).not.toBeInTheDocument();
+  });
+
   it("switches to recommendation mode after applying intake and lets the user return to input", async () => {
     renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
@@ -199,7 +246,7 @@ describe("LoopOS Enterprise UI", () => {
     expect(window.location.hash).toBe("#advisor");
 
     fireEvent.click(screen.getByText("Send To Action Plan"));
-    expect(screen.getByText("Enterprise Action Plan")).toBeInTheDocument();
+    expect(screen.getByText("Enterprise Evaluation Action Plan")).toBeInTheDocument();
     expect(window.location.hash).toBe("#plan");
 
     fireEvent.click(screen.getByRole("button", { name: "Back to previous screen" }));

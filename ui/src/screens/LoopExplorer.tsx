@@ -65,24 +65,30 @@ export function LoopExplorer({
             <span>Risk</span>
           </div>
           <div className="max-h-screen overflow-auto">
-            {filtered.map((loop) => (
-              <button
-                key={loop.loop_id}
-                onClick={() => onSelectLoop(loop)}
-                className={`grid w-full grid-cols-[80px_1fr_120px] items-center gap-3 border-x-0 border-t-0 px-3 py-3 text-left text-sm hover:bg-bg2 ${
-                  selectedLoop?.loop_id === loop.loop_id ? "bg-brandSubtle" : "bg-bg1"
-                } border-b border-border2 text-fg1`}
-              >
-                <span className="font-semibold text-fg2">{loop.number}</span>
-                <span>
-                  <span className="block font-semibold text-fg1">{loop.name}</span>
-                  <span className="block text-xs text-fg3">{loop.category_name}</span>
-                </span>
-                <span>
-                  <Badge tone={riskTone(loop.baseline_risk_tier)}>{loop.baseline_risk_tier}</Badge>
-                </span>
-              </button>
-            ))}
+            {filtered.length ? (
+              filtered.map((loop) => (
+                <button
+                  key={loop.loop_id}
+                  onClick={() => onSelectLoop(loop)}
+                  className={`grid w-full grid-cols-[80px_1fr_120px] items-center gap-3 border-x-0 border-t-0 px-3 py-3 text-left text-sm hover:bg-bg2 ${
+                    selectedLoop?.loop_id === loop.loop_id ? "bg-brandSubtle" : "bg-bg1"
+                  } border-b border-border2 text-fg1`}
+                >
+                  <span className="font-semibold text-fg2">{loop.number}</span>
+                  <span>
+                    <span className="block font-semibold text-fg1">{loop.name}</span>
+                    <span className="block text-xs text-fg3">{loop.category_name}</span>
+                  </span>
+                  <span>
+                    <Badge tone={riskTone(loop.baseline_risk_tier)}>{loop.baseline_risk_tier}</Badge>
+                  </span>
+                </button>
+              ))
+            ) : (
+              <div role="status" className="p-6 text-sm text-fg2">
+                No loops match the current filters. Clear the search, category, or risk filter and try again.
+              </div>
+            )}
           </div>
         </div>
       </Card>

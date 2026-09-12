@@ -1,6 +1,6 @@
 version: 1.0
 status: draft_registry_requires_named_humans_before_active_use
-activation_rule: "DRAFT loops may use category placeholder owners; ACTIVE loops must resolve named policy, gate, risk, executor, and validator owners."
+activation_rule: "DRAFT loops may use category placeholder owners; ACTIVE loops must resolve named policy, gate, risk, executor, validator, and backup owners."
 owners:
   -
     owner_ref: owner-category-01
@@ -8,6 +8,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -16,6 +18,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -24,6 +28,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -32,6 +38,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -40,6 +48,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -48,6 +58,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -56,6 +68,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -64,6 +78,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -72,6 +88,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -80,6 +98,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -88,6 +108,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -96,6 +118,8 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT
   -
@@ -104,5 +128,7 @@ owners:
     policy_owner: UNASSIGNED
     gate_owner: UNASSIGNED
     risk_owner: UNASSIGNED
+    executor_owner: UNASSIGNED
+    validator_owner: UNASSIGNED
     backup_owner: UNASSIGNED
     status: DRAFT

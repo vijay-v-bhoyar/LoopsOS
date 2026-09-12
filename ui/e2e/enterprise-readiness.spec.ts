@@ -22,7 +22,10 @@ test("exposes the deployment boundary and every navigation destination", async (
   }
 
   await expect(page.getByRole("heading", { name: "Enterprise Activation Readiness" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pilot Activation Gate" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "owners unassigned" })).toBeVisible();
   await expect(page.getByText(/Production activation is not authorized/i)).toBeVisible();
+  await expect(page.getByText(/Pilot activation remains separately gated by 5 known corpus activation gaps/i)).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(overflow).toBe(false);
   await page.screenshot({ path: testInfo.outputPath("enterprise-readiness.png"), fullPage: true });

@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS runtime
+FROM python:3.14.6-alpine3.24@sha256:26730869004e2b9c4b9ad09cab8625e81d256d1ce97e72df5520e806b1709f92 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -8,9 +8,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY authority/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir --requirement /tmp/requirements.txt \
-    && groupadd --system loopos \
-    && useradd --system --gid loopos --home-dir /app loopos \
+RUN apk upgrade --no-cache \
+    && pip install --no-cache-dir --requirement /tmp/requirements.txt \
+    && python -c "import fastapi, httpx, jwt, psycopg, pydantic, tenacity, uvicorn, yaml" \
+    && addgroup -S loopos \
+    && adduser -S -D -H -G loopos -h /app loopos \
     && mkdir -p /data \
     && chown loopos:loopos /data
 

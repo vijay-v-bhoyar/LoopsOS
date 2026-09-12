@@ -1,10 +1,12 @@
 .git
 .codex
 .agents
+graphify-out
 authority/data
 output
 ui/node_modules
 ui/dist
+.env*
 **/__pycache__
 **/*.pyc
 *.db

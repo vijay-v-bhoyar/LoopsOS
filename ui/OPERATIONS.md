@@ -13,7 +13,9 @@ Proposed starting targets, subject to enterprise owner approval:
 ## Health And Alerts
 
 - Liveness: `GET /healthz` returns `200 ok`.
-- Authority liveness: `GET /authority/health/live`; authority readiness: `GET /authority/health/ready`.
+- Authority liveness: `GET /api/health/live`; authority readiness: `GET /api/health/ready`.
+- A serverless deployment with invalid static configuration exposes only liveness and fail-closed `503` readiness; all authority application routes remain unavailable until configuration is valid.
+- Release CI starts the UI and authority images together with read-only filesystems, dropped capabilities, no-new-privileges, and non-root users. The retained `container-runtime-smoke.json` proves both image healthchecks, NGINX-to-authority proxying, readiness semantics, and security headers.
 - Production readiness must additionally prove IdP session, tenant-scoped persistence, audit append/retrieve/external anchor, retention configuration, and outbound policy.
 - Page on sustained 5xx, session verification failure, persistence write failure, audit delivery failure, cross-tenant probe failure, or CSP violation increase.
 - Ticket on elevated client error-boundary incidents, extraction failures, or optional endpoint timeouts.
@@ -38,3 +40,7 @@ The authoritative service must define encrypted backup cadence, recovery point o
 ## Rollback Gate
 
 A rollback is complete only when the prior digest is serving, new writes are authoritative, audit events are retrievable by correlation ID, client errors return to baseline, and the incident commander records the decision evidence.
+
+## Handover Evidence
+
+The production handover packet must include the reviewed restore evidence JSON, reviewed operational evidence JSON, and the JSON output from `scripts/verify_production_handover.py`. Both evidence files must match the SHA-256 and timestamp published by production readiness; operational evidence must also match the deployed binding fingerprint. Marker cleanup is valid only when the deleting tenant reads `404` afterward and the valid append-only chain contains the correlated `WORKSPACE_DELETED` event. A handover report is valid only for the exact target named in the report, must have verdict `GO`, and must be generated after the deployed image, database migration, IdP mapping, worker schedule, audit sink, retention policy, support route, egress policy, and restore evidence are finalized.

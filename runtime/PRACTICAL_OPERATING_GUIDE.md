@@ -10,7 +10,7 @@ The practical unit is not the whole SDLC. The practical unit is one loop executi
 
 1. Choose one high-impact playbook from `runtime/pilot_playbooks.yaml`.
 2. Open the selected loop descriptors under `runtime/loop-descriptors/`.
-3. Resolve the policy owner, gate owner, risk owner, executor, and validator in `owners/OWNER_REGISTRY.yaml`.
+3. Resolve the policy owner, gate owner, risk owner, executor, validator, and backup owner in `owners/OWNER_REGISTRY.yaml`.
 4. Resolve authoritative evidence locations in `evidence/EVIDENCE_LOCATION_REGISTRY.yaml`.
 5. Open the matching operation cards in `runtime/practical_operation_cards.yaml`.
 6. Run `python scripts\validate_loop_corpus.py`.

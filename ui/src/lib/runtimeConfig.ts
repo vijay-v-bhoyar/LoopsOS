@@ -1,3 +1,5 @@
+import { deploymentPosture } from "./deployment";
+
 declare global {
   interface Window {
     __LOOPOS_RUNTIME_CONFIG__?: {
@@ -11,7 +13,7 @@ declare global {
 }
 
 function browserOverride<K extends "llmEndpoint" | "transcriptionEndpoint">(key: K): string | undefined {
-  if (typeof window === "undefined") return undefined;
+  if (typeof window === "undefined" || deploymentPosture.mode === "enterprise") return undefined;
   const value = window.__LOOPOS_RUNTIME_CONFIG__?.[key];
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
@@ -31,7 +33,7 @@ export function llmTimeoutMs(): number | undefined {
 }
 
 export function allowedEndpointHosts(): string[] | undefined {
-  if (typeof window === "undefined") return undefined;
+  if (typeof window === "undefined" || deploymentPosture.mode === "enterprise") return undefined;
   const value = window.__LOOPOS_RUNTIME_CONFIG__?.allowedEndpointHosts;
   return Array.isArray(value) ? value.filter((host): host is string => typeof host === "string" && host.trim().length > 0) : undefined;
 }

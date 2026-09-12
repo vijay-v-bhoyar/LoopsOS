@@ -123,6 +123,7 @@ export async function parseBinaryWithWorker(request: BinaryParseRequest): Promis
       reject(new IntakeError("timeout", "Document extraction exceeded the time limit."));
     }, INTAKE_LIMITS.extractionTimeoutMs);
     worker.onmessage = (event: MessageEvent<{ ok: boolean; result?: BinaryParseResult; error?: { code: string; message: string } }>) => {
+      if (!event.data || typeof event.data.ok !== "boolean") return;
       clearTimeout(timer);
       worker.terminate();
       if (event.data.ok && event.data.result) resolve(event.data.result);
@@ -132,6 +133,12 @@ export async function parseBinaryWithWorker(request: BinaryParseRequest): Promis
       clearTimeout(timer);
       worker.terminate();
       reject(new IntakeError("parser_error", "The document worker stopped unexpectedly."));
+    };
+    worker.onmessageerror = () => {
+      console.error("LoopOS document worker message error");
+      clearTimeout(timer);
+      worker.terminate();
+      reject(new IntakeError("parser_error", "The document worker returned an unreadable result."));
     };
     worker.postMessage(request, [request.buffer]);
   });

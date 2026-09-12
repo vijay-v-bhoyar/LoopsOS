@@ -5,7 +5,7 @@ import { Button } from "../components/Button";
 import { Card, SectionHeader } from "../components/Card";
 import { HelpPopover } from "../components/Help";
 import { StatCard } from "../components/StatCard";
-import { deploymentPosture, DEPLOYMENT_STATUS_LABELS } from "../lib/deployment";
+import { deploymentPosture, DEPLOYMENT_STATUS_LABELS, type DeploymentPosture } from "../lib/deployment";
 import { summarizeGateStatus } from "../lib/releaseAssurance";
 import { buildIssueTicketText, workflowLabel } from "../lib/sdlcProductivity";
 import type { InitiativeWorkspace, LoopDetail, LoopOSData, LoopRecommendation, PilotPlaybook, SavedWorkspace, UseCaseValidationResult } from "../types";
@@ -24,7 +24,8 @@ export function Dashboard({
   onRecordDryRun,
   onCreateInitiative,
   onCompleteRunStep,
-  onExportProofPack,
+  onExportEvaluationPack,
+  posture = deploymentPosture,
 }: {
   data: LoopOSData;
   activeWorkspace: SavedWorkspace | null;
@@ -39,7 +40,8 @@ export function Dashboard({
   onRecordDryRun: () => void;
   onCreateInitiative: () => void;
   onCompleteRunStep: () => void;
-  onExportProofPack: () => void;
+  onExportEvaluationPack: () => void;
+  posture?: DeploymentPosture;
 }) {
   const topRecommendations = recommendations.slice(0, 5);
   const savedPlan = Boolean(activeWorkspace?.action_plan_markdown);
@@ -54,6 +56,7 @@ export function Dashboard({
   const currentStep = activeRun?.step_records.find((step) => step.status === "open") ?? null;
   const releaseAssurance = activeInitiative?.release_assurance;
   const gateCounts = summarizeGateStatus(releaseAssurance);
+  const evaluationMode = posture.mode === "evaluation";
 
   return (
     <div className="space-y-6">
@@ -61,9 +64,11 @@ export function Dashboard({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Badge tone="success">Beta pilot ready</Badge>
-              <Badge tone="success">Corpus validated</Badge>
-              <Badge tone={deploymentPosture.enterpriseReady ? "success" : "warning"}>{DEPLOYMENT_STATUS_LABELS[deploymentPosture.status]}</Badge>
+              <Badge tone="warning">Controlled evaluation only</Badge>
+              <Badge tone={validation.corpusStatus === "PASS" ? "success" : validation.corpusStatus === "FAIL" ? "danger" : "warning"}>
+                {validation.corpusStatus === "PASS" ? "Corpus validated" : validation.corpusStatus === "FAIL" ? "Corpus validation failed" : "Corpus validation unknown"}
+              </Badge>
+              <Badge tone={posture.enterpriseReady ? "success" : "warning"}>{DEPLOYMENT_STATUS_LABELS[posture.status]}</Badge>
               <Badge>{data.validation.audit.blockers} audit blockers</Badge>
               <Badge>{data.validation.audit.action_required} activation actions</Badge>
             </div>
@@ -81,20 +86,22 @@ export function Dashboard({
       <section className="surface p-5">
         <SectionHeader
           title="SDLC Command Center"
-          description="Initiative intake, loop runbooks, handoff control, proof-pack export, and productivity evidence from the active workspace."
+          description={evaluationMode
+            ? "Prepare evaluation initiative drafts, loop runbooks, handoff notes, evaluation-pack exports, and planning estimates from the active workspace."
+            : "Prepare tenant-scoped workspace drafts; governed runs, release records, and authoritative proof packs are created in Governed Execution Authority."}
           action={<HelpPopover helpKey="readiness" />}
         />
         <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <CommandMetric label="Active initiatives" value={String(activeWorkspace?.initiatives.length ?? 0)} tone="brand" />
           <CommandMetric label="Blocked loops" value={String(validation.gaps.length)} tone={validation.gaps.length ? "warning" : "success"} />
           <CommandMetric label="Stale evidence" value={String(staleEvidence)} tone={staleEvidence ? "warning" : "success"} />
-          <CommandMetric label="Pending approvals" value={String(pendingApprovals)} tone={pendingApprovals ? "warning" : "success"} />
+          <CommandMetric label="Pending approval drafts" value={String(pendingApprovals)} tone={pendingApprovals ? "warning" : "success"} />
           <CommandMetric label="Open handoffs" value={String(openHandoffs)} tone={openHandoffs ? "warning" : "success"} />
-          <CommandMetric label="Hours saved" value={String(activeInitiative?.roi_assumptions.hours_saved_estimate ?? 0)} tone="success" />
+          <CommandMetric label="Estimated hours saved" value={String(activeInitiative?.roi_assumptions.hours_saved_estimate ?? 0)} tone="brand" />
         </div>
         {releaseAssurance ? (
           <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <CommandMetric label="Release gates passed" value={String(gateCounts.passed)} tone="success" />
+            <CommandMetric label="Shadow gate passes" value={String(gateCounts.passed)} tone={gateCounts.passed ? "warning" : "brand"} />
             <CommandMetric label="Gate gaps" value={String(gateCounts.gap)} tone={gateCounts.gap ? "warning" : "success"} />
             <CommandMetric label="Review gates" value={String(gateCounts.review_required)} tone={gateCounts.review_required ? "warning" : "success"} />
             <CommandMetric label="Exceptions active" value={String(gateCounts.exception_active)} tone={gateCounts.exception_active ? "warning" : "success"} />
@@ -115,14 +122,14 @@ export function Dashboard({
             <div className="mt-4 grid gap-3 md:grid-cols-4">
               <WorkspaceSignal label="Sources" value={String(activeWorkspace?.input_sources.length ?? 0)} />
               <WorkspaceSignal label="Evidence edits" value={String(activeWorkspace?.owner_evidence_edits.length ?? 0)} />
-              <WorkspaceSignal label="Approvals" value={String(activeWorkspace?.approvals.length ?? 0)} />
+              <WorkspaceSignal label="Approval drafts" value={String(activeWorkspace?.approvals.length ?? 0)} />
               <WorkspaceSignal label="Executions" value={String(activeWorkspace?.execution_records.length ?? 0)} />
             </div>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
             <Button variant="primary" onClick={onCreateInitiative}>
               <Layers3 className="h-4 w-4" aria-hidden="true" />
-              Create SDLC Initiative
+              {evaluationMode ? "Create SDLC Initiative" : "Prepare Initiative Draft"}
             </Button>
             <Button variant="primary" onClick={onOpenAdvisor}>
               <Workflow className="h-4 w-4" aria-hidden="true" />
@@ -140,27 +147,27 @@ export function Dashboard({
               <PlayCircle className="h-4 w-4" aria-hidden="true" />
               Prepare Loop Run
             </Button>
-            <Button onClick={onRecordDryRun} disabled={!topRecommendations.length || !activeWorkspace}>
+            <Button onClick={onRecordDryRun} disabled={!evaluationMode || !topRecommendations.length || !activeWorkspace} title={evaluationMode ? "Record a browser-local evaluation dry run." : "Use Governed Execution Authority for enterprise runs."}>
               <FlaskConical className="h-4 w-4" aria-hidden="true" />
-              Record Dry Run
+              {evaluationMode ? "Record Dry Run" : "Authority Run Required"}
             </Button>
-            <Button onClick={onCompleteRunStep} disabled={!activeRun || !currentStep}>
+            <Button onClick={onCompleteRunStep} disabled={!evaluationMode || !activeRun || !currentStep} title={evaluationMode ? "Complete a browser-local evaluation checklist step." : "Complete enterprise runs through Governed Execution Authority."}>
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              Complete Next Run Step
+              {evaluationMode ? "Complete Next Run Step" : "Complete In Authority"}
             </Button>
-            <Button onClick={onExportProofPack} disabled={!activeInitiative}>
+            <Button onClick={onExportEvaluationPack} disabled={!activeInitiative}>
               <Download className="h-4 w-4" aria-hidden="true" />
-              Export Proof Pack
+              Export Evaluation Pack
             </Button>
           </div>
         </div>
         {activeInitiative ? (
-          <InitiativePanel initiative={activeInitiative} currentStep={currentStep} completedSteps={completedSteps} onCompleteRunStep={onCompleteRunStep} />
+          <InitiativePanel initiative={activeInitiative} currentStep={currentStep} completedSteps={completedSteps} onCompleteRunStep={onCompleteRunStep} evaluationMode={evaluationMode} />
         ) : null}
         {latestExecution ? (
           <div className="mt-4 rounded-panel border border-border2 bg-bg2 p-3">
             <div className="mb-1 flex flex-wrap items-center gap-2">
-              <Badge tone="success">latest loop output</Badge>
+              <Badge tone="neutral">latest local dry run</Badge>
               <Badge>{latestExecution.validation_result}</Badge>
               <Badge>{latestExecution.proof_state}</Badge>
             </div>
@@ -172,21 +179,21 @@ export function Dashboard({
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <HandoffPanel initiative={activeInitiative} data={data} />
-        <ProductivityPanel initiative={activeInitiative} />
+        <ProductivityPanel initiative={activeInitiative} evaluationMode={evaluationMode} />
       </div>
 
-      <ReleaseAssurancePanel initiative={activeInitiative} data={data} />
+      <ReleaseAssurancePanel initiative={activeInitiative} data={data} evaluationMode={evaluationMode} />
 
       <IntegrationReadinessPanel />
 
       <section className="surface p-5">
         <SectionHeader
-          title="Beta Pilot Readiness"
-          description="These capabilities are ready for controlled enterprise evaluation. Production authority still depends on the activation bindings below."
+          title="Controlled Evaluation Capabilities"
+          description="These capabilities are available for controlled evaluation. Pilot activation and production authority still depend on the activation bindings below."
         />
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <PilotReadyItem icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} title="Advise use cases" detail="Text, document, and voice intake produce reviewable source-backed loop bundles." />
-          <PilotReadyItem icon={<PlayCircle className="h-4 w-4" aria-hidden="true" />} title="Run governed loops" detail="Local authority runs durable evidence, validation, effectiveness, approval, recovery, and audit flows." />
+          <PilotReadyItem icon={<PlayCircle className="h-4 w-4" aria-hidden="true" />} title="Run governed loops" detail="Governed Execution Authority records durable evidence, validation, effectiveness, approval, recovery, and audit flows." />
           <PilotReadyItem icon={<Download className="h-4 w-4" aria-hidden="true" />} title="Export action plans" detail="Plans retain recommendations, readiness gaps, validation checks, and source provenance." />
           <PilotReadyItem icon={<LockKeyhole className="h-4 w-4" aria-hidden="true" />} title="Respect boundaries" detail="Enterprise mode fails closed until identity, persistence, audit, transport, retention, support, and egress are verified." />
         </div>
@@ -282,12 +289,17 @@ export function Dashboard({
   );
 }
 
-function ReleaseAssurancePanel({ initiative, data }: { initiative: InitiativeWorkspace | null; data: LoopOSData }) {
+function ReleaseAssurancePanel({ initiative, data, evaluationMode }: { initiative: InitiativeWorkspace | null; data: LoopOSData; evaluationMode: boolean }) {
   const profile = initiative?.release_assurance;
   if (!profile) {
     return (
       <section className="surface p-5">
-        <SectionHeader title="Release Assurance Workspace" description="Create an SDLC initiative from a release, deployment, or production change to generate release gates." />
+        <SectionHeader
+          title={evaluationMode ? "Release Assurance Evaluation Draft" : "Release Assurance Authority Preparation"}
+          description={evaluationMode
+            ? "Prepare local release gates from a release, deployment, or production change; authority evidence is required before any release decision."
+            : "Prepare tenant-bound release evidence; this workspace draft does not create an authority release record."}
+        />
         <div className="rounded-panel border border-border2 bg-bg2 p-3 text-sm text-fg2">
           No release assurance profile exists yet. Use release/change wording in intake or create an SDLC initiative from a release workspace.
         </div>
@@ -299,14 +311,17 @@ function ReleaseAssurancePanel({ initiative, data }: { initiative: InitiativeWor
   return (
     <section className="surface p-5">
       <SectionHeader
-        title="Release Assurance Workspace"
-        description="Jira and GitHub evidence mapped into release gates, decision records, exceptions, and proof-pack scope."
-        action={<Badge tone={profile.operating_mode === "gated_release" ? "success" : "warning"}>{profile.operating_mode}</Badge>}
+        title={evaluationMode ? "Release Assurance Evaluation Draft" : "Release Assurance Authority Preparation"}
+        description={evaluationMode
+          ? "Prepare Jira and GitHub evidence slots for later authority reads; local hashes are graph seeds, not external release proof."
+          : "Prepare tenant-bound Jira and GitHub evidence for authority reads; this workspace draft does not create a release record or proof pack."}
+        action={<Badge tone="warning">{evaluationMode ? "evaluation draft" : "authority handoff required"}</Badge>}
       />
       <div className="mb-4 grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-panel border border-border2 bg-bg2 p-3">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <Badge tone="brand">{profile.release_name}</Badge>
+            <Badge tone="warning">{profile.operating_mode}</Badge>
             <Badge>{profile.gates.length} gates</Badge>
             <Badge>{profile.external_refs.length} evidence refs</Badge>
             <Badge>{profile.exceptions.length} exceptions</Badge>
@@ -350,7 +365,7 @@ function ReleaseAssurancePanel({ initiative, data }: { initiative: InitiativeWor
             {refs.map((ref) => (
               <div key={ref.ref_id} className="rounded-panel border border-border2 bg-bg1 p-2 text-xs">
                 <div className="font-semibold text-fg1">{ref.label}</div>
-                <div className="mt-1 text-fg3">{ref.system} / {ref.object_type} / {ref.evidence_hash}</div>
+                <div className="mt-1 break-all text-fg3">{ref.system} / {ref.object_type} / {ref.evidence_hash}</div>
               </div>
             ))}
           </div>
@@ -367,13 +382,13 @@ function ReleaseAssurancePanel({ initiative, data }: { initiative: InitiativeWor
           </div>
         </div>
         <div className="rounded-panel border border-border2 bg-bg2 p-3">
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-fg1"><ShieldCheck className="h-4 w-4 text-success" aria-hidden="true" />Measured ROI basis</div>
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-fg1"><ShieldCheck className="h-4 w-4 text-warning" aria-hidden="true" />ROI planning basis</div>
           <div className="space-y-2">
             {profile.metric_observations.map((metric) => (
               <div key={metric.metric_id} className="rounded-panel border border-border2 bg-bg1 p-2 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold text-fg1">{metric.label}</span>
-                  <Badge tone="success">{metric.value} {metric.unit}</Badge>
+                  <Badge tone="neutral">{metric.value} {metric.unit}</Badge>
                 </div>
                 <div className="mt-1 text-fg2">{metric.basis}</div>
               </div>
@@ -406,11 +421,13 @@ function InitiativePanel({
   currentStep,
   completedSteps,
   onCompleteRunStep,
+  evaluationMode,
 }: {
   initiative: InitiativeWorkspace;
   currentStep: InitiativeWorkspace["execution_records"][number]["step_records"][number] | null;
   completedSteps: number;
   onCompleteRunStep: () => void;
+  evaluationMode: boolean;
 }) {
   const run = initiative.execution_records[0];
   const issueText = buildIssueTicketText(initiative);
@@ -418,18 +435,19 @@ function InitiativePanel({
     <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.8fr]">
       <div className="rounded-panel border border-border2 bg-bg2 p-3">
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Badge tone="brand">{initiative.status}</Badge>
+          <Badge tone="warning">{evaluationMode ? "Evaluation draft" : "Authority run required"}</Badge>
+          <Badge>{initiative.status}</Badge>
           <Badge>{initiative.loop_bundle_ids.length} loops</Badge>
           <Badge>{completedSteps}/{run?.step_records.length ?? 0} steps</Badge>
         </div>
-        <div className="text-sm font-semibold text-fg1">Actionable loop runbook</div>
+        <div className="text-sm font-semibold text-fg1">{evaluationMode ? "Evaluation loop runbook" : "Authority execution required"}</div>
         <div className="mt-1 text-sm text-fg2">{currentStep ? `${currentStep.label}: ${currentStep.required_evidence}` : "Primary loop checklist is complete."}</div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button onClick={onCompleteRunStep} disabled={!currentStep}>
+          <Button onClick={onCompleteRunStep} disabled={!evaluationMode || !currentStep} title={evaluationMode ? "Complete a browser-local evaluation checklist step." : "Complete this run through Governed Execution Authority."}>
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-            Complete step
+            {evaluationMode ? "Complete step" : "Authority Step Required"}
           </Button>
-          <Badge tone={run?.validation_result === "Passed" ? "success" : "warning"}>{run?.validation_result ?? "Not Run"}</Badge>
+          <Badge tone={evaluationMode && run?.validation_result === "Passed" ? "success" : "warning"}>{run?.validation_result ?? "Not Run"}</Badge>
         </div>
       </div>
       <div className="rounded-panel border border-border2 bg-bg2 p-3">
@@ -465,16 +483,16 @@ function HandoffPanel({ initiative, data }: { initiative: InitiativeWorkspace | 
   );
 }
 
-function ProductivityPanel({ initiative }: { initiative: InitiativeWorkspace | null }) {
+function ProductivityPanel({ initiative, evaluationMode }: { initiative: InitiativeWorkspace | null; evaluationMode: boolean }) {
   const estimate = initiative?.roi_assumptions;
   return (
     <Card>
-      <SectionHeader title="SDLC Productivity Scorecard" description="Transparent effort-saving estimate from visible workspace records." />
+      <SectionHeader title="SDLC Productivity Planning" description={evaluationMode ? "Transparent planning estimate from visible evaluation workspace records." : "Transparent planning estimate from workspace drafts; replace it with measured authority observations before production claims."} />
       <div className="grid gap-3 md:grid-cols-2">
         <WorkspaceSignal label="Meetings avoided" value={String(estimate?.meetings_avoided ?? 0)} />
         <WorkspaceSignal label="Review cycles reduced" value={String(estimate?.review_cycles_reduced ?? 0)} />
         <WorkspaceSignal label="Evidence reused" value={String(estimate?.evidence_items_reused ?? 0)} />
-        <WorkspaceSignal label="Hours saved" value={String(estimate?.hours_saved_estimate ?? 0)} />
+        <WorkspaceSignal label="Estimated hours saved" value={String(estimate?.hours_saved_estimate ?? 0)} />
       </div>
       <div className="mt-3 rounded-panel border border-border2 bg-bg2 p-3 text-sm text-fg2">
         {estimate?.assumptions ?? "Create an initiative to calculate SDLC productivity impact."}

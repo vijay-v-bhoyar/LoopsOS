@@ -4,6 +4,8 @@ import { useVoiceCapture } from "./useVoiceCapture";
 
 class FakeRecognition {
   static instance: FakeRecognition | null = null;
+  static throwOnStart = false;
+  static throwOnStop = false;
   continuous = false;
   interimResults = false;
   lang = "";
@@ -11,8 +13,14 @@ class FakeRecognition {
   onresult: ((event: unknown) => void) | null = null;
   onerror: ((event: { error: string }) => void) | null = null;
   onend: (() => void) | null = null;
-  start = vi.fn(() => this.onstart?.());
-  stop = vi.fn(() => this.onend?.());
+  start = vi.fn(() => {
+    if (FakeRecognition.throwOnStart) throw new Error("recognition start failed");
+    this.onstart?.();
+  });
+  stop = vi.fn(() => {
+    if (FakeRecognition.throwOnStop) throw new Error("recognition stop failed");
+    this.onend?.();
+  });
   abort = vi.fn();
 
   constructor() {
@@ -30,11 +38,16 @@ class FakeRecognition {
 
 class FakeMediaRecorder {
   static instance: FakeMediaRecorder | null = null;
+  static throwOnStart = false;
+  static throwOnStop = false;
   mimeType = "audio/webm";
   ondataavailable: ((event: { data: Blob }) => void) | null = null;
   onstop: (() => void) | null = null;
-  start = vi.fn();
+  start = vi.fn(() => {
+    if (FakeMediaRecorder.throwOnStart) throw new Error("recorder start failed");
+  });
   stop = vi.fn(() => {
+    if (FakeMediaRecorder.throwOnStop) throw new Error("recorder stop failed");
     this.ondataavailable?.({ data: new Blob(["voice"], { type: this.mimeType }) });
     this.onstop?.();
   });
@@ -48,7 +61,11 @@ describe("useVoiceCapture", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     FakeRecognition.instance = null;
+    FakeRecognition.throwOnStart = false;
+    FakeRecognition.throwOnStop = false;
     FakeMediaRecorder.instance = null;
+    FakeMediaRecorder.throwOnStart = false;
+    FakeMediaRecorder.throwOnStop = false;
   });
 
   afterEach(() => {
@@ -85,6 +102,18 @@ describe("useVoiceCapture", () => {
     expect(denied.result.current.error).toMatch(/permission/i);
   });
 
+  it("reports a synchronous recognition start failure without leaving a pending permission state", () => {
+    FakeRecognition.throwOnStart = true;
+    const { result } = renderHook(() =>
+      useVoiceCapture({ dependencies: { speechRecognitionCtor: FakeRecognition as never } }),
+    );
+
+    act(() => result.current.startBrowser());
+
+    expect(result.current.state).toBe("error");
+    expect(result.current.error).toBe("Voice recognition could not start. You can try again or type the use case.");
+  });
+
   it("stops browser recognition at the configured duration limit", () => {
     const { result } = renderHook(() =>
       useVoiceCapture({ dependencies: { speechRecognitionCtor: FakeRecognition as never }, maxDurationMs: 100 }),
@@ -94,6 +123,23 @@ describe("useVoiceCapture", () => {
 
     expect(FakeRecognition.instance?.stop).toHaveBeenCalledTimes(1);
     expect(result.current.state).toBe("review");
+  });
+
+  it("does not reopen review when reset receives a delayed recognition end event", () => {
+    const { result } = renderHook(() =>
+      useVoiceCapture({ dependencies: { speechRecognitionCtor: FakeRecognition as never } }),
+    );
+    act(() => result.current.startBrowser());
+    const recognition = FakeRecognition.instance;
+    recognition?.abort.mockImplementation(() => {
+      setTimeout(() => recognition.onend?.(), 0);
+    });
+
+    act(() => result.current.reset());
+    act(() => vi.advanceTimersByTime(1));
+
+    expect(result.current.state).toBe("idle");
+    expect(result.current.transcript).toBe("");
   });
 
   it("requires consent before enterprise recording and disposes microphone tracks after transcription", async () => {
@@ -127,6 +173,87 @@ describe("useVoiceCapture", () => {
     expect(result.current.transcript).toBe("Enterprise voice transcript");
     expect(result.current.extractionMethod).toBe("enterprise transcription (tenant-service, en-CA)");
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(stopTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when enterprise transcription returns a malformed payload", async () => {
+    vi.useRealTimers();
+    const stopTrack = vi.fn();
+    const stream = { getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream;
+    const getUserMedia = vi.fn().mockResolvedValue(stream);
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ transcript: 42 }) });
+    const { result } = renderHook(() => useVoiceCapture({
+      endpoint: "https://enterprise.example/transcribe",
+      dependencies: {
+        speechRecognitionCtor: null,
+        mediaDevices: { getUserMedia } as never,
+        mediaRecorderCtor: FakeMediaRecorder as never,
+        fetchImpl: fetchImpl as never,
+      },
+    }));
+
+    await act(async () => result.current.startEnterprise(true));
+    await act(async () => result.current.stop());
+    await waitFor(() => expect(result.current.state).toBe("error"));
+    expect(result.current.error).toMatch(/invalid JSON response/);
+    expect(stopTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it("distinguishes a recorder setup failure from microphone permission denial", async () => {
+    vi.useRealTimers();
+    FakeMediaRecorder.throwOnStart = true;
+    const stopTrack = vi.fn();
+    const stream = { getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream;
+    const getUserMedia = vi.fn().mockResolvedValue(stream);
+    const { result } = renderHook(() => useVoiceCapture({
+      endpoint: "https://enterprise.example/transcribe",
+      dependencies: {
+        speechRecognitionCtor: null,
+        mediaDevices: { getUserMedia } as never,
+        mediaRecorderCtor: FakeMediaRecorder as never,
+      },
+    }));
+
+    await act(async () => result.current.startEnterprise(true));
+
+    expect(result.current.state).toBe("error");
+    expect(result.current.error).toBe("Enterprise microphone recording could not start. You can try again or type the use case.");
+    expect(stopTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when browser recognition cannot stop", async () => {
+    FakeRecognition.throwOnStop = true;
+    const { result } = renderHook(() =>
+      useVoiceCapture({ dependencies: { speechRecognitionCtor: FakeRecognition as never } }),
+    );
+
+    act(() => result.current.startBrowser());
+    await act(async () => result.current.stop());
+
+    expect(result.current.state).toBe("error");
+    expect(result.current.error).toBe("Voice recognition could not stop. You can try again or type the use case.");
+  });
+
+  it("fails closed when the enterprise recorder cannot stop and resolves completion", async () => {
+    vi.useRealTimers();
+    FakeMediaRecorder.throwOnStop = true;
+    const stopTrack = vi.fn();
+    const stream = { getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream;
+    const getUserMedia = vi.fn().mockResolvedValue(stream);
+    const { result } = renderHook(() => useVoiceCapture({
+      endpoint: "https://enterprise.example/transcribe",
+      dependencies: {
+        speechRecognitionCtor: null,
+        mediaDevices: { getUserMedia } as never,
+        mediaRecorderCtor: FakeMediaRecorder as never,
+      },
+    }));
+
+    await act(async () => result.current.startEnterprise(true));
+    await act(async () => result.current.stop());
+
+    expect(result.current.state).toBe("error");
+    expect(result.current.error).toBe("Enterprise microphone recording could not stop. You can try again or type the use case.");
     expect(stopTrack).toHaveBeenCalledTimes(1);
   });
 });

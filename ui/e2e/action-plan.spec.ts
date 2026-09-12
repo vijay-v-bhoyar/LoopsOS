@@ -28,8 +28,9 @@ test("builds an enterprise action plan, persists it to the workspace, and export
   }
   await page.getByRole("button", { name: "Send To Action Plan" }).click();
 
-  await expect(page.getByRole("heading", { name: "Enterprise Action Plan" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enterprise Evaluation Action Plan" })).toBeVisible();
   await expect(page.getByText("Markdown Preview")).toBeVisible();
+  await expect(page.getByText(/LOCAL EVALUATION DRAFT/)).toBeVisible();
   await expect(page.getByText(/LoopOS Enterprise Action Plan:/)).toBeVisible();
   await expect(page.getByText("Trust Note")).toBeVisible();
 

@@ -166,16 +166,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-006-requirements-quality-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Requirements Quality Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-006-requirements-quality-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Requirements Quality Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-006-requirements-quality-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Requirements Quality Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -185,16 +188,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-007-requirements-change-control-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Requirements Change Control Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-007-requirements-change-control-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Requirements Change Control Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-007-requirements-change-control-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Requirements Change Control Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -204,16 +210,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-008-requirements-traceability-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Requirements Traceability Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-008-requirements-traceability-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Requirements Traceability Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-008-requirements-traceability-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Requirements Traceability Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -318,16 +327,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-014-retrospective-improvement-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Retrospective Improvement Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-014-retrospective-improvement-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Retrospective Improvement Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-014-retrospective-improvement-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Retrospective Improvement Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -337,16 +349,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-015-design-review-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Design Review Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-015-design-review-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Design Review Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-015-design-review-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Design Review Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -356,16 +371,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-016-architecture-fitness-and-future-compatibility-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Architecture Fitness and Future Compatibility Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-016-architecture-fitness-and-future-compatibility-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Architecture Fitness and Future Compatibility Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-016-architecture-fitness-and-future-compatibility-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Architecture Fitness and Future Compatibility Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -470,16 +488,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-022-code-quality-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Code Quality Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-022-code-quality-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Code Quality Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-022-code-quality-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Code Quality Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -489,16 +510,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-023-pull-request-review-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Pull Request Review Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-023-pull-request-review-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Pull Request Review Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-023-pull-request-review-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Pull Request Review Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -527,16 +551,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-025-ci-pipeline-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "CI Pipeline Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-025-ci-pipeline-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "CI Pipeline Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-025-ci-pipeline-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "CI Pipeline Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -746,16 +773,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-036-release-readiness-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Release Readiness Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-036-release-readiness-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Release Readiness Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-036-release-readiness-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Release Readiness Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -784,16 +814,19 @@ golden_tasks:
     tasks:
       -
         task_id: loop-038-deployment-validation-loop-happy-path
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: happy_path
         scenario: "Deployment Validation Loop receives sufficient fresh evidence and the correct owner is resolved."
         expected: "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
       -
         task_id: loop-038-deployment-validation-loop-missing-proof
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: failure_path
         scenario: "Deployment Validation Loop has declared or implemented control but no current executed proof."
         expected: "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
       -
         task_id: loop-038-deployment-validation-loop-conditional-expiry
+        fixture_ref: evals/fixtures/pilot-sdlc-governance-os.json
         type: conditional_path
         scenario: "Deployment Validation Loop receives temporary approval with missing evidence and compensating controls."
         expected: "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."

@@ -25,6 +25,57 @@ create table if not exists runs (
 
 create index if not exists idx_runs_tenant_updated on runs(tenant_id, updated_at desc);
 
+create table if not exists execution_jobs (
+  job_id text primary key,
+  tenant_id text not null,
+  run_id text not null references runs(run_id),
+  command text not null,
+  payload_json text not null,
+  status text not null,
+  attempts integer not null default 0,
+  available_at text not null,
+  lease_owner text,
+  lease_expires_at text,
+  last_error text,
+  created_at text not null,
+  updated_at text not null
+);
+
+create index if not exists idx_execution_jobs_claim
+  on execution_jobs(status, available_at, lease_expires_at, created_at);
+create index if not exists idx_execution_jobs_run
+  on execution_jobs(tenant_id, run_id, created_at);
+
+create table if not exists kill_switches (
+  tenant_id text primary key,
+  active boolean not null default false,
+  activation_id text not null,
+  reason text not null,
+  actor_id text not null,
+  actor_role text not null,
+  activated_at text not null,
+  deactivated_at text,
+  deactivated_by text,
+  deactivation_reason text
+);
+
+create table if not exists operational_signals (
+  signal_name text not null,
+  source text not null,
+  detail_json text not null,
+  observed_at text not null,
+  primary key(signal_name, source)
+);
+
+create table if not exists request_rate_limits (
+  bucket_key text primary key,
+  window_started_at bigint not null,
+  request_count integer not null
+);
+
+create index if not exists idx_request_rate_limits_window
+  on request_rate_limits(window_started_at);
+
 create table if not exists approvals (
   approval_id text primary key,
   tenant_id text not null,
@@ -97,6 +148,21 @@ create table if not exists action_artifacts (
   unique(tenant_id, idempotency_key)
 );
 
+create table if not exists workspaces (
+  tenant_id text not null,
+  workspace_id text not null,
+  revision integer not null,
+  document_json text not null,
+  document_hash text not null,
+  created_by text not null,
+  updated_by text not null,
+  created_at text not null,
+  updated_at text not null,
+  primary key(tenant_id, workspace_id)
+);
+
+create index if not exists idx_workspaces_tenant_updated on workspaces(tenant_id, updated_at desc);
+
 create table if not exists release_initiatives (
   initiative_id text primary key,
   tenant_id text not null,
@@ -162,6 +228,20 @@ create table if not exists audit_events (
 create index if not exists idx_audit_tenant_sequence on audit_events(tenant_id, sequence);
 create index if not exists idx_audit_run_sequence on audit_events(run_id, sequence);
 
+create table if not exists audit_anchor_outbox (
+  event_id text primary key references audit_events(event_id),
+  tenant_id text not null,
+  envelope_json text not null,
+  attempts integer not null default 0,
+  next_attempt_at text not null,
+  last_error text,
+  delivered_at text,
+  created_at text not null
+);
+
+create index if not exists idx_audit_anchor_pending
+  on audit_anchor_outbox(delivered_at, next_attempt_at, created_at);
+
 create or replace function deny_audit_event_mutation()
 returns trigger
 language plpgsql
@@ -182,13 +262,29 @@ before delete on audit_events
 for each row execute function deny_audit_event_mutation();
 
 alter table runs enable row level security;
+alter table execution_jobs enable row level security;
+alter table kill_switches enable row level security;
+alter table operational_signals enable row level security;
+alter table request_rate_limits enable row level security;
 alter table approvals enable row level security;
 alter table evidence enable row level security;
 alter table tool_invocations enable row level security;
 alter table probe_results enable row level security;
 alter table action_artifacts enable row level security;
+alter table workspaces enable row level security;
 alter table release_initiatives enable row level security;
 alter table connector_events enable row level security;
 alter table audit_events enable row level security;
+alter table audit_anchor_outbox enable row level security;
 
-revoke all on runs, approvals, evidence, tool_invocations, probe_results, action_artifacts, release_initiatives, connector_events, audit_events from anon, authenticated;
+do $$
+declare
+  role_name text;
+begin
+  for role_name in
+    select rolname from pg_roles where rolname in ('anon', 'authenticated')
+  loop
+    execute format('revoke all on runs, execution_jobs, kill_switches, operational_signals, request_rate_limits, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from %I', role_name);
+  end loop;
+end;
+$$;

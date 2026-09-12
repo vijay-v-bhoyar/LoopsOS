@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import ipaddress
+import json
 import socket
+import time
 from typing import Any, Awaitable, Callable
 from urllib.parse import urlparse
 
@@ -86,17 +88,19 @@ class ToolRegistry:
         if replay is not None:
             return {**replay, "idempotent_replay": True}
 
+        started_at = time.perf_counter()
+        attempts = 0
         operation: Callable[[], Awaitable[dict[str, Any]]]
-        if action.tool == "record_action":
-            arguments = RecordActionArguments.model_validate(action.arguments)
-            operation = lambda: self._record_action(tenant_id, run_id, action.idempotency_key, arguments)
-        elif action.tool == "http_json_action":
-            arguments = HttpActionArguments.model_validate(action.arguments)
-            operation = lambda: self._http_action(action.idempotency_key, arguments)
-        else:
-            raise TerminalToolFailure(f"Tool {action.tool} is not registered.")
-
         try:
+            if action.tool == "record_action":
+                arguments = RecordActionArguments.model_validate(action.arguments)
+                operation = lambda: self._record_action(tenant_id, run_id, action.idempotency_key, arguments)
+            elif action.tool == "http_json_action":
+                arguments = HttpActionArguments.model_validate(action.arguments)
+                operation = lambda: self._http_action(action.idempotency_key, invocation_id, run_id, arguments)
+            else:
+                raise TerminalToolFailure(f"Tool {action.tool} is not registered.")
+
             result: dict[str, Any] | None = None
             async for attempt in AsyncRetrying(
                 stop=stop_after_attempt(min(max_attempts, self.settings.max_retry_attempts)),
@@ -106,17 +110,41 @@ class ToolRegistry:
             ):
                 with attempt:
                     attempt_number = attempt.retry_state.attempt_number
+                    attempts = attempt_number
                     self.store.record_invocation_attempt(tenant_id, run_id, invocation_id, attempt_number)
                     result = await operation()
             if result is None:
                 raise TerminalToolFailure("Tool returned no result.")
-            self.store.complete_invocation(tenant_id, run_id, invocation_id, result)
+            self.store.complete_invocation(
+                tenant_id,
+                run_id,
+                invocation_id,
+                result,
+                latency_ms=max(0, round((time.perf_counter() - started_at) * 1000)),
+                retry_count=max(0, attempts - 1),
+            )
             return result
         except ToolFailure as error:
-            self.store.fail_invocation(tenant_id, run_id, invocation_id, error.code, str(error))
+            self.store.fail_invocation(
+                tenant_id,
+                run_id,
+                invocation_id,
+                error.code,
+                str(error),
+                latency_ms=max(0, round((time.perf_counter() - started_at) * 1000)),
+                retry_count=max(0, attempts - 1),
+            )
             raise
         except Exception as error:
-            self.store.fail_invocation(tenant_id, run_id, invocation_id, "invalid_tool_input", str(error))
+            self.store.fail_invocation(
+                tenant_id,
+                run_id,
+                invocation_id,
+                "invalid_tool_input",
+                str(error),
+                latency_ms=max(0, round((time.perf_counter() - started_at) * 1000)),
+                retry_count=max(0, attempts - 1),
+            )
             raise TerminalToolFailure(str(error)) from error
 
     async def run_probe(self, probe: ProbeSpec, action_output: dict[str, Any], evidence: list[dict[str, Any]]) -> tuple[bool, dict[str, Any]]:
@@ -150,23 +178,35 @@ class ToolRegistry:
             {"status": "applied", "summary": arguments.summary, "outputs": arguments.outputs},
         )
 
-    async def _http_action(self, idempotency_key: str, arguments: HttpActionArguments) -> dict[str, Any]:
+    async def _http_action(
+        self,
+        idempotency_key: str,
+        invocation_id: str,
+        run_id: str,
+        arguments: HttpActionArguments,
+    ) -> dict[str, Any]:
         endpoint = str(arguments.endpoint)
         self._validate_endpoint(endpoint)
         try:
-            response = await self.http.request(
+            async with self.http.stream(
                 arguments.method,
                 endpoint,
                 json=arguments.body,
-                headers={**self._connector_headers(endpoint), "content-type": "application/json", "idempotency-key": idempotency_key},
-            )
+                headers={
+                    **self._connector_headers(endpoint),
+                    "content-type": "application/json",
+                    "idempotency-key": idempotency_key,
+                    "x-loopos-run-id": run_id,
+                    "x-loopos-invocation-id": invocation_id,
+                },
+            ) as response:
+                if response.status_code == 429 or response.status_code >= 500:
+                    raise RetryableToolFailure(f"Dependency returned {response.status_code}.")
+                if response.status_code >= 400:
+                    raise TerminalToolFailure(f"Dependency returned {response.status_code}.")
+                payload = await self._read_json(response)
         except (httpx.TimeoutException, httpx.NetworkError) as error:
             raise RetryableToolFailure(str(error)) from error
-        if response.status_code == 429 or response.status_code >= 500:
-            raise RetryableToolFailure(f"Dependency returned {response.status_code}.")
-        if response.status_code >= 400:
-            raise TerminalToolFailure(f"Dependency returned {response.status_code}.")
-        payload = await self._read_json(response)
         return {"status": "applied", "http_status": response.status_code, "response": payload}
 
     async def _get_json(self, endpoint: str) -> dict[str, Any]:
@@ -180,14 +220,14 @@ class ToolRegistry:
         ):
             with attempt:
                 try:
-                    response = await self.http.get(endpoint, headers=self._connector_headers(endpoint))
+                    async with self.http.stream("GET", endpoint, headers=self._connector_headers(endpoint)) as response:
+                        if response.status_code == 429 or response.status_code >= 500:
+                            raise RetryableToolFailure(f"Dependency returned {response.status_code}.")
+                        if response.status_code >= 400:
+                            raise TerminalToolFailure(f"Dependency returned {response.status_code}.")
+                        document = await self._read_json(response)
                 except (httpx.TimeoutException, httpx.NetworkError) as error:
                     raise RetryableToolFailure(str(error)) from error
-                if response.status_code == 429 or response.status_code >= 500:
-                    raise RetryableToolFailure(f"Dependency returned {response.status_code}.")
-                if response.status_code >= 400:
-                    raise TerminalToolFailure(f"Dependency returned {response.status_code}.")
-                document = await self._read_json(response)
         if document is None:
             raise TerminalToolFailure("Dependency returned no JSON document.")
         return document
@@ -195,12 +235,17 @@ class ToolRegistry:
     async def _read_json(self, response: httpx.Response) -> dict[str, Any]:
         if response.is_redirect:
             raise TerminalToolFailure("Redirect responses are not allowed.")
-        content = await response.aread()
-        if len(content) > self.settings.http_max_response_bytes:
-            raise TerminalToolFailure("Response exceeds the configured size limit.")
+        chunks: list[bytes] = []
+        content_length = 0
+        async for chunk in response.aiter_bytes():
+            content_length += len(chunk)
+            if content_length > self.settings.http_max_response_bytes:
+                raise TerminalToolFailure("Response exceeds the configured size limit.")
+            chunks.append(chunk)
+        content = b"".join(chunks)
         try:
-            value = response.json()
-        except ValueError as error:
+            value = json.loads(content)
+        except (TypeError, ValueError) as error:
             raise TerminalToolFailure("Response is not valid JSON.") from error
         if not isinstance(value, dict):
             raise TerminalToolFailure("Response must be a JSON object.")
@@ -209,8 +254,10 @@ class ToolRegistry:
     def _validate_endpoint(self, endpoint: str) -> None:
         parsed = urlparse(endpoint)
         hostname = (parsed.hostname or "").lower()
-        if parsed.username or parsed.password:
+        if parsed.username or parsed.password or "\\" in endpoint:
             raise TerminalToolFailure("Connector endpoints cannot contain embedded credentials.")
+        if "?" in endpoint or "#" in endpoint:
+            raise TerminalToolFailure("Connector endpoints cannot contain query strings or fragments.")
         if parsed.scheme != "https" and not (self.settings.allow_dev_auth and parsed.scheme == "http" and hostname in {"localhost", "127.0.0.1"}):
             raise TerminalToolFailure("Enterprise connector endpoints must use HTTPS.")
         if hostname not in self.settings.allowed_http_hosts:
@@ -223,13 +270,24 @@ class ToolRegistry:
             raise RetryableToolFailure(f"Connector host {hostname} cannot be resolved.") from error
         for address in addresses:
             ip = ipaddress.ip_address(address)
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
-                raise TerminalToolFailure("Connector endpoints cannot resolve to private or reserved addresses.")
+            if (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
+                or not ip.is_global
+            ):
+                raise TerminalToolFailure("Connector endpoints cannot resolve to private, reserved, or non-global addresses.")
 
     def _connector_headers(self, endpoint: str) -> dict[str, str]:
         hostname = (urlparse(endpoint).hostname or "").lower()
         headers = {"accept": "application/json", "user-agent": "LoopOS-Authority/0.1"}
         token = (self.settings.connector_bearer_tokens or {}).get(hostname)
         if token:
+            if not self.settings.allow_dev_auth:
+                raise TerminalToolFailure(
+                    "Production connector credentials require an approved short-lived credential injection broker; static bearer tokens are not supported."
+                )
             headers["authorization"] = f"Bearer {token}"
         return headers

@@ -3,6 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 async function openWorkspace(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Enter Evaluation Workspace" }).click();
+  await page.getByRole("button", { name: "Open Use Case Advisor" }).click();
+  await page.getByRole("button", { name: "Load Example" }).click();
   if ((page.viewportSize()?.width ?? 1_440) < 1_024) {
     await page.getByRole("button", { name: "Open navigation" }).click();
     await page.getByRole("dialog", { name: "Navigation" }).getByRole("button", { name: "Workspaces" }).click();
@@ -68,6 +70,9 @@ test("uses a configured LLM endpoint when present and saves returned questions i
   await openWorkspace(page);
 
   await expect(page.getByText(/Provider state: LLM endpoint configured\./)).toBeVisible();
+  await expect(page.getByLabel("Allow this request to send workspace details to enterprise AI")).toBeChecked({ checked: false });
+  await expect(page.getByRole("button", { name: "Generate Questions" })).toBeDisabled();
+  await page.getByLabel("Allow this request to send workspace details to enterprise AI").check();
   await page.getByRole("button", { name: "Generate Questions" }).click();
   await expect(page.getByText("LLM endpoint").first()).toBeVisible();
   await expect(page.getByText("Which evidence store will hold approval and execution records for this pilot?")).toBeVisible();
