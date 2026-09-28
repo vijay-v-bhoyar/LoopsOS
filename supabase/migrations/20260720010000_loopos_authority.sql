@@ -163,6 +163,20 @@ create table if not exists workspaces (
 
 create index if not exists idx_workspaces_tenant_updated on workspaces(tenant_id, updated_at desc);
 
+create table if not exists sessions (
+  jti text primary key,
+  tenant_id text not null,
+  user_id text not null,
+  role text not null,
+  issued_at bigint not null,
+  expires_at bigint not null,
+  revoked_at bigint,
+  revoke_reason text
+);
+
+create index if not exists idx_sessions_tenant_user on sessions(tenant_id, user_id, expires_at);
+create index if not exists idx_sessions_expiry on sessions(expires_at);
+
 create table if not exists release_initiatives (
   initiative_id text primary key,
   tenant_id text not null,
@@ -272,6 +286,7 @@ alter table tool_invocations enable row level security;
 alter table probe_results enable row level security;
 alter table action_artifacts enable row level security;
 alter table workspaces enable row level security;
+alter table sessions enable row level security;
 alter table release_initiatives enable row level security;
 alter table connector_events enable row level security;
 alter table audit_events enable row level security;
@@ -284,7 +299,7 @@ begin
   for role_name in
     select rolname from pg_roles where rolname in ('anon', 'authenticated')
   loop
-    execute format('revoke all on runs, execution_jobs, kill_switches, operational_signals, request_rate_limits, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, release_initiatives, connector_events, audit_events, audit_anchor_outbox from %I', role_name);
+    execute format('revoke all on runs, execution_jobs, kill_switches, operational_signals, request_rate_limits, approvals, evidence, tool_invocations, probe_results, action_artifacts, workspaces, sessions, release_initiatives, connector_events, audit_events, audit_anchor_outbox from %I', role_name);
   end loop;
 end;
 $$;

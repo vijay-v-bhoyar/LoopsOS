@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .corpus import Corpus
-from .contracts import REQUIRED_AUDIT_TRIGGERS, REQUIRED_POSTGRES_TABLES
+from .contracts import REQUIRED_AUDIT_TRIGGERS, REQUIRED_POSTGRES_TABLES, REQUIRED_RELEASE_POLICY_TRIGGERS
 from .store import AuthorityStore, StoreCursor
 
 
@@ -41,6 +41,10 @@ class PostgresCursor:
         self._cursor = cursor
         self._close_after_fetch = close_after_fetch
         self.lastrowid: int | None = None
+
+    @property
+    def rowcount(self) -> int:
+        return self._cursor.rowcount
 
     def execute(self, sql: str, parameters: tuple[Any, ...] | list[Any] = ()) -> "PostgresCursor":
         self.lastrowid = None
@@ -112,6 +116,7 @@ class PostgresAuthorityStore(AuthorityStore):
         self.corpus = corpus
         self.connection = PostgresConnection(dsn)
         self.lock = threading.RLock()
+        self._init_release_policy_state()
         self.migrations_dir = migrations_dir
         self._initialize()
 
@@ -196,6 +201,31 @@ class PostgresAuthorityStore(AuthorityStore):
                     + ", ".join(missing_triggers)
                     + "."
                 )
+            release_policy_triggers = {
+                str(row["tgname"])
+                for row in self.connection.execute(
+                    """
+                    SELECT tgname
+                    FROM pg_trigger
+                    WHERE tgrelid = 'public.release_policy_control'::regclass
+                      AND NOT tgisinternal
+                    """
+                ).fetchall()
+            }
+            missing_release_policy_triggers = sorted(REQUIRED_RELEASE_POLICY_TRIGGERS - release_policy_triggers)
+            if missing_release_policy_triggers:
+                raise RuntimeError(
+                    "Postgres authority schema is missing release-policy monotonicity triggers: "
+                    + ", ".join(missing_release_policy_triggers)
+                    + "."
+                )
+            anchor_columns = {
+                str(row['column_name']) for row in self.connection.execute(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'audit_anchor_outbox'"
+                ).fetchall()
+            }
+            if not {'delivery_binding', 'delivery_epoch'} <= anchor_columns:
+                raise RuntimeError('Postgres audit anchor fencing migration is missing.')
 
     def _append_event_cursor(
         self,

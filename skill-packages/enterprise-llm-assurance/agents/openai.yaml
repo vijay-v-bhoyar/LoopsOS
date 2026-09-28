@@ -1,0 +1,3 @@
+interface:
+  display_name: "Enterprise AI Owner 2"
+  short_description: "Challenge prompt injection, provenance laundering, cumulative disclosure and model fallback behavior."

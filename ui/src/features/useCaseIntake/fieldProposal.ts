@@ -1,8 +1,8 @@
-import type { UseCaseDraft, UseCaseFieldProposal, UseCaseInput, UseCaseSource } from "../../types";
+import type { AIProvenance, UseCaseDraft, UseCaseFieldProposal, UseCaseInput, UseCaseSource, UseCaseTextField } from "../../types";
 import { nowIso, uid } from "../../lib/workspaceStore";
-import { secureJsonRequest } from "../../lib/secureRequest";
+import { requestAttestedLlm } from "../../lib/llmProvenance";
 
-const FIELD_ORDER: Array<keyof UseCaseInput> = [
+const FIELD_ORDER: UseCaseTextField[] = [
   "title",
   "description",
   "environment",
@@ -13,14 +13,14 @@ const FIELD_ORDER: Array<keyof UseCaseInput> = [
   "constraints",
 ];
 
-const ENUM_VALUES: Partial<Record<keyof UseCaseInput, string[]>> = {
+const ENUM_VALUES: Partial<Record<UseCaseTextField, string[]>> = {
   environment: ["development", "pilot", "production", "enterprise portfolio"],
   aiScope: ["AI readiness", "GenAI use case", "Agentic AI", "RAG improvement", "Existing use-case enhancement", "Release/compliance governance"],
   dataSensitivity: ["low", "internal", "sensitive", "regulated", "restricted"],
   maturity: ["idea", "discovery", "pilot", "production", "scale"],
 };
 
-const LABELS: Record<keyof UseCaseInput, RegExp> = {
+const LABELS: Record<UseCaseTextField, RegExp> = {
   title: /^title\s*:\s*(.+)$/im,
   description: /^(?:workflow|workflow and problem|description)\s*:\s*(.+)$/im,
   environment: /^environment\s*:\s*(.+)$/im,
@@ -31,7 +31,7 @@ const LABELS: Record<keyof UseCaseInput, RegExp> = {
   constraints: /^constraints?\s*:\s*(.+)$/im,
 };
 
-const MAX_LENGTH: Record<keyof UseCaseInput, number> = {
+const MAX_LENGTH: Record<UseCaseTextField, number> = {
   title: 160,
   description: 5_000,
   environment: 80,
@@ -42,7 +42,22 @@ const MAX_LENGTH: Record<keyof UseCaseInput, number> = {
   constraints: 2_000,
 };
 
-function canonicalEnum(field: keyof UseCaseInput, value: string): string | null {
+function provenance(source: AIProvenance["source"], consent_granted: boolean, prompt_version: string): AIProvenance {
+  return {
+    source,
+    provider: "LoopOS",
+    model: "rules",
+    prompt_version,
+    consent_granted,
+    generated_at: nowIso(),
+  };
+}
+
+function allowsExternalStructuring(input: UseCaseInput): boolean {
+  return input.dataSensitivity === "low" || input.dataSensitivity === "internal";
+}
+
+function canonicalEnum(field: UseCaseTextField, value: string): string | null {
   const allowed = ENUM_VALUES[field];
   if (!allowed) return value.trim();
   return allowed.find((candidate) => candidate.toLowerCase() === value.trim().toLowerCase()) ?? null;
@@ -56,7 +71,7 @@ function evidenceFor(text: string, value: string): string {
   return `${start > 0 ? "..." : ""}${normalized.slice(start, end)}${end < normalized.length ? "..." : ""}`;
 }
 
-function inferredValue(field: keyof UseCaseInput, source: UseCaseSource): string | null {
+function inferredValue(field: UseCaseTextField, source: UseCaseSource): string | null {
   const text = source.accepted_text;
   const labeled = text.match(LABELS[field])?.[1]?.trim();
   if (labeled) return canonicalEnum(field, labeled);
@@ -95,6 +110,7 @@ export function proposeUseCaseFields(source: UseCaseSource, _current: UseCaseInp
       evidence_excerpt: evidenceFor(source.accepted_text, value),
       source_ids: [source.source_id],
       method: "deterministic",
+      provenance: provenance("deterministic", false, "loopos_use_case_structuring_rules_v1"),
     }];
   });
   if (!fields.length) {
@@ -106,10 +122,18 @@ export function proposeUseCaseFields(source: UseCaseSource, _current: UseCaseInp
         evidence_excerpt: evidenceFor(source.accepted_text, fallbackDescription),
         source_ids: [source.source_id],
         method: "deterministic",
+        provenance: provenance("deterministic", false, "loopos_use_case_structuring_rules_v1"),
       });
     }
   }
-  return { draft_id: uid("draft"), source_ids: [source.source_id], fields, method: "deterministic", created_at: nowIso() };
+  return {
+    draft_id: uid("draft"),
+    source_ids: [source.source_id],
+    fields,
+    method: "deterministic",
+    created_at: nowIso(),
+    provenance: provenance("deterministic", false, "loopos_use_case_structuring_rules_v1"),
+  };
 }
 
 export function applyUseCaseDraft(current: UseCaseInput, draft: UseCaseDraft, selected: Set<keyof UseCaseInput>): UseCaseInput {
@@ -136,19 +160,15 @@ export async function enhanceUseCaseProposal(
   deterministic: UseCaseDraft,
   options: EnhancementOptions,
 ): Promise<UseCaseDraft> {
-  if (!options.consent) return deterministic;
+  const proposed = applyUseCaseDraft(current, deterministic, new Set(deterministic.fields.map((field) => field.field)));
+  // Source-derived fields may raise the restriction but cannot downgrade the saved classification.
+  if (!options.consent || !allowsExternalStructuring(current) || !allowsExternalStructuring(proposed)) return deterministic;
   try {
-    const payload = await secureJsonRequest<Record<string, unknown>>(options.endpoint, {
-      fetchImpl: options.fetchImpl,
-      init: {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ task: "loopos_use_case_structuring", source, currentUseCase: current }),
-      },
-      validate: isRecord,
-    });
-    if (!isRecord(payload.proposal)) return deterministic;
-    const replacements = new Map<keyof UseCaseInput, UseCaseFieldProposal>();
+    const attested = await requestAttestedLlm(options.endpoint, "loopos_use_case_structuring", "loopos_use_case_structuring_v1",
+      { source, currentUseCase: proposed }, options.fetchImpl);
+    const payload = attested.result;
+    if (!isRecord(payload) || !isRecord(payload.proposal)) return deterministic;
+    const replacements = new Map<UseCaseTextField, UseCaseFieldProposal>();
     for (const field of FIELD_ORDER) {
       const raw = payload.proposal[field];
       if (typeof raw !== "string" || !raw.trim()) continue;
@@ -160,6 +180,7 @@ export async function enhanceUseCaseProposal(
         evidence_excerpt: evidenceFor(source.accepted_text, value),
         source_ids: [source.source_id],
         method: "enterprise LLM",
+        provenance: attested.provenance,
       });
     }
     if (!replacements.size) return deterministic;
@@ -168,7 +189,14 @@ export async function enhanceUseCaseProposal(
       const proposal = replacements.get(field) ?? deterministicByField.get(field);
       return proposal ? [proposal] : [];
     });
-    return { draft_id: uid("draft"), source_ids: [source.source_id], fields, method: "enterprise LLM", created_at: nowIso() };
+    return {
+      draft_id: uid("draft"),
+      source_ids: [source.source_id],
+      fields,
+      method: "enterprise LLM",
+      created_at: nowIso(),
+      provenance: attested.provenance,
+    };
   } catch {
     return deterministic;
   }

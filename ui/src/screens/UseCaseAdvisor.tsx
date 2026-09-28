@@ -9,12 +9,14 @@ import { UseCaseIntake } from "../features/useCaseIntake/UseCaseIntake";
 import { buildEnterpriseActionPlan } from "../lib/actionPlan";
 import { recommendLoops } from "../lib/recommendation";
 import { validateUseCase } from "../lib/validation";
-import type { EnterpriseActionPlan, LoopDetail, LoopOSData, LoopRecommendation, UseCaseInput, UseCaseSource } from "../types";
+import type { EnterpriseActionPlan, LoopDetail, LoopOSData, LoopRecommendation, OutcomeMeasurementPlan, UseCaseInput, UseCaseSource } from "../types";
 
 const AI_SCOPES = ["AI readiness", "GenAI use case", "Agentic AI", "RAG improvement", "Existing use-case enhancement", "Release/compliance governance"];
 const SENSITIVITY = ["low", "internal", "sensitive", "regulated", "restricted"];
 const MATURITY = ["idea", "discovery", "pilot", "production", "scale"];
 const ENVIRONMENTS = ["development", "pilot", "production", "enterprise portfolio"];
+const MEASUREMENT_UNITS = ["hours", "count", "percent"] as const;
+const EMPTY_MEASUREMENT_PLAN: OutcomeMeasurementPlan = { metric: "", unit: "count", baseline: null, target: null, source: "", observation_window: "" };
 
 export type AdvisorPane = "input" | "results";
 
@@ -27,6 +29,14 @@ const DEFAULT_USE_CASE: UseCaseInput = {
   businessOutcome: "Reduce time to govern agentic AI use cases while preventing unsafe tool execution and missing evidence.",
   maturity: "discovery",
   constraints: "Must support compliance evidence, access controls, audit logging, and human handoffs before production.",
+  outcomeMeasurement: {
+    metric: "Governance cycle time",
+    unit: "hours",
+    baseline: 40,
+    target: 16,
+    source: "Example only - replace with an approved system of record",
+    observation_window: "90 days",
+  },
 };
 
 export function UseCaseAdvisor({
@@ -74,6 +84,13 @@ export function UseCaseAdvisor({
   }, [activePane]);
 
   const update = (field: keyof UseCaseInput, value: string) => onInputChange({ ...input, [field]: value });
+  const updateMeasurement = (field: keyof OutcomeMeasurementPlan, value: string) => {
+    const current = input.outcomeMeasurement ?? EMPTY_MEASUREMENT_PLAN;
+    const nextValue = field === "baseline" || field === "target"
+      ? (value === "" ? null : Number(value))
+      : value;
+    onInputChange({ ...input, outcomeMeasurement: { ...current, [field]: nextValue } as OutcomeMeasurementPlan });
+  };
 
   const downloadPlan = () => {
     onPlanChange(actionPlan);
@@ -143,6 +160,28 @@ export function UseCaseAdvisor({
           <Field label="Business outcome">
             <input className="control min-h-10 w-full px-3 text-sm" value={input.businessOutcome} onChange={(event) => update("businessOutcome", event.target.value)} />
           </Field>
+          <div className="rounded-panel border border-border2 bg-bg2 p-3">
+            <div className="mb-3 text-sm font-semibold text-fg1">Outcome measurement plan</div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Metric">
+                <input className="control min-h-10 w-full px-3 text-sm" value={input.outcomeMeasurement?.metric ?? ""} placeholder="e.g. review cycle time" onChange={(event) => updateMeasurement("metric", event.target.value)} />
+              </Field>
+              <SelectField label="Unit" value={input.outcomeMeasurement?.unit ?? "count"} values={[...MEASUREMENT_UNITS]} onChange={(value) => updateMeasurement("unit", value)} />
+              <Field label="Baseline value">
+                <input className="control min-h-10 w-full px-3 text-sm" type="number" value={input.outcomeMeasurement?.baseline ?? ""} onChange={(event) => updateMeasurement("baseline", event.target.value)} />
+              </Field>
+              <Field label="Target value">
+                <input className="control min-h-10 w-full px-3 text-sm" type="number" value={input.outcomeMeasurement?.target ?? ""} onChange={(event) => updateMeasurement("target", event.target.value)} />
+              </Field>
+              <Field label="Evidence source">
+                <input className="control min-h-10 w-full px-3 text-sm" value={input.outcomeMeasurement?.source ?? ""} placeholder="System of record or evidence reference" onChange={(event) => updateMeasurement("source", event.target.value)} />
+              </Field>
+              <Field label="Observation window">
+                <input className="control min-h-10 w-full px-3 text-sm" value={input.outcomeMeasurement?.observation_window ?? ""} placeholder="e.g. 90 days" onChange={(event) => updateMeasurement("observation_window", event.target.value)} />
+              </Field>
+            </div>
+            <p className="mt-2 text-xs text-fg3">This defines what will be measured. It is not proof until an actual observation is recorded from the named source.</p>
+          </div>
           <Field label="Constraints">
             <textarea className="control min-h-20 w-full px-3 py-2 text-sm" value={input.constraints} onChange={(event) => update("constraints", event.target.value)} />
           </Field>

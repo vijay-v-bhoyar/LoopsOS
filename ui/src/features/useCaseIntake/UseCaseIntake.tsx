@@ -6,12 +6,12 @@ import { Button } from "../../components/Button";
 import { HelpPopover, InlineNote } from "../../components/Help";
 import { llmEndpoint, transcriptionEndpoint } from "../../lib/runtimeConfig";
 import { nowIso, uid } from "../../lib/workspaceStore";
-import type { UseCaseDraft, UseCaseInput, UseCaseSource } from "../../types";
+import type { UseCaseDraft, UseCaseInput, UseCaseSource, UseCaseTextField } from "../../types";
 import { extractDocument, INTAKE_LIMITS, IntakeError } from "./documentExtraction";
 import { applyUseCaseDraft, enhanceUseCaseProposal, proposeUseCaseFields } from "./fieldProposal";
 import { useVoiceCapture } from "./useVoiceCapture";
 
-const FIELD_LABELS: Record<keyof UseCaseInput, string> = {
+const FIELD_LABELS: Record<Exclude<keyof UseCaseInput, "outcomeMeasurement">, string> = {
   title: "Use-case title",
   description: "Workflow and problem",
   environment: "Environment",
@@ -174,7 +174,7 @@ export function UseCaseIntake({
     setMessage(enhanced.method === "enterprise LLM" ? "Enterprise AI suggestions are ready for review." : "Enterprise AI was unavailable. Deterministic suggestions were preserved.");
   };
 
-  const updateDraftValue = (field: keyof UseCaseInput, value: string) => {
+  const updateDraftValue = (field: UseCaseTextField, value: string) => {
     setDraft((current) => current ? { ...current, fields: current.fields.map((proposal) => proposal.field === field ? { ...proposal, value } : proposal) } : current);
   };
 

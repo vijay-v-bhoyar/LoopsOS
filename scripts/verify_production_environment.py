@@ -19,6 +19,7 @@ if str(AUTHORITY_ROOT) not in sys.path:
 
 from loopos_authority.config import Settings, _connector_credentials_allowlisted, _connector_credentials_are_brokered, _http_host_is_valid, _outbound_policy_valid, _safe_urlparse, _secure_cors_origins, _secure_postgres_dsn, operational_binding_status  # noqa: E402
 from loopos_authority.contracts import REQUIRED_AUDIT_TRIGGERS, REQUIRED_POSTGRES_TABLES  # noqa: E402
+from loopos_authority.effect_budget import EffectBudgetDenied, validate_policy  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,32 @@ def _check(name: str, passed: bool, success: str, failure: str) -> Configuration
 
 def _environment_value(name: str) -> str:
     return os.getenv(name, "").strip()
+
+
+def _aggregate_effect_budget_configured(settings: Settings) -> bool:
+    """Check declarations only; live readiness verifies durable policy fencing."""
+    try:
+        policy = validate_policy(settings.effect_budget_policy)
+    except (EffectBudgetDenied, TypeError, ValueError):
+        return False
+    if settings.outbound_policy_mode == "deny_all":
+        return _outbound_policy_valid(settings)
+    if settings.outbound_policy_mode != "allowlist" or not policy.get("tenants"):
+        return False
+    allowed_hosts = set(settings.allowed_http_hosts)
+    for tenant in policy["tenants"].values():
+        for route in tenant["routes"]:
+            endpoint = route["endpoint"]
+            parsed = _safe_urlparse(endpoint)
+            if (
+                parsed is None or parsed.scheme != "https" or not parsed.hostname
+                or any((parsed.username, parsed.password, parsed.fragment))
+                or any(mark in endpoint for mark in ("\\", "?", "#"))
+                or not _http_host_is_valid(parsed.hostname.lower())
+                or not ({parsed.hostname.lower(), parsed.netloc.lower()} & allowed_hosts)
+            ):
+                return False
+    return True
 
 
 def _rate_limit_configuration_is_secure(settings: Settings | None = None) -> bool:
@@ -407,6 +434,24 @@ def production_configuration_report() -> dict[str, Any]:
             "Configure LOOPOS_AUDIT_ANCHOR_URL and LOOPOS_AUDIT_ANCHOR_HMAC_SECRET together.",
         ),
         _check(
+            "audit_anchor_epoch_configured",
+            settings.audit_anchor_epoch is not None,
+            "Audit-anchor delivery is bound to an explicit monotonic epoch.",
+            "Set LOOPOS_AUDIT_ANCHOR_EPOCH to a positive monotonic integer and increment it for every target or key rotation.",
+        ),
+        _check(
+            "release_attestor_configured",
+            settings.github_release_attestor_app_id is not None and bool(settings.github_release_workflow_ids),
+            "Release readiness is bound to an approved GitHub App and workflow allowlist.",
+            "Set LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID and LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS to the approved publisher and workflow IDs.",
+        ),
+        _check(
+            "aggregate_effect_budget_configured",
+            _aggregate_effect_budget_configured(settings),
+            "Outbound effects are denied, or an explicit cumulative policy has valid units and allowlisted HTTPS routes. Durable fencing and business approval require live verification.",
+            "Set LOOPOS_EFFECT_BUDGET_POLICY_JSON to a reviewed cumulative tenant policy with explicit ceilings and allowlisted HTTPS routes, or use a valid deny_all outbound policy. No default business ceiling is supplied.",
+        ),
+        _check(
             "retention_evidence_configured",
             bindings["retention_verified"],
             "The retention binding has current immutable operational evidence.",
@@ -446,13 +491,19 @@ def production_configuration_report() -> dict[str, Any]:
             "credential_injection_broker",
             False,
             "An approved short-lived credential injection broker is integrated and independently verified.",
-            "No credential injection broker is integrated in this release. Remove LOOPOS_CONNECTOR_BEARER_TOKENS_JSON and integrate the approved short-lived broker before production use.",
+            "No runtime credential broker binding is present. Inject an approved workload-identity-backed broker through create_app before production use; static connector tokens remain prohibited.",
         ),
         _check(
             "static_connector_credentials_absent",
             _connector_credentials_are_brokered(settings),
             "No static connector credentials are present.",
             "Remove LOOPOS_CONNECTOR_BEARER_TOKENS_JSON; static connector credentials cannot be used in production.",
+        ),
+        _check(
+            "global_break_glass_configured",
+            bool(settings.break_glass_token),
+            "A separately configured break-glass token is available for global stop control.",
+            "Configure LOOPOS_BREAK_GLASS_TOKEN with at least 32 bytes and protect it outside the application session path.",
         ),
         _check(
             "enterprise_ui_contract_declared",
@@ -526,8 +577,10 @@ def _required_live_proofs() -> list[str]:
         "deployed API routing and HTTPS reachability",
         "managed Postgres connectivity and tenant isolation",
         "two real OIDC identity assertions resolving to different tenants",
+        "controlled global break-glass activation and deactivation with audit evidence",
         "verified external audit-anchor delivery with zero backlog",
         "fresh worker dispatch heartbeat from the configured mode",
+        "approved aggregate exposure metrics and durable policy epoch, reservation, and unknown-outcome enforcement",
         "exact restore and operational evidence byte validation",
         "reversible production handover verifier GO report",
     ]

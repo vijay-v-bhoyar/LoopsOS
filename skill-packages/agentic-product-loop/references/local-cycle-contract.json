@@ -1,0 +1,9 @@
+{
+  "adapter_sha256": "e1fee0004fbae6dd12302fdcf53cb6e1fb0f05b154f2f6d3eb03777b6e254468",
+  "contract": "product-loop/local-cycle@1",
+  "schema": 1,
+  "canonical_reference_sha256": "94c691b89e0cc5987d3bbe03dcecaf80f2e62a29e80411e2d8df90f9a0259aeb",
+  "release": "BLOCKED_LEGACY_COMPATIBILITY",
+  "parent_acceptance": "NOT_EVALUATED",
+  "scope": "portable-local-lane-only"
+}

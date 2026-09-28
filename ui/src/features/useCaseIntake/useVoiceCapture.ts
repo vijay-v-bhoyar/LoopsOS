@@ -38,6 +38,8 @@ interface VoiceCaptureOptions {
   dependencies?: VoiceDependencies;
 }
 
+const MAX_ENTERPRISE_AUDIO_BYTES = 10 * 1024 * 1024;
+
 function browserSpeechConstructor(): SpeechRecognitionConstructor | null {
   if (typeof window === "undefined") return null;
   const candidate = window as unknown as {
@@ -205,6 +207,7 @@ export function useVoiceCapture(options: VoiceCaptureOptions = {}) {
       const payload = await secureJsonRequest<EnterpriseTranscriptionResponse>(options.endpoint, {
         fetchImpl: dependencies.fetchImpl,
         init: { method: "POST", body },
+        maxRequestBytes: MAX_ENTERPRISE_AUDIO_BYTES,
         maxResponseBytes: 500_000,
         timeoutMs: 30_000,
         validate: isEnterpriseTranscriptionResponse,

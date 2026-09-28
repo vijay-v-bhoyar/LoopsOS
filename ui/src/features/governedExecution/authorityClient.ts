@@ -55,6 +55,7 @@ export interface AuthorityReadiness {
   storage_backend: string;
   production_identity: boolean;
   credential_injection_broker_verified: boolean;
+  aggregate_effect_budget_verified: boolean;
   audit_anchor_configured: boolean;
   audit_anchor_backlog: number;
   audit_anchor_delivery_verified: boolean;
@@ -199,7 +200,7 @@ function isReleaseGate(value: unknown): boolean {
     && isStringArray(value.control_ids)
     && isStringArray(value.required_evidence)
     && isReleaseGateStatus(value.status)
-    && isNonEmptyString(value.blocker)
+    && typeof value.blocker === "string"
     && (value.last_decision === undefined || isGateDecision(value.last_decision));
 }
 
@@ -286,6 +287,21 @@ function isReadinessVerdict(value: unknown): boolean {
     && (value.review_reasons === undefined || isStringArray(value.review_reasons));
 }
 
+function isReleaseReviewContext(value: unknown): boolean {
+  if (value === undefined) return true; // Older records remain readable, never reviewable.
+  if (!isRecord(value) || !isSha256(value.subject_digest) || !isSha256(value.policy_digest)
+    || !isSha256(value.evidence_digest) || typeof value.reviewable !== "boolean"
+    || !isStringArray(value.blocking_reasons)
+    || (value.blocking_observed_check_event_ids !== undefined && !isStringArray(value.blocking_observed_check_event_ids))
+    || (value.reviewable && value.blocking_reasons.length > 0)) return false;
+  const review = value.latest_review;
+  return review === null || (isRecord(review)
+    && isNonEmptyString(review.review_id) && (review.decision === "approve" || review.decision === "reject")
+    && isNonEmptyString(review.reviewer_id) && (review.reviewer_role === "Approver" || review.reviewer_role === "Executive")
+    && isIsoTimestamp(review.reviewed_at) && isNonEmptyString(review.basis)
+    && isSha256(review.subject_digest) && isSha256(review.policy_digest) && isSha256(review.evidence_digest));
+}
+
 function isReleaseAssuranceProfile(value: unknown): value is ReleaseAssuranceProfile {
   return isRecord(value)
     && isNonEmptyString(value.profile_id)
@@ -350,6 +366,7 @@ function isReleaseInitiativeRecord(value: unknown): value is ReleaseInitiativeRe
     && isReleaseAssuranceProfile(value.release_assurance)
     && isFreshnessSummary(value.freshness_summary)
     && isReadinessVerdict(value.readiness_verdict)
+    && isReleaseReviewContext(value.review_context)
     && isNonEmptyString(value.created_by)
     && isIsoTimestamp(value.created_at)
     && isIsoTimestamp(value.updated_at);
@@ -444,6 +461,7 @@ function isKillSwitchStatus(value: unknown, tenantId: string): value is KillSwit
     && value.tenant_id === tenantId
     && value.scope === "tenant"
     && typeof value.active === "boolean"
+    && (value.global_active === undefined || typeof value.global_active === "boolean")
     && (value.activation_id === null || isNonEmptyString(value.activation_id))
     && (value.reason === null || typeof value.reason === "string")
     && (value.actor_id === null || isNonEmptyString(value.actor_id))
@@ -668,6 +686,7 @@ function isAuthorityReadiness(value: unknown): value is AuthorityReadiness {
     || value.production_identity !== true
     || typeof value.credential_injection_broker_verified !== "boolean"
     || value.credential_injection_broker_verified !== true
+    || value.aggregate_effect_budget_verified !== true
     || typeof value.audit_anchor_configured !== "boolean"
     || value.audit_anchor_configured !== true
     || !isNonNegativeInteger(value.audit_anchor_backlog)
@@ -857,6 +876,10 @@ export async function createEnterpriseSession(): Promise<AuthoritySession> {
   }, 900);
 }
 
+export async function revokeAuthoritySession(token: string): Promise<void> {
+  await requestNoContent("/v1/session/revoke", authorized(token, { method: "POST" }));
+}
+
 export async function createAuthoritySession(
   user: EnterpriseUser,
   mode: DeploymentMode = deploymentPosture.mode,
@@ -965,6 +988,37 @@ export async function listReleaseInitiatives(token: string, workspaceId: string,
     (value): value is ReleaseInitiativeRecord[] => Array.isArray(value)
       && value.every((initiative) => isReleaseInitiativeRecord(initiative) && initiative.workspace_id === workspaceId && initiative.tenant_id === tenantId),
     "Authority returned invalid release initiative data.",
+  );
+}
+
+export async function reviewReleaseInitiative(
+  token: string, initiative: ReleaseInitiativeRecord, decision: "approve" | "reject", basis: string,
+  tenantId: string, reviewerId: string,
+): Promise<ReleaseInitiativeRecord> {
+  const context = initiative.review_context;
+  if (!context || !isReleaseReviewContext(context) || (decision === "approve" && !context.reviewable)) {
+    throw new AuthorityError("Current authority review evidence is missing or blocked. Refresh the release record.");
+  }
+  if (initiative.tenant_id !== tenantId || initiative.created_by === reviewerId) {
+    throw new AuthorityError("A release requires a separate reviewer in the same tenant.");
+  }
+  if (basis.trim().length < 10 || basis.length > 4000) throw new AuthorityError("Provide a review rationale of 10 to 4,000 characters.");
+  const payload = { decision, basis: basis.trim(), previous_review_id: context.latest_review?.review_id ?? null, subject_digest: context.subject_digest,
+    policy_digest: context.policy_digest, evidence_digest: context.evidence_digest };
+  // Retrying an uncertain response reuses the same exact operation identity.
+  const key = `release-review-${await sha256Hex(JSON.stringify({ initiative_id: initiative.initiative_id, reviewerId, ...payload }))}`;
+  return requestValidated<ReleaseInitiativeRecord>(
+    `/v1/release-initiatives/${encodeURIComponent(initiative.initiative_id)}/reviews`,
+    authorized(token, { method: "POST", headers: { "content-type": "application/json", "idempotency-key": key }, body: JSON.stringify(payload) }),
+    (value): value is ReleaseInitiativeRecord => {
+      if (!isReleaseInitiativeRecord(value) || value.tenant_id !== tenantId || value.workspace_id !== initiative.workspace_id
+        || value.initiative_id !== initiative.initiative_id) return false;
+      const review = value.review_context?.latest_review;
+      return Boolean(review && review.reviewer_id === reviewerId && review.decision === decision
+        && review.basis === payload.basis && review.subject_digest === context.subject_digest
+        && review.policy_digest === context.policy_digest && review.evidence_digest === context.evidence_digest);
+    },
+    "Authority returned a review for a different subject, evidence, policy or reviewer.",
   );
 }
 

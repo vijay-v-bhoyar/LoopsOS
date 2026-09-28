@@ -1,9 +1,26 @@
-import type { LoopRecommendation, QuestionSuggestion, UseCaseInput } from "../types";
-import { uid } from "./workspaceStore";
-import { secureJsonRequest } from "./secureRequest";
-import { llmEndpoint, llmTimeoutMs } from "./runtimeConfig";
+import type { AIProvenance, LoopRecommendation, QuestionSuggestion, UseCaseInput } from "../types";
+import { nowIso, uid } from "./workspaceStore";
+import { requestAttestedLlm } from "./llmProvenance";
+import { llmEndpoint } from "./runtimeConfig";
 
 type QuestionTargetField = QuestionSuggestion["target_field"];
+const DETERMINISTIC_PROMPT_VERSION = "loopos_use_case_questions_rules_v1";
+const EXTERNAL_PROMPT_VERSION = "loopos_use_case_questions_v1";
+
+function provenance(source: AIProvenance["source"], consent_granted: boolean, prompt_version: string): AIProvenance {
+  return {
+    source,
+    provider: "LoopOS",
+    model: "rules",
+    prompt_version,
+    consent_granted,
+    generated_at: nowIso(),
+  };
+}
+
+function allowsExternalQuestions(input: UseCaseInput): boolean {
+  return input.dataSensitivity === "low" || input.dataSensitivity === "internal";
+}
 
 interface QuestionResponse {
   questions: Array<{
@@ -36,7 +53,7 @@ function isQuestionResponse(value: unknown): value is QuestionResponse {
 
 export function buildDeterministicQuestions(input: UseCaseInput, recommendations: LoopRecommendation[]): QuestionSuggestion[] {
   const text = `${input.title} ${input.description} ${input.businessOutcome} ${input.constraints}`.toLowerCase();
-  const questions: Array<Omit<QuestionSuggestion, "question_id" | "source">> = [];
+  const questions: Array<Omit<QuestionSuggestion, "question_id" | "source" | "provenance">> = [];
 
   if (!input.businessOutcome.trim()) {
     questions.push({
@@ -88,6 +105,7 @@ export function buildDeterministicQuestions(input: UseCaseInput, recommendations
     ...question,
     question_id: uid("question"),
     source: "deterministic fallback",
+    provenance: provenance("deterministic", false, DETERMINISTIC_PROMPT_VERSION),
   }));
 }
 
@@ -97,30 +115,23 @@ export async function getQuestionSuggestions(
   options: { consent: boolean },
 ): Promise<QuestionSuggestion[]> {
   const endpoint = llmEndpoint();
-  if (!endpoint || !options.consent) {
+  if (!endpoint || !options.consent || !allowsExternalQuestions(input)) {
     return buildDeterministicQuestions(input, recommendations);
   }
 
   try {
-    const payload = await secureJsonRequest<QuestionResponse>(endpoint, {
-      init: {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          task: "loopos_use_case_questions",
-          useCase: input,
-          recommendations: recommendations.slice(0, 10),
-        }),
-      },
-      timeoutMs: llmTimeoutMs(),
-      validate: isQuestionResponse,
+    const attested = await requestAttestedLlm(endpoint, "loopos_use_case_questions", EXTERNAL_PROMPT_VERSION, {
+      useCase: input, recommendations: recommendations.slice(0, 10),
     });
+    const payload = attested.result;
+    if (!isQuestionResponse(payload)) return buildDeterministicQuestions(input, recommendations);
     const questions = payload.questions;
     if (!questions.length) return buildDeterministicQuestions(input, recommendations);
     return questions.slice(0, 6).map((question) => ({
       ...question,
       question_id: uid("question"),
       source: "LLM endpoint",
+      provenance: attested.provenance,
     }));
   } catch {
     return buildDeterministicQuestions(input, recommendations);

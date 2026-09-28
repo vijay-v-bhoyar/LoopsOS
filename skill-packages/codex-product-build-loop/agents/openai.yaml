@@ -1,0 +1,6 @@
+interface:
+  display_name: "Codex Product Build Loop"
+  short_description: "Build, enhance, and test products with evidence"
+  default_prompt: "Use $codex-product-build-loop to implement and verify this product change with scoped, evidence-backed results."
+policy:
+  allow_implicit_invocation: true

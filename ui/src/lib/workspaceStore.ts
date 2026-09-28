@@ -6,6 +6,7 @@ import {
   deleteAuthorityWorkspace,
   getAuthorityReadiness,
   listAuthorityWorkspaces,
+  revokeAuthoritySession,
   updateAuthorityWorkspace,
   type AuthorityReadiness,
   type AuthorityWorkspaceRecord,
@@ -60,6 +61,7 @@ export interface WorkspaceAuthorityAdapter {
   createWorkspace: (token: string, workspace: SavedWorkspace) => Promise<AuthorityWorkspaceRecord>;
   updateWorkspace: (token: string, workspace: SavedWorkspace, revision: number) => Promise<AuthorityWorkspaceRecord>;
   deleteWorkspace: (token: string, workspaceId: string, revision: number) => Promise<void>;
+  revokeSession?: (token: string) => Promise<void>;
 }
 
 export interface WorkspaceStoreOptions {
@@ -120,6 +122,7 @@ const DEFAULT_AUTHORITY_ADAPTER: WorkspaceAuthorityAdapter = {
   createWorkspace: createAuthorityWorkspace,
   updateWorkspace: updateAuthorityWorkspace,
   deleteWorkspace: deleteAuthorityWorkspace,
+  revokeSession: revokeAuthoritySession,
 };
 
 export const EMPTY_STATE: WorkspaceState = {
@@ -159,6 +162,15 @@ export function loadWorkspaceState(): WorkspaceState {
   }
 }
 
+export function clearLocalWorkspaceState(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // A storage failure is non-recoverable here; sign-out still clears memory state.
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -185,6 +197,7 @@ function normalizeWorkspace(value: unknown): SavedWorkspace | null {
     initiatives: [],
     question_suggestions: [],
     input_sources: [],
+    help_requests: [],
   };
   const candidate: Record<string, unknown> = { ...value };
   for (const [field, fallback] of Object.entries(legacyDefaults)) {
@@ -247,6 +260,7 @@ export function createWorkspace(user: EnterpriseUser, name: string, useCase: Use
     initiatives: [],
     question_suggestions: [],
     input_sources: [],
+    help_requests: [],
   };
 }
 
@@ -552,6 +566,8 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
 
   const signOut = useCallback(() => {
     if (mode === "enterprise") {
+      const token = tokenRef.current;
+      if (token && authority.revokeSession) void authority.revokeSession(token).catch(() => undefined);
       bootstrapGenerationRef.current += 1;
       tokenRef.current = null;
       authorityHydratedRef.current = false;
@@ -562,7 +578,7 @@ export function useWorkspaceStore(options: WorkspaceStoreOptions = {}) {
       return;
     }
     setState((current) => ({ ...current, current_user: null }));
-  }, [mode]);
+  }, [authority, mode]);
 
   const retryEnterpriseSignIn = useCallback(() => {
     if (mode === "enterprise") setSessionAttempt((attempt) => attempt + 1);

@@ -1,3 +1,9 @@
 # TypeScript's emitted Vite config is a generated runtime artifact; graph the source config once.
 /ui/vite.config.js
 /ui/vite.config.d.ts
+
+# Generated test evidence and artifacts are not application source for navigation.
+/output/
+
+# Run ledgers and repair histories are evidence, not implementation source.
+/.loop/

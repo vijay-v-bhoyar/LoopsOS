@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 import threading
 import uuid
@@ -11,7 +12,11 @@ from pathlib import Path
 from typing import Any, Iterator, Protocol
 
 from .corpus import Corpus, RISK_ORDER
-from .models import Actor, ApprovalRequest, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, ExecutionPlan, RecordReleaseInitiativeRequest, ReleaseInitiativeRecord, ReleaseProofPack, RunRecord, WorkspaceRecord, validate_release_assurance
+from .models import ReleaseReviewRequest
+from .release_policy import evaluate_release
+from .models import Actor, ApprovalRequest, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, ExecutionPlan, RecordReleaseInitiativeRequest, ReleaseInitiativeRecord, ReleaseProofPack, RunRecord, WorkspaceRecord, validate_release_assurance, validate_workspace_document
+
+GLOBAL_KILL_SWITCH_TENANT_ID = "__loopos_global__"
 
 
 def utc_now() -> str:
@@ -48,12 +53,21 @@ class Conflict(StoreError):
     pass
 
 
+class AuditAnchorFenceError(Conflict):
+    """The worker configuration is stale, conflicting, or awaiting safe drain."""
+
+
+class ReleasePolicyFenceError(Conflict):
+    """The release evaluator is stale or disagrees with the shared active epoch."""
+
+
 class Forbidden(StoreError):
     pass
 
 
 class StoreCursor(Protocol):
     lastrowid: int | None
+    rowcount: int
 
     def execute(self, sql: str, parameters: tuple[Any, ...] | list[Any] = ()) -> "StoreCursor":
         ...
@@ -68,6 +82,43 @@ class StoreCursor(Protocol):
         ...
 
 
+def _validate_help_request_history(previous: dict[str, Any] | None, candidate: dict[str, Any], actor: Actor) -> None:
+    previous_requests = previous.get("help_requests", []) if previous else []
+    candidate_requests = candidate.get("help_requests", [])
+    previous_by_id = {item["help_request_id"]: item for item in previous_requests}
+    candidate_by_id = {item["help_request_id"]: item for item in candidate_requests}
+    if set(previous_by_id) - set(candidate_by_id):
+        raise Conflict("Help-request history cannot be removed from an authoritative workspace.")
+
+    mutable_fields = {"status", "attempts", "updated_at", "events"}
+    for request_id, old_request in previous_by_id.items():
+        new_request = candidate_by_id[request_id]
+        old_fixed = {key: value for key, value in old_request.items() if key not in mutable_fields}
+        new_fixed = {key: value for key, value in new_request.items() if key not in mutable_fields}
+        if old_fixed != new_fixed:
+            raise Conflict("Help-request identity and scope fields are immutable after creation.")
+        old_events = old_request["events"]
+        new_events = new_request["events"]
+        if len(new_events) < len(old_events) or new_events[:len(old_events)] != old_events:
+            raise Conflict("Help-request event history is append-only and cannot be rewritten or replayed.")
+        additions = new_events[len(old_events):]
+        if not additions and new_request != old_request:
+            raise Conflict("Help-request state must be derived from newly appended events.")
+        for event in additions:
+            if event["type"] in {"revalidation_planned", "revalidation_result"} and actor.role != "Approver":
+                raise Forbidden("Only an authenticated Approver may plan or record help-request revalidation.")
+            if event["actor_id"] != actor.user_id or event["actor_name"] != actor.name:
+                raise Forbidden("New help-request events must be attributed to the authenticated actor.")
+
+    for request_id in set(candidate_by_id) - set(previous_by_id):
+        request = candidate_by_id[request_id]
+        events = request["events"]
+        if (request["requested_by_id"] != actor.user_id or request["requested_by"] != actor.name
+                or len(events) != 1 or events[0]["type"] != "draft_created"
+                or events[0]["actor_id"] != actor.user_id or events[0]["actor_name"] != actor.name):
+            raise Forbidden("A new help request must begin as a draft attributed to the authenticated actor.")
+
+
 class AuthorityStore:
     def __init__(self, database_path: Path, corpus: Corpus):
         database_path.parent.mkdir(parents=True, exist_ok=True)
@@ -75,7 +126,12 @@ class AuthorityStore:
         self.connection = sqlite3.connect(database_path, check_same_thread=False, isolation_level=None)
         self.connection.row_factory = sqlite3.Row
         self.lock = threading.RLock()
+        self._init_release_policy_state()
         self._initialize()
+
+    def _init_release_policy_state(self) -> None:
+        self._release_policy_snapshot: dict[str, Any] | None = None
+        self._release_policy_activation_error: str | None = None
 
     def close(self) -> None:
         with self.lock:
@@ -84,6 +140,177 @@ class AuthorityStore:
     def verify_schema(self) -> None:
         """Confirm that storage initialization completed successfully."""
         return None
+
+    def activate_release_policy(self, policy: dict[str, Any]) -> bool:
+        epoch = policy.get("policy_epoch")
+        policy_digest = policy.get("policy_digest")
+        evaluator_digest = policy.get("evaluator_digest")
+        version = policy.get("version")
+        if (
+            type(epoch) is not int
+            or not 0 < epoch <= 9_223_372_036_854_775_807
+            or not isinstance(policy_digest, str)
+            or len(policy_digest) != 64
+            or not isinstance(evaluator_digest, str)
+            or len(evaluator_digest) != 64
+            or not isinstance(version, str)
+            or not version
+        ):
+            raise ValueError("A release policy requires a positive epoch, version, and SHA-256 digests.")
+
+        self._release_policy_snapshot = dict(policy)
+        self._release_policy_activation_error = None
+        activated_at = utc_now()
+        with self.transaction() as cursor:
+            inserted = cursor.execute(
+                """
+                INSERT INTO release_policy_control
+                  (singleton, epoch, policy_version, policy_digest, evaluator_digest, activated_at)
+                VALUES (1, ?, ?, ?, ?, ?)
+                ON CONFLICT (singleton) DO NOTHING
+                """,
+                (epoch, version, policy_digest, evaluator_digest, activated_at),
+            ).rowcount == 1
+            # This row update takes the same database lock in every worker before
+            # it compares or advances the active policy identity.
+            cursor.execute("UPDATE release_policy_control SET epoch = epoch WHERE singleton = 1")
+            active = cursor.execute(
+                "SELECT * FROM release_policy_control WHERE singleton = 1"
+            ).fetchone()
+            if active is None:
+                self._release_policy_activation_error = "The shared release policy epoch row is unavailable."
+                return False
+
+            active_epoch = int(active["epoch"])
+            reason: str | None = None
+            if epoch > active_epoch:
+                cursor.execute(
+                    """
+                    UPDATE release_policy_control
+                    SET epoch = ?, policy_version = ?, policy_digest = ?, evaluator_digest = ?, activated_at = ?
+                    WHERE singleton = 1
+                    """,
+                    (epoch, version, policy_digest, evaluator_digest, activated_at),
+                )
+                reason = "epoch_advanced"
+                active_epoch = epoch
+            elif epoch < active_epoch:
+                self._release_policy_activation_error = "This worker is older than the active release policy epoch."
+                return False
+            elif (
+                active["policy_digest"] != policy_digest
+                or active["evaluator_digest"] != evaluator_digest
+                or active["policy_version"] != version
+            ):
+                if active_epoch >= 9_223_372_036_854_775_807:
+                    self._release_policy_activation_error = (
+                        "The release policy changed at the maximum epoch; operator intervention is required."
+                    )
+                    return False
+                fenced_epoch = active_epoch + 1
+                cursor.execute(
+                    "UPDATE release_policy_control SET epoch = ?, activated_at = ? WHERE singleton = 1",
+                    (fenced_epoch, activated_at),
+                )
+                self._append_event_cursor(
+                    cursor,
+                    "__loopos_policy__",
+                    None,
+                    "RELEASE_POLICY_EPOCH_FENCED",
+                    None,
+                    "authority_startup",
+                    {
+                        "active_epoch": active_epoch,
+                        "fenced_epoch": fenced_epoch,
+                        "active_policy_version": active["policy_version"],
+                        "active_policy_digest": active["policy_digest"],
+                        "active_evaluator_digest": active["evaluator_digest"],
+                        "requested_epoch": epoch,
+                        "requested_policy_version": version,
+                        "requested_policy_digest": policy_digest,
+                        "requested_evaluator_digest": evaluator_digest,
+                        "reason": "policy_changed_without_advancing_epoch",
+                    },
+                )
+                self._release_policy_activation_error = (
+                    "The release policy changed without advancing its epoch; guarded workers were fenced. "
+                    f"Activate the intended policy at an epoch greater than {fenced_epoch}."
+                )
+                return False
+            elif inserted:
+                reason = "initial_activation"
+
+            if reason is not None:
+                previous_epoch = active["epoch"] if reason == "epoch_advanced" else None
+                previous_digest = active["policy_digest"] if reason == "epoch_advanced" else None
+                self._append_event_cursor(
+                    cursor,
+                    "__loopos_policy__",
+                    None,
+                    "RELEASE_POLICY_EPOCH_ACTIVATED",
+                    None,
+                    "authority_startup",
+                    {
+                        "epoch": epoch,
+                        "policy_version": version,
+                        "policy_digest": policy_digest,
+                        "evaluator_digest": evaluator_digest,
+                        "previous_epoch": previous_epoch,
+                        "previous_policy_digest": previous_digest,
+                        "reason": reason,
+                        "activated_at": activated_at,
+                    },
+                )
+        return self._release_policy_activation_error is None
+
+    def release_policy_status(self, cursor: StoreCursor | None = None) -> dict[str, Any]:
+        snapshot = self._release_policy_snapshot
+        if snapshot is None:
+            return {
+                "current": False,
+                "worker_epoch": None,
+                "active_epoch": None,
+                "reason": "This worker has not bound a release policy snapshot.",
+            }
+
+        def read_status(active_cursor: StoreCursor) -> dict[str, Any]:
+            active_cursor.execute("UPDATE release_policy_control SET epoch = epoch WHERE singleton = 1")
+            active = active_cursor.execute(
+                "SELECT * FROM release_policy_control WHERE singleton = 1"
+            ).fetchone()
+            if active is None:
+                return {
+                    "current": False,
+                    "worker_epoch": snapshot["policy_epoch"],
+                    "active_epoch": None,
+                    "reason": "The shared release policy epoch row is unavailable.",
+                }
+            current = (
+                int(active["epoch"]) == snapshot["policy_epoch"]
+                and active["policy_digest"] == snapshot["policy_digest"]
+                and active["evaluator_digest"] == snapshot["evaluator_digest"]
+                and active["policy_version"] == snapshot["version"]
+            )
+            return {
+                "current": current,
+                "worker_epoch": snapshot["policy_epoch"],
+                "active_epoch": int(active["epoch"]),
+                "reason": None if current else "This worker is stale or conflicts with the active release policy epoch.",
+            }
+
+        if cursor is not None:
+            return read_status(cursor)
+        with self.transaction() as active_cursor:
+            return read_status(active_cursor)
+
+    def assert_release_policy_current(self, cursor: StoreCursor | None = None) -> dict[str, Any]:
+        status = self.release_policy_status(cursor)
+        if not status["current"]:
+            raise ReleasePolicyFenceError(status["reason"])
+        return status
+
+    def release_policy_is_current(self) -> bool:
+        return bool(self.release_policy_status()["current"])
 
     @contextmanager
     def transaction(self) -> Iterator[StoreCursor]:
@@ -272,6 +499,20 @@ class AuthorityStore:
 
                 CREATE INDEX IF NOT EXISTS idx_workspaces_tenant_updated ON workspaces(tenant_id, updated_at DESC);
 
+                CREATE TABLE IF NOT EXISTS sessions (
+                  jti TEXT PRIMARY KEY,
+                  tenant_id TEXT NOT NULL,
+                  user_id TEXT NOT NULL,
+                  role TEXT NOT NULL,
+                  issued_at INTEGER NOT NULL,
+                  expires_at INTEGER NOT NULL,
+                  revoked_at INTEGER,
+                  revoke_reason TEXT
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_sessions_tenant_user ON sessions(tenant_id, user_id, expires_at);
+                CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
+
                 CREATE TABLE IF NOT EXISTS audit_events (
                   sequence INTEGER PRIMARY KEY AUTOINCREMENT,
                   event_id TEXT NOT NULL UNIQUE,
@@ -297,11 +538,62 @@ class AuthorityStore:
                   next_attempt_at TEXT NOT NULL,
                   last_error TEXT,
                   delivered_at TEXT,
+                  delivery_binding TEXT,
+                  delivery_epoch INTEGER,
                   created_at TEXT NOT NULL
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_audit_anchor_pending
                   ON audit_anchor_outbox(delivered_at, next_attempt_at, created_at);
+
+                CREATE TABLE IF NOT EXISTS audit_anchor_control (
+                  singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                  active_epoch INTEGER NOT NULL,
+                  active_binding TEXT NOT NULL,
+                  pending_epoch INTEGER,
+                  pending_binding TEXT,
+                  phase TEXT NOT NULL CHECK (phase IN ('active', 'draining')),
+                  updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS audit_anchor_attempts (
+                  attempt_id TEXT PRIMARY KEY,
+                  event_id TEXT NOT NULL REFERENCES audit_anchor_outbox(event_id),
+                  epoch INTEGER NOT NULL,
+                  binding TEXT NOT NULL,
+                  state TEXT NOT NULL CHECK (state IN ('admitted', 'uncertain', 'resolved')),
+                  admitted_at TEXT NOT NULL,
+                  resolved_at TEXT,
+                  detail TEXT
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_audit_anchor_one_admitted_attempt
+                  ON audit_anchor_attempts(event_id) WHERE state = 'admitted';
+                CREATE INDEX IF NOT EXISTS idx_audit_anchor_unresolved_attempts
+                  ON audit_anchor_attempts(epoch, binding, state);
+
+                CREATE TABLE IF NOT EXISTS release_policy_control (
+                  singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                  epoch INTEGER NOT NULL CHECK (epoch > 0),
+                  policy_version TEXT NOT NULL,
+                  policy_digest TEXT NOT NULL CHECK (length(policy_digest) = 64),
+                  evaluator_digest TEXT NOT NULL CHECK (length(evaluator_digest) = 64),
+                  activated_at TEXT NOT NULL
+                );
+
+                CREATE TRIGGER IF NOT EXISTS release_policy_control_monotonic
+                BEFORE UPDATE ON release_policy_control
+                WHEN NEW.epoch < OLD.epoch OR (
+                  NEW.epoch = OLD.epoch AND (
+                    NEW.policy_version != OLD.policy_version OR
+                    NEW.policy_digest != OLD.policy_digest OR
+                    NEW.evaluator_digest != OLD.evaluator_digest OR
+                    NEW.activated_at != OLD.activated_at
+                  )
+                )
+                BEGIN SELECT RAISE(ABORT, 'release policy epoch is monotonic'); END;
+                CREATE TRIGGER IF NOT EXISTS release_policy_control_no_delete
+                BEFORE DELETE ON release_policy_control
+                BEGIN SELECT RAISE(ABORT, 'release policy epoch control cannot be deleted'); END;
 
                 CREATE TRIGGER IF NOT EXISTS audit_events_no_update
                 BEFORE UPDATE ON audit_events BEGIN SELECT RAISE(ABORT, 'audit events are append-only'); END;
@@ -400,10 +692,64 @@ class AuthorityStore:
             if "readiness_verdict_json" not in initiative_columns:
                 self.connection.execute("ALTER TABLE release_initiatives ADD COLUMN readiness_verdict_json TEXT NOT NULL DEFAULT '{}'")
             connector_columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(connector_events)").fetchall()}
+            anchor_columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(audit_anchor_outbox)").fetchall()}
+            if "delivery_binding" not in anchor_columns:
+                self.connection.execute("ALTER TABLE audit_anchor_outbox ADD COLUMN delivery_binding TEXT")
+            if "delivery_epoch" not in anchor_columns:
+                self.connection.execute("ALTER TABLE audit_anchor_outbox ADD COLUMN delivery_epoch INTEGER")
+            self.connection.execute("CREATE INDEX IF NOT EXISTS idx_audit_anchor_delivery_binding ON audit_anchor_outbox(delivery_binding, tenant_id, delivered_at)")
             if "verification_status" not in connector_columns:
                 self.connection.execute("ALTER TABLE connector_events ADD COLUMN verification_status TEXT NOT NULL DEFAULT 'session_authenticated'")
             if "delivery_id" not in connector_columns:
                 self.connection.execute("ALTER TABLE connector_events ADD COLUMN delivery_id TEXT")
+
+    def register_session(
+        self,
+        tenant_id: str,
+        user_id: str,
+        role: str,
+        jti: str,
+        issued_at: int,
+        expires_at: int,
+    ) -> None:
+        with self.transaction() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO sessions(jti, tenant_id, user_id, role, issued_at, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (jti, tenant_id, user_id, role, issued_at, expires_at),
+            )
+
+    def is_session_revoked(self, jti: str) -> bool:
+        with self.lock:
+            row = self.connection.execute(
+                "SELECT revoked_at FROM sessions WHERE jti = ?",
+                (jti,),
+            ).fetchone()
+        return bool(row and row["revoked_at"] is not None)
+
+    def revoke_session(self, jti: str, reason: str) -> None:
+        with self.transaction() as cursor:
+            cursor.execute(
+                """
+                UPDATE sessions
+                SET revoked_at = ?, revoke_reason = ?
+                WHERE jti = ? AND revoked_at IS NULL
+                """,
+                (int(datetime.now(timezone.utc).timestamp()), reason[:240], jti),
+            )
+
+    def revoke_user_sessions(self, tenant_id: str, user_id: str, reason: str) -> None:
+        with self.transaction() as cursor:
+            cursor.execute(
+                """
+                UPDATE sessions
+                SET revoked_at = ?, revoke_reason = ?
+                WHERE tenant_id = ? AND user_id = ? AND revoked_at IS NULL
+                """,
+                (int(datetime.now(timezone.utc).timestamp()), reason[:240], tenant_id, user_id),
+            )
 
     def list_workspaces(self, tenant_id: str, limit: int = 100) -> list[WorkspaceRecord]:
         with self.lock:
@@ -432,10 +778,12 @@ class AuthorityStore:
         expected_revision: int | None,
         create_only: bool,
     ) -> tuple[WorkspaceRecord, bool]:
+        document = validate_workspace_document(document)
         document_json = canonical_json(document)
         document_hash = hashlib.sha256(document_json.encode("utf-8")).hexdigest()
         timestamp = utc_now()
         created = False
+        new_help_events: list[tuple[str, dict[str, Any]]] = []
         with self.transaction() as cursor:
             existing = cursor.execute(
                 "SELECT * FROM workspaces WHERE tenant_id = ? AND workspace_id = ?",
@@ -446,6 +794,19 @@ class AuthorityStore:
                     raise Conflict("Workspace already exists.")
                 if expected_revision != int(existing["revision"]):
                     raise Conflict("Workspace revision does not match the current authoritative record.")
+                previous_document = json.loads(existing["document_json"])
+                _validate_help_request_history(previous_document, document, actor)
+                previous_event_ids = {
+                    (request["help_request_id"], event["event_id"])
+                    for request in previous_document.get("help_requests", [])
+                    for event in request.get("events", [])
+                }
+                new_help_events = [
+                    (request["help_request_id"], event)
+                    for request in document.get("help_requests", [])
+                    for event in request.get("events", [])
+                    if (request["help_request_id"], event["event_id"]) not in previous_event_ids
+                ]
                 revision = int(existing["revision"]) + 1
                 cursor.execute(
                     """
@@ -459,6 +820,12 @@ class AuthorityStore:
             else:
                 if not create_only:
                     raise NotFound("Workspace not found.")
+                _validate_help_request_history(None, document, actor)
+                new_help_events = [
+                    (request["help_request_id"], event)
+                    for request in document.get("help_requests", [])
+                    for event in request.get("events", [])
+                ]
                 revision = 1
                 cursor.execute(
                     """
@@ -479,6 +846,23 @@ class AuthorityStore:
                 actor.user_id,
                 {"workspace_id": workspace_id, "revision": revision, "document_hash": document_hash},
             )
+            for help_request_id, help_event in new_help_events:
+                self._append_event_cursor(
+                    cursor,
+                    actor.tenant_id,
+                    None,
+                    "HELP_REQUEST_EVENT_APPENDED",
+                    None,
+                    actor.user_id,
+                    {
+                        "workspace_id": workspace_id,
+                        "help_request_id": help_request_id,
+                        "help_event_id": help_event["event_id"],
+                        "help_event_type": help_event["type"],
+                        "help_event_at": help_event["at"],
+                        "help_event_sha256": sha256_json(help_event),
+                    },
+                )
             row = cursor.execute(
                 "SELECT * FROM workspaces WHERE tenant_id = ? AND workspace_id = ?",
                 (actor.tenant_id, workspace_id),
@@ -642,6 +1026,9 @@ class AuthorityStore:
         timestamp = utc_now()
         freshness_summary = self._release_freshness_summary(request.source_event_ids, known_event_rows, timestamp)
         readiness_verdict = self._release_readiness_verdict(request.release_assurance, freshness_summary, timestamp)
+        if readiness_verdict['verdict'] == 'GO':
+            readiness_verdict['verdict'] = 'REVIEW_REQUIRED'
+            readiness_verdict['review_reasons'].append('Authenticated subject-bound review has not been recorded.')
         payload = {
             "tenant_id": actor.tenant_id,
             "workspace_id": request.workspace_id,
@@ -739,6 +1126,9 @@ class AuthorityStore:
         timestamp = utc_now()
         freshness_summary = self._release_freshness_summary(request.source_event_ids, known_event_rows, timestamp)
         readiness_verdict = self._release_readiness_verdict(request.release_assurance, freshness_summary, timestamp)
+        if readiness_verdict['verdict'] == 'GO':
+            readiness_verdict['verdict'] = 'REVIEW_REQUIRED'
+            readiness_verdict['review_reasons'].append('Authenticated subject-bound review has not been recorded.')
         payload = {
             "tenant_id": actor.tenant_id,
             "workspace_id": request.workspace_id,
@@ -797,15 +1187,27 @@ class AuthorityStore:
             rows = self.connection.execute(query, parameters).fetchall()
         return [self._refresh_release_readiness(self._row_to_release_initiative(row)) for row in rows]
 
-    def get_release_initiative(self, tenant_id: str, initiative_id: str) -> ReleaseInitiativeRecord:
-        with self.lock:
-            row = self.connection.execute(
+    def get_release_initiative(
+        self,
+        tenant_id: str,
+        initiative_id: str,
+        *,
+        cursor: StoreCursor | None = None,
+    ) -> ReleaseInitiativeRecord:
+        if cursor is not None:
+            row = cursor.execute(
                 "SELECT * FROM release_initiatives WHERE tenant_id = ? AND initiative_id = ?",
                 (tenant_id, initiative_id),
             ).fetchone()
+        else:
+            with self.lock:
+                row = self.connection.execute(
+                    "SELECT * FROM release_initiatives WHERE tenant_id = ? AND initiative_id = ?",
+                    (tenant_id, initiative_id),
+                ).fetchone()
         if not row:
             raise NotFound("Release initiative not found.")
-        return self._refresh_release_readiness(self._row_to_release_initiative(row))
+        return self._refresh_release_readiness(self._row_to_release_initiative(row), cursor=cursor)
 
     def build_release_proof_pack(self, tenant_id: str, initiative_id: str, actor_id: str = "authority-reader") -> ReleaseProofPack:
         initiative = self.get_release_initiative(tenant_id, initiative_id)
@@ -846,6 +1248,125 @@ class AuthorityStore:
             generated_at=generated_at,
         )
 
+    def _release_reviews(self, tenant_id: str, initiative_id: str) -> list[dict[str, Any]]:
+        # Event type is an exact server-generated scope key. Review facts live
+        # in the existing append-only, hash-chained, anchor-backed journal.
+        with self.lock:
+            rows = self.connection.execute(
+                "SELECT * FROM audit_events WHERE tenant_id = ? AND event_type = ? ORDER BY sequence DESC",
+                (tenant_id, f"RELEASE_REVIEW:{initiative_id}"),
+            ).fetchall()
+        return [{**json.loads(row['payload_json']), 'review_id': row['event_id'],
+                 'reviewer_id': row['actor_id'], 'reviewed_at': row['created_at']} for row in rows]
+
+    def _release_exception_history(self, initiative: ReleaseInitiativeRecord) -> list[dict[str, str]]:
+        subject = initiative.release_assurance.get('release_subject')
+        if not isinstance(subject, dict) or not subject.get('repository') or not subject.get('commit_sha'):
+            return []
+        with self.lock:
+            rows = self.connection.execute(
+                'SELECT initiative_id, release_assurance_json FROM release_initiatives WHERE tenant_id = ? ORDER BY initiative_id',
+                (initiative.tenant_id,),
+            ).fetchall()
+        history = []
+        for row in rows:
+            profile = json.loads(row['release_assurance_json'])
+            other_subject = profile.get('release_subject')
+            if isinstance(other_subject, dict) and isinstance(other_subject.get('repository'), str) and isinstance(subject.get('repository'), str) and other_subject['repository'].casefold() == subject['repository'].casefold() and other_subject.get('commit_sha') == subject.get('commit_sha') and profile.get('exceptions'):
+                history.append({'initiative_id': row['initiative_id'], 'exceptions_digest': sha256_json(profile['exceptions'])})
+        return history
+
+    def _release_observed_checks(self, initiative: ReleaseInitiativeRecord) -> dict[str, Any]:
+        # Connector selection is not an authority to hide later observed facts.
+        # A commit/check is a tenant-wide subject even when another workspace
+        # received its provider callback.
+        subject = initiative.release_assurance.get('release_subject')
+        if not isinstance(subject, dict):
+            return {}
+        with self.lock:
+            rows = self.connection.execute(
+                "SELECT * FROM connector_events WHERE tenant_id = ? AND system = 'github' AND event_kind = 'check' AND verification_status = 'verified_webhook'",
+                (initiative.tenant_id,),
+            ).fetchall()
+        matching = {}
+        for row in rows:
+            try:
+                payload = json.loads(row['payload_json'])
+            except (TypeError, ValueError, RecursionError):
+                # A verified check callback that cannot be parsed may belong to
+                # this subject. Keep it in the evidence set so the evaluator
+                # blocks readiness instead of crashing or silently ignoring it.
+                matching[row['connector_event_id']] = row
+                continue
+            if not isinstance(payload, dict):
+                matching[row['connector_event_id']] = row
+                continue
+            repository = payload.get('repository')
+            repository_name = repository.get('full_name') if isinstance(repository, dict) else None
+            subject_repository = subject.get('repository')
+            subject_commit = subject.get('commit_sha')
+            # Exclude an event only when its signed provider identity proves
+            # it belongs to another repository or another immutable commit.
+            # Missing or malformed scope fields remain potentially relevant.
+            if (
+                isinstance(repository_name, str)
+                and re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository_name)
+                and all(part not in {'.', '..'} for part in repository_name.split('/'))
+                and isinstance(subject_repository, str)
+                and repository_name.casefold() != subject_repository.casefold()
+            ):
+                continue
+            check = payload.get('check_run')
+            head_sha = check.get('head_sha') if isinstance(check, dict) else None
+            if (
+                isinstance(head_sha, str)
+                and re.fullmatch(r'[A-Fa-f0-9]{40}', head_sha)
+                and isinstance(subject_commit, str)
+                and head_sha.casefold() != subject_commit.casefold()
+            ):
+                continue
+            matching[row['connector_event_id']] = row
+        return matching
+
+    def review_release_initiative(self, actor: Actor, initiative_id: str, request: ReleaseReviewRequest, request_key: str) -> ReleaseInitiativeRecord:
+        request = ReleaseReviewRequest.model_validate(request.model_dump())
+        if actor.role not in {'Approver', 'Executive'}:
+            raise Forbidden('Release review requires Approver or Executive authority.')
+        if not 8 <= len(request_key) <= 200:
+            raise ValueError('Idempotency-Key must contain 8 to 200 characters.')
+        request_hash = sha256_json({'actor_id': actor.user_id, **request.model_dump()})
+        with self.transaction() as cursor:
+            policy_status = self.release_policy_status(cursor)
+            if not policy_status["current"]:
+                raise ReleasePolicyFenceError(policy_status["reason"])
+            # Acquires a per-record write lock on SQLite and PostgreSQL without
+            # mutating the immutable release subject, serializing review retries.
+            cursor.execute('UPDATE release_initiatives SET updated_at = updated_at WHERE tenant_id = ? AND initiative_id = ?', (actor.tenant_id, initiative_id))
+            record = self.get_release_initiative(actor.tenant_id, initiative_id, cursor=cursor)
+            if record.created_by == actor.user_id:
+                raise Forbidden('The release producer cannot review their own release.')
+            if cursor.execute('SELECT workspace_id FROM workspaces WHERE tenant_id = ? AND workspace_id = ?', (actor.tenant_id, record.workspace_id)).fetchone() is None:
+                raise Conflict('A deleted workspace cannot receive a new release review.')
+            reviews = self._release_reviews(actor.tenant_id, initiative_id)
+            previous = next((review for review in reviews if review.get('request_key') == request_key), None)
+            if previous is not None:
+                if previous.get('request_hash') != request_hash:
+                    raise Conflict('Review idempotency key was reused with a different actor or decision payload.')
+            else:
+                context = record.review_context
+                if any(getattr(request, field) != context[field] for field in ('subject_digest', 'policy_digest', 'evidence_digest')):
+                    raise Conflict('Release subject, evidence, or policy changed. Refresh before reviewing.')
+                latest_review_id = context['latest_review']['review_id'] if context['latest_review'] else None
+                if request.decision == 'approve' and request.previous_review_id != latest_review_id:
+                    raise Conflict('A newer review exists. Refresh and acknowledge it before approving.')
+                if request.decision == 'approve' and not context['reviewable']:
+                    raise Conflict('Release evidence is not reviewable: ' + '; '.join(context['blocking_reasons']))
+                self._append_event_cursor(cursor, actor.tenant_id, None, f'RELEASE_REVIEW:{initiative_id}', None, actor.user_id, {
+                    **request.model_dump(), 'initiative_id': initiative_id, 'workspace_id': record.workspace_id,
+                    'reviewer_role': actor.role, 'request_key': request_key, 'request_hash': request_hash,
+                })
+        return self.get_release_initiative(actor.tenant_id, initiative_id)
+
     def _connector_event_rows(
         self,
         tenant_id: str,
@@ -865,7 +1386,16 @@ class AuthorityStore:
             rows = self.connection.execute(query, parameters).fetchall()
         return {str(row["connector_event_id"]): row for row in rows}
 
-    def _refresh_release_readiness(self, initiative: ReleaseInitiativeRecord) -> ReleaseInitiativeRecord:
+    def _refresh_release_readiness(
+        self,
+        initiative: ReleaseInitiativeRecord,
+        *,
+        cursor: StoreCursor | None = None,
+    ) -> ReleaseInitiativeRecord:
+        if cursor is None:
+            with self.transaction() as active_cursor:
+                return self._refresh_release_readiness(initiative, cursor=active_cursor)
+        policy_status = self.release_policy_status(cursor)
         evaluated_at = utc_now()
         source_events = self._connector_event_rows(
             initiative.tenant_id,
@@ -882,10 +1412,35 @@ class AuthorityStore:
             freshness_summary,
             evaluated_at,
         )
+        reviews = self._release_reviews(initiative.tenant_id, initiative.initiative_id)
+        protected_verdict, review_context = evaluate_release(
+            initiative, source_events, evaluated_at, reviews[0] if reviews else None,
+            self._release_exception_history(initiative), self._release_observed_checks(initiative),
+            getattr(self, "github_release_attestor_app_id", None),
+            getattr(self, "github_release_workflow_ids", ()),
+            int(self._release_policy_snapshot["policy_epoch"]) if self._release_policy_snapshot else 1,
+        )
+        # Retain existing structural/freshness guards alongside protected policy.
+        protected_verdict['failing_reasons'] = list(dict.fromkeys(readiness_verdict['failing_reasons'] + protected_verdict['failing_reasons']))
+        protected_verdict['review_reasons'] = list(dict.fromkeys(protected_verdict['review_reasons'] + readiness_verdict['review_reasons']))
+        if protected_verdict['failing_reasons']:
+            protected_verdict['verdict'] = 'NO_GO'
+        elif protected_verdict['review_reasons']:
+            protected_verdict['verdict'] = 'REVIEW_REQUIRED'
+        protected_verdict["policy_fence"] = policy_status
+        if not policy_status["current"]:
+            reason = "Release policy worker is fenced: " + str(policy_status["reason"])
+            protected_verdict["failing_reasons"] = list(dict.fromkeys(protected_verdict["failing_reasons"] + [reason]))
+            protected_verdict["verdict"] = "NO_GO"
+            review_context["blocking_reasons"] = list(dict.fromkeys(review_context["blocking_reasons"] + [reason]))
+        review_context["policy_fence"] = policy_status
+        review_context['blocking_reasons'] = list(dict.fromkeys(review_context['blocking_reasons'] + readiness_verdict['failing_reasons'] + readiness_verdict['review_reasons']))
+        review_context['reviewable'] = not review_context['blocking_reasons']
         return initiative.model_copy(
             update={
                 "freshness_summary": freshness_summary,
-                "readiness_verdict": readiness_verdict,
+                "readiness_verdict": protected_verdict,
+                "review_context": review_context,
             }
         )
 
@@ -955,6 +1510,13 @@ class AuthorityStore:
             gate_ids.add(normalized_gate_id)
         failing_reasons: list[str] = []
         review_reasons: list[str] = []
+        try:
+            validate_release_assurance(release_assurance)
+        except ValueError as error:
+            # Revalidate historical records without rewriting their evidence.
+            # A previously stored green verdict cannot survive a contradictory
+            # current review merely because the record predates this check.
+            failing_reasons.append(f"release assurance contract invalid: {error}")
         recognized_statuses = {"passed", "gap", "review_required", "exception_active", "blocked", "missing"}
         unrecognized_statuses = sorted({status for status in gate_statuses if status not in recognized_statuses})
         if gate_identity_failures:
@@ -1026,6 +1588,16 @@ class AuthorityStore:
             outcome = descriptor.get("outcome") or "Outcome metadata unavailable."
             lines.append(f"- {loop_id}: {loop_name} - {outcome}")
         lines.extend(["", "## Readiness Verdict", ""])
+        lines.extend([
+            f"Policy digest: {initiative.review_context.get('policy_digest', 'unavailable')}",
+            f"Subject digest: {initiative.review_context.get('subject_digest', 'unavailable')}",
+            f"Evidence digest: {initiative.review_context.get('evidence_digest', 'unavailable')}",
+        ])
+        review = initiative.review_context.get('latest_review')
+        if review:
+            lines.append(f"Authenticated review: {review['review_id']} / {review['decision']} / {review['reviewer_id']} / {review['reviewed_at']}")
+        else:
+            lines.append('Authenticated review: missing')
         lines.append(str(initiative.readiness_verdict.get("policy", "No readiness policy recorded.")))
         for reason in initiative.readiness_verdict.get("failing_reasons", []):
             lines.append(f"- Fail-closed reason: {reason}")
@@ -1147,7 +1719,21 @@ class AuthorityStore:
                 "SELECT * FROM kill_switches WHERE tenant_id = ?",
                 (tenant_id,),
             ).fetchone()
-        return self._kill_switch_status_from_row(tenant_id, row)
+            global_row = self.connection.execute(
+                "SELECT active FROM kill_switches WHERE tenant_id = ?",
+                (GLOBAL_KILL_SWITCH_TENANT_ID,),
+            ).fetchone()
+        status = self._kill_switch_status_from_row(tenant_id, row)
+        status["global_active"] = bool(global_row and int(global_row["active"]) == 1)
+        return status
+
+    def global_kill_switch_status(self) -> dict[str, Any]:
+        with self.lock:
+            row = self.connection.execute(
+                "SELECT * FROM kill_switches WHERE tenant_id = ?",
+                (GLOBAL_KILL_SWITCH_TENANT_ID,),
+            ).fetchone()
+        return self._kill_switch_status_from_row(GLOBAL_KILL_SWITCH_TENANT_ID, row, "global")
 
     def is_kill_switch_active(self, tenant_id: str) -> bool:
         with self.lock:
@@ -1156,16 +1742,16 @@ class AuthorityStore:
     @staticmethod
     def _kill_switch_active_cursor(cursor: StoreCursor, tenant_id: str) -> bool:
         row = cursor.execute(
-            "SELECT active FROM kill_switches WHERE tenant_id = ?",
-            (tenant_id,),
+            "SELECT active FROM kill_switches WHERE tenant_id IN (?, ?) ORDER BY tenant_id = ? DESC",
+            (tenant_id, GLOBAL_KILL_SWITCH_TENANT_ID, GLOBAL_KILL_SWITCH_TENANT_ID),
         ).fetchone()
         return bool(row and int(row["active"]) == 1)
 
     @staticmethod
-    def _kill_switch_status_from_row(tenant_id: str, row: Any) -> dict[str, Any]:
+    def _kill_switch_status_from_row(tenant_id: str, row: Any, scope: str = "tenant") -> dict[str, Any]:
         return {
             "tenant_id": tenant_id,
-            "scope": "tenant",
+            "scope": scope,
             "active": bool(row and int(row["active"]) == 1),
             "activation_id": row["activation_id"] if row else None,
             "reason": row["reason"] if row else None,
@@ -1176,6 +1762,183 @@ class AuthorityStore:
             "deactivation_reason": row["deactivation_reason"] if row else None,
             "semantics": "pre_dispatch_block_and_in_flight_interrupt",
         }
+
+    def activate_global_kill_switch(self, actor: Actor, reason: str) -> dict[str, Any]:
+        if actor.role != "Executive":
+            raise Forbidden("Global kill-switch activation requires Executive authority.")
+        normalized_reason = reason.strip()
+        if len(normalized_reason) < 3:
+            raise Conflict("Global kill-switch activation requires a reason of at least 3 characters.")
+        timestamp = utc_now()
+        with self.transaction() as cursor:
+            existing = cursor.execute(
+                "SELECT * FROM kill_switches WHERE tenant_id = ?",
+                (GLOBAL_KILL_SWITCH_TENANT_ID,),
+            ).fetchone()
+            if existing and int(existing["active"]) == 1:
+                self._append_event_cursor(
+                    cursor,
+                    GLOBAL_KILL_SWITCH_TENANT_ID,
+                    None,
+                    "KILL_SWITCH_ALREADY_ACTIVE",
+                    None,
+                    actor.user_id,
+                    {"activation_id": existing["activation_id"], "reason": normalized_reason, "scope": "global"},
+                )
+                return self._kill_switch_status_from_row(GLOBAL_KILL_SWITCH_TENANT_ID, existing, "global")
+
+            activation_id = f"global-kill-switch-{uuid.uuid4()}"
+            cursor.execute(
+                """
+                INSERT INTO kill_switches(
+                  tenant_id, active, activation_id, reason, actor_id, actor_role, activated_at,
+                  deactivated_at, deactivated_by, deactivation_reason
+                ) VALUES (?, 1, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+                ON CONFLICT(tenant_id) DO UPDATE SET
+                  active = 1,
+                  activation_id = excluded.activation_id,
+                  reason = excluded.reason,
+                  actor_id = excluded.actor_id,
+                  actor_role = excluded.actor_role,
+                  activated_at = excluded.activated_at,
+                  deactivated_at = NULL,
+                  deactivated_by = NULL,
+                  deactivation_reason = NULL
+                """,
+                (GLOBAL_KILL_SWITCH_TENANT_ID, activation_id, normalized_reason, actor.user_id, actor.role, timestamp),
+            )
+            self._append_event_cursor(
+                cursor,
+                GLOBAL_KILL_SWITCH_TENANT_ID,
+                None,
+                "KILL_SWITCH_ACTIVATED",
+                None,
+                actor.user_id,
+                {
+                    "activation_id": activation_id,
+                    "scope": "global",
+                    "reason": normalized_reason,
+                    "pre_dispatch_blocked": True,
+                    "in_flight_interrupt_requested": True,
+                    "remote_cancellation_requested": False,
+                    "credential_revocation": "not_available_to_authority",
+                },
+            )
+
+            processed_runs: set[tuple[str, str]] = set()
+            queued_jobs = cursor.execute(
+                "SELECT * FROM execution_jobs WHERE status = 'queued' ORDER BY created_at",
+            ).fetchall()
+            for job in queued_jobs:
+                tenant_id, run_id = str(job["tenant_id"]), str(job["run_id"])
+                cursor.execute(
+                    """
+                    UPDATE execution_jobs
+                    SET status = 'failed', lease_owner = NULL, lease_expires_at = NULL,
+                      last_error = ?, updated_at = ?
+                    WHERE job_id = ? AND status = 'queued'
+                    """,
+                    ("Global kill switch activated before dispatch.", timestamp, job["job_id"]),
+                )
+                self._interrupt_run_cursor(
+                    cursor,
+                    tenant_id,
+                    run_id,
+                    actor.user_id,
+                    "global_queued_before_dispatch",
+                    kill_switch_scope="global",
+                )
+                processed_runs.add((tenant_id, run_id))
+                current = cursor.execute(
+                    "SELECT state FROM runs WHERE tenant_id = ? AND run_id = ?",
+                    (tenant_id, run_id),
+                ).fetchone()
+                self._append_event_cursor(
+                    cursor,
+                    tenant_id,
+                    run_id,
+                    "EXECUTION_JOB_FAILED",
+                    current["state"] if current else None,
+                    actor.user_id,
+                    {"job_id": job["job_id"], "error": "Global kill switch activated before dispatch."},
+                )
+
+            active_runs = cursor.execute(
+                """
+                SELECT tenant_id, run_id FROM runs
+                WHERE runner_status IN ('running', 'awaiting_effectiveness')
+                ORDER BY updated_at
+                """,
+            ).fetchall()
+            for run in active_runs:
+                key = (str(run["tenant_id"]), str(run["run_id"]))
+                if key in processed_runs:
+                    continue
+                self._interrupt_run_cursor(
+                    cursor,
+                    key[0],
+                    key[1],
+                    actor.user_id,
+                    "global_in_flight_or_observation",
+                    kill_switch_scope="global",
+                )
+
+            row = cursor.execute(
+                "SELECT * FROM kill_switches WHERE tenant_id = ?",
+                (GLOBAL_KILL_SWITCH_TENANT_ID,),
+            ).fetchone()
+        return self._kill_switch_status_from_row(GLOBAL_KILL_SWITCH_TENANT_ID, row, "global")
+
+    def deactivate_global_kill_switch(self, actor: Actor, reason: str) -> dict[str, Any]:
+        if actor.role != "Executive":
+            raise Forbidden("Global kill-switch deactivation requires Executive authority.")
+        normalized_reason = reason.strip()
+        if len(normalized_reason) < 3:
+            raise Conflict("Global kill-switch deactivation requires a reason of at least 3 characters.")
+        timestamp = utc_now()
+        with self.transaction() as cursor:
+            row = cursor.execute(
+                "SELECT * FROM kill_switches WHERE tenant_id = ?",
+                (GLOBAL_KILL_SWITCH_TENANT_ID,),
+            ).fetchone()
+            if not row or int(row["active"]) == 0:
+                self._append_event_cursor(
+                    cursor,
+                    GLOBAL_KILL_SWITCH_TENANT_ID,
+                    None,
+                    "KILL_SWITCH_DEACTIVATION_NOOP",
+                    None,
+                    actor.user_id,
+                    {"reason": normalized_reason, "scope": "global"},
+                )
+                return self._kill_switch_status_from_row(GLOBAL_KILL_SWITCH_TENANT_ID, row, "global")
+            cursor.execute(
+                """
+                UPDATE kill_switches
+                SET active = 0, deactivated_at = ?, deactivated_by = ?, deactivation_reason = ?
+                WHERE tenant_id = ?
+                """,
+                (timestamp, actor.user_id, normalized_reason, GLOBAL_KILL_SWITCH_TENANT_ID),
+            )
+            self._append_event_cursor(
+                cursor,
+                GLOBAL_KILL_SWITCH_TENANT_ID,
+                None,
+                "KILL_SWITCH_DEACTIVATED",
+                None,
+                actor.user_id,
+                {
+                    "activation_id": row["activation_id"],
+                    "scope": "global",
+                    "reason": normalized_reason,
+                    "restart_requires_new_approval": True,
+                },
+            )
+            updated = cursor.execute(
+                "SELECT * FROM kill_switches WHERE tenant_id = ?",
+                (GLOBAL_KILL_SWITCH_TENANT_ID,),
+            ).fetchone()
+        return self._kill_switch_status_from_row(GLOBAL_KILL_SWITCH_TENANT_ID, updated, "global")
 
     def activate_kill_switch(self, actor: Actor, reason: str) -> dict[str, Any]:
         if actor.role != "Executive":
@@ -1383,6 +2146,7 @@ class AuthorityStore:
         phase: str,
         action_output: dict[str, Any] | None = None,
         action_external_effect: bool = False,
+        kill_switch_scope: str = "tenant",
     ) -> None:
         row = cursor.execute(
             "SELECT * FROM runs WHERE tenant_id = ? AND run_id = ?",
@@ -1405,13 +2169,14 @@ class AuthorityStore:
                 "STATE_TRANSITION",
                 "BLOCKED",
                 actor_id,
-                {"from_state": current_state, "to_state": "BLOCKED", "reason": "tenant_kill_switch"},
+                {"from_state": current_state, "to_state": "BLOCKED", "reason": f"{kill_switch_scope}_kill_switch"},
             )
             next_state = "BLOCKED"
         output = json.loads(row["output_json"]) if row["output_json"] else {}
         control = {
             "status": "interrupted",
             "phase": phase,
+            "scope": kill_switch_scope,
             "remote_cancellation_requested": False,
             "credential_revocation": "not_available_to_authority",
             "remote_action_may_have_completed": bool(action_output is not None and action_external_effect and phase == "after_action_dispatch"),
@@ -1427,7 +2192,7 @@ class AuthorityStore:
             WHERE tenant_id = ? AND run_id = ?
             """,
             (
-                f"Tenant kill switch interrupted execution during {phase}; remote cancellation and credential revocation are not provided by this authority.",
+                f"{kill_switch_scope.capitalize()} kill switch interrupted execution during {phase}; remote cancellation and credential revocation are not provided by this authority.",
                 canonical_json(output),
                 timestamp,
                 tenant_id,
@@ -2127,25 +2892,54 @@ class AuthorityStore:
     def begin_invocation(self, tenant_id: str, run_id: str, tool_name: str, idempotency_key: str, request: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
         request_hash = sha256_json(request)
         with self.transaction() as cursor:
-            existing = cursor.execute(
-                "SELECT * FROM tool_invocations WHERE tenant_id = ? AND tool_name = ? AND idempotency_key = ?",
-                (tenant_id, tool_name, idempotency_key),
+            current_workflow = cursor.execute(
+                "SELECT workspace_id, loop_id FROM runs WHERE tenant_id = ? AND run_id = ?",
+                (tenant_id, run_id),
             ).fetchone()
+            if current_workflow is None:
+                raise NotFound("Run not found.")
+
+            def find_existing_invocation():
+                return cursor.execute(
+                    """
+                    SELECT invocation.*, prior_run.workspace_id AS invocation_workspace_id,
+                      prior_run.loop_id AS invocation_loop_id
+                    FROM tool_invocations AS invocation
+                    JOIN runs AS prior_run
+                      ON prior_run.tenant_id = invocation.tenant_id AND prior_run.run_id = invocation.run_id
+                    WHERE invocation.tenant_id = ? AND invocation.tool_name = ? AND invocation.idempotency_key = ?
+                    """,
+                    (tenant_id, tool_name, idempotency_key),
+                ).fetchone()
+
+            existing = find_existing_invocation()
+            if existing is None:
+                invocation_id = f"invoke-{uuid.uuid4()}"
+                inserted = cursor.execute(
+                    """
+                    INSERT INTO tool_invocations(invocation_id, tenant_id, run_id, tool_name, idempotency_key,
+                      request_json, request_hash, status, started_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'started', ?)
+                    ON CONFLICT(tenant_id, tool_name, idempotency_key) DO NOTHING
+                    RETURNING invocation_id
+                    """,
+                    (invocation_id, tenant_id, run_id, tool_name, idempotency_key, canonical_json(request), request_hash, utc_now()),
+                ).fetchone()
+                if inserted is not None:
+                    self._append_event_cursor(cursor, tenant_id, run_id, "TOOL_DISPATCH_INTENT", "ACTION_IN_PROGRESS", "authority-engine", {"invocation_id": invocation_id, "tool": tool_name, "request_hash": request_hash, "idempotency_key": idempotency_key})
+                    return invocation_id, None
+                existing = find_existing_invocation()
             if existing:
+                if (
+                    existing["invocation_workspace_id"] != current_workflow["workspace_id"]
+                    or existing["invocation_loop_id"] != current_workflow["loop_id"]
+                ):
+                    raise Conflict("Idempotency key cannot be reused outside its tenant workflow scope.")
                 if existing["request_hash"] != request_hash:
                     raise Conflict("Idempotency key was reused with a different tool payload.")
                 result = json.loads(existing["result_json"]) if existing["result_json"] else None
                 return str(existing["invocation_id"]), result
-            invocation_id = f"invoke-{uuid.uuid4()}"
-            cursor.execute(
-                """
-                INSERT INTO tool_invocations(invocation_id, tenant_id, run_id, tool_name, idempotency_key, request_json,
-                  request_hash, status, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'started', ?)
-                """,
-                (invocation_id, tenant_id, run_id, tool_name, idempotency_key, canonical_json(request), request_hash, utc_now()),
-            )
-            self._append_event_cursor(cursor, tenant_id, run_id, "TOOL_DISPATCH_INTENT", "ACTION_IN_PROGRESS", "authority-engine", {"invocation_id": invocation_id, "tool": tool_name, "request_hash": request_hash, "idempotency_key": idempotency_key})
-        return invocation_id, None
+            raise Conflict("Idempotency key admission could not be resolved safely.")
 
     def record_invocation_attempt(self, tenant_id: str, run_id: str, invocation_id: str, attempt: int, error: str | None = None) -> None:
         with self.transaction() as cursor:
@@ -2284,12 +3078,16 @@ class AuthorityStore:
         limit: int = 100,
         include_deferred: bool = False,
         tenant_id: str | None = None,
+        delivery_epoch: int | None = None,
     ) -> list[dict[str, Any]]:
         where = "delivered_at IS NULL"
         parameters: list[Any] = []
         if tenant_id is not None:
             where += " AND tenant_id = ?"
             parameters.append(tenant_id)
+        if delivery_epoch is not None:
+            where += " AND delivery_epoch = ?"
+            parameters.append(delivery_epoch)
         if not include_deferred:
             where += " AND next_attempt_at <= ?"
             parameters.append(utc_now())
@@ -2299,14 +3097,213 @@ class AuthorityStore:
                 f"SELECT * FROM audit_anchor_outbox WHERE {where} ORDER BY created_at, event_id LIMIT ?",
                 tuple(parameters),
             ).fetchall()
-        return [{**dict(row), "envelope": json.loads(row["envelope_json"])} for row in rows]
+        records = []
+        for row in rows:
+            try:
+                envelope = json.loads(row["envelope_json"])
+            except (ValueError, TypeError, RecursionError):
+                # Keep this event visible and eligible for recorded backoff;
+                # one corrupt row must not crash the whole delivery worker.
+                envelope = None
+            records.append({**dict(row), "envelope": envelope})
+        return records
 
-    def mark_audit_anchor_delivered(self, event_id: str) -> None:
+    def validated_audit_anchor_envelope(self, record: dict[str, Any]) -> dict[str, Any]:
+        with self.lock:
+            row = self.connection.execute(
+                "SELECT * FROM audit_events WHERE event_id = ? AND tenant_id = ?",
+                (record["event_id"], record["tenant_id"]),
+            ).fetchone()
+        if row is None:
+            raise ValueError("Audit outbox has no matching append-only audit event.")
+        core = self._event_core(row["event_id"], row["tenant_id"], row["run_id"], row["event_type"],
+                                row["state"], row["actor_id"], row["payload_json"], row["created_at"], row["previous_hash"])
+        expected_hash = hashlib.sha256((row["previous_hash"] + canonical_json(core)).encode("utf-8")).hexdigest()
+        expected = {**core, "event_hash": row["event_hash"], "sequence": row["sequence"]}
+        if row["event_hash"] != expected_hash or record.get("envelope_json") != canonical_json(expected):
+            raise ValueError("Audit outbox does not match its append-only audit event.")
+        return expected
+
+    def mark_audit_anchor_delivered(self, event_id: str, delivery_binding: str | None = None) -> None:
         with self.transaction() as cursor:
             cursor.execute(
-                "UPDATE audit_anchor_outbox SET delivered_at = ?, last_error = NULL WHERE event_id = ? AND delivered_at IS NULL",
-                (utc_now(), event_id),
+                "UPDATE audit_anchor_outbox SET delivered_at = ?, delivery_binding = ?, last_error = NULL WHERE event_id = ? AND delivered_at IS NULL",
+                (utc_now(), delivery_binding, event_id),
             )
+
+    def _audit_anchor_try_activate_cursor(self, cursor: StoreCursor) -> bool:
+        cursor.execute("SELECT * FROM audit_anchor_control WHERE singleton = 1")
+        control = cursor.fetchone()
+        if not control:
+            return False
+        if control["phase"] != "draining":
+            return True
+        count = cursor.execute(
+            "SELECT COUNT(*) AS count FROM audit_anchor_attempts WHERE epoch = ? AND binding = ? AND state IN ('admitted', 'uncertain')",
+            (control["active_epoch"], control["active_binding"]),
+        ).fetchone()
+        if int(count["count"] if count else 0):
+            return False
+        cursor.execute(
+            "UPDATE audit_anchor_control SET active_epoch = pending_epoch, active_binding = pending_binding, pending_epoch = NULL, pending_binding = NULL, phase = 'active', updated_at = ? WHERE singleton = 1 AND phase = 'draining'",
+            (utc_now(),),
+        )
+        return True
+
+    def prepare_audit_anchor_configuration(self, epoch: int, binding: str) -> bool:
+        """Durably admit a binding or begin monotonic drain toward a newer one."""
+        if not isinstance(epoch, int) or isinstance(epoch, bool) or epoch <= 0:
+            raise AuditAnchorFenceError("Audit anchor epoch must be a positive integer.")
+        now = utc_now()
+        with self.transaction() as cursor:
+            cursor.execute("SELECT * FROM audit_anchor_control WHERE singleton = 1")
+            before = cursor.fetchone()
+            if before is None:
+                cursor.execute(
+                    "INSERT INTO audit_anchor_control(singleton, active_epoch, active_binding, phase, updated_at) VALUES (1, ?, ?, 'active', ?) ON CONFLICT(singleton) DO NOTHING",
+                    (epoch, binding, now),
+                )
+            # A write to the singleton row is the cross-process serialization
+            # point on both SQLite and Postgres. No database lock crosses HTTP.
+            cursor.execute("UPDATE audit_anchor_control SET updated_at = updated_at WHERE singleton = 1")
+            control = cursor.execute("SELECT * FROM audit_anchor_control WHERE singleton = 1").fetchone()
+            if control is None:
+                raise AuditAnchorFenceError("Audit anchor shared control state is unavailable.")
+            if before is None and control["phase"] == "active" and control["active_epoch"] == epoch and control["active_binding"] == binding:
+                # First adoption binds only rows that predate shared control;
+                # subsequent rotations never silently transfer old payloads.
+                cursor.execute("UPDATE audit_anchor_outbox SET delivery_epoch = ? WHERE delivery_epoch IS NULL", (epoch,))
+            active_epoch, active_binding = int(control["active_epoch"]), str(control["active_binding"])
+            if control["phase"] == "active":
+                if epoch == active_epoch and binding == active_binding:
+                    return True
+                if epoch <= active_epoch:
+                    raise AuditAnchorFenceError("Audit anchor configuration is stale or conflicts with the active epoch.")
+                cursor.execute(
+                    "UPDATE audit_anchor_control SET phase = 'draining', pending_epoch = ?, pending_binding = ?, updated_at = ? WHERE singleton = 1 AND phase = 'active'",
+                    (epoch, binding, now),
+                )
+                activated = self._audit_anchor_try_activate_cursor(cursor)
+                return activated and epoch > active_epoch
+            if epoch == active_epoch and binding == active_binding:
+                # Old workers remain able to retry only durable uncertain event
+                # IDs while draining; claim_audit_anchor_attempt enforces that.
+                return True
+            if epoch != control["pending_epoch"] or binding != control["pending_binding"]:
+                raise AuditAnchorFenceError("A different audit anchor rotation is already draining; finish or reconcile it first.")
+            return self._audit_anchor_try_activate_cursor(cursor)
+
+    def claim_audit_anchor_attempt(self, event_id: str, epoch: int, binding: str) -> dict[str, str] | None:
+        if not self.prepare_audit_anchor_configuration(epoch, binding):
+            return None
+        now = utc_now()
+        with self.transaction() as cursor:
+            cursor.execute("UPDATE audit_anchor_control SET updated_at = updated_at WHERE singleton = 1")
+            control = cursor.execute("SELECT * FROM audit_anchor_control WHERE singleton = 1").fetchone()
+            if not control or int(control["active_epoch"]) != epoch or control["active_binding"] != binding:
+                return None
+            draining = control["phase"] == "draining"
+            if control["phase"] not in {"active", "draining"}:
+                return None
+            row = cursor.execute(
+                "SELECT * FROM audit_anchor_outbox WHERE event_id = ? AND delivered_at IS NULL AND delivery_epoch = ? AND next_attempt_at <= ?",
+                (event_id, epoch, now),
+            ).fetchone()
+            if not row:
+                return None
+            cursor.execute("SELECT COUNT(*) AS count FROM audit_anchor_attempts WHERE event_id = ? AND state = 'admitted'", (event_id,))
+            admitted = cursor.fetchone()
+            if int(admitted["count"] if admitted else 0):
+                return None
+            if draining:
+                cursor.execute(
+                    "SELECT COUNT(*) AS count FROM audit_anchor_attempts WHERE event_id = ? AND epoch = ? AND binding = ? AND state = 'uncertain'",
+                    (event_id, epoch, binding),
+                )
+                uncertain = cursor.fetchone()
+                if not int(uncertain["count"] if uncertain else 0):
+                    return None
+            attempt_id = f"anchor-attempt-{uuid.uuid4()}"
+            cursor.execute(
+                "INSERT INTO audit_anchor_attempts(attempt_id, event_id, epoch, binding, state, admitted_at) VALUES (?, ?, ?, ?, 'admitted', ?)",
+                (attempt_id, event_id, epoch, binding, now),
+            )
+            return {"attempt_id": attempt_id, "event_id": event_id, "tenant_id": str(row["tenant_id"]), "epoch": str(epoch), "binding": binding}
+
+    def finish_audit_anchor_attempt(self, attempt: dict[str, str], *, outcome: str, detail: str | None = None) -> bool:
+        if outcome not in {"delivered", "uncertain", "not_sent"}:
+            raise ValueError("Unknown audit anchor attempt outcome.")
+        now = utc_now()
+        with self.transaction() as cursor:
+            cursor.execute("UPDATE audit_anchor_control SET updated_at = updated_at WHERE singleton = 1")
+            row = cursor.execute(
+                "SELECT * FROM audit_anchor_attempts WHERE attempt_id = ? AND event_id = ? AND epoch = ? AND binding = ? AND state = 'admitted'",
+                (attempt["attempt_id"], attempt["event_id"], int(attempt["epoch"]), attempt["binding"]),
+            ).fetchone()
+            if not row:
+                return False
+            state = "uncertain" if outcome == "uncertain" else "resolved"
+            cursor.execute(
+                "UPDATE audit_anchor_attempts SET state = ?, resolved_at = ?, detail = ? WHERE attempt_id = ? AND state = 'admitted'",
+                (state, None if outcome == "uncertain" else now, (detail or "")[:500] or None, attempt["attempt_id"]),
+            )
+            if outcome == "delivered":
+                cursor.execute(
+                    "UPDATE audit_anchor_outbox SET delivered_at = ?, delivery_binding = ?, last_error = NULL WHERE event_id = ? AND delivery_epoch = ? AND delivered_at IS NULL",
+                    (now, attempt["binding"], attempt["event_id"], int(attempt["epoch"])),
+                )
+                # A same-ID 2xx resolves earlier ambiguous deliveries under
+                # this exact endpoint epoch because the sink deduplicates IDs.
+                cursor.execute(
+                    "UPDATE audit_anchor_attempts SET state = 'resolved', resolved_at = ?, detail = 'resolved by same-ID delivery acknowledgement' WHERE event_id = ? AND epoch = ? AND binding = ? AND state = 'uncertain'",
+                    (now, attempt["event_id"], int(attempt["epoch"]), attempt["binding"]),
+                )
+            else:
+                failure = detail or ("Audit envelope failed validation before dispatch." if outcome == "not_sent" else "Audit delivery outcome is uncertain.")
+                pending = cursor.execute(
+                    "SELECT attempts FROM audit_anchor_outbox WHERE event_id = ? AND delivery_epoch = ? AND delivered_at IS NULL",
+                    (attempt["event_id"], int(attempt["epoch"])),
+                ).fetchone()
+                if pending:
+                    tries = int(pending["attempts"]) + 1
+                    delay = min(300, 2 ** min(tries, 8))
+                    retry_at = (datetime.now(timezone.utc) + timedelta(seconds=delay)).isoformat()
+                    cursor.execute(
+                        "UPDATE audit_anchor_outbox SET attempts = ?, next_attempt_at = ?, last_error = ? WHERE event_id = ? AND delivered_at IS NULL",
+                        (tries, retry_at, failure[:500], attempt["event_id"]),
+                    )
+            self._audit_anchor_try_activate_cursor(cursor)
+            return outcome == "delivered"
+
+    def audit_anchor_fence_status(self, epoch: int, binding: str, *, tenant_id: str | None = None, include_attempts: bool = False) -> dict[str, Any]:
+        with self.lock:
+            control = self.connection.execute("SELECT * FROM audit_anchor_control WHERE singleton = 1").fetchone()
+            if not control:
+                return {"phase": "uninitialized", "configured_epoch": epoch, "worker_admitted": False, "unresolved_attempts": 0}
+            unresolved_query = "SELECT COUNT(*) AS count FROM audit_anchor_attempts a JOIN audit_anchor_outbox o ON o.event_id = a.event_id WHERE a.state IN ('admitted', 'uncertain')"
+            unresolved_parameters: tuple[Any, ...] = ()
+            if tenant_id is not None:
+                unresolved_query += " AND o.tenant_id = ?"
+                unresolved_parameters = (tenant_id,)
+            unresolved = self.connection.execute(unresolved_query, unresolved_parameters).fetchone()
+            attempts: list[dict[str, Any]] = []
+            if include_attempts:
+                attempts_query = "SELECT a.attempt_id, a.event_id, a.epoch, a.state, a.admitted_at, a.detail FROM audit_anchor_attempts a JOIN audit_anchor_outbox o ON o.event_id = a.event_id WHERE a.state IN ('admitted', 'uncertain')"
+                if tenant_id is not None:
+                    attempts_query += " AND o.tenant_id = ?"
+                attempts_query += " ORDER BY a.admitted_at, a.attempt_id"
+                attempts = [dict(row) for row in self.connection.execute(attempts_query, unresolved_parameters).fetchall()]
+        current = int(control["active_epoch"]) == epoch and control["active_binding"] == binding and control["phase"] == "active"
+        pending = int(control["pending_epoch"]) == epoch and control["pending_binding"] == binding if control["pending_epoch"] is not None else False
+        return {
+            "phase": control["phase"], "active_epoch": int(control["active_epoch"]),
+            "pending_epoch": int(control["pending_epoch"]) if control["pending_epoch"] is not None else None,
+            "configured_epoch": epoch, "worker_admitted": current,
+            "rotation_pending_for_worker": pending,
+            "unresolved_attempts": int(unresolved["count"] if unresolved else 0),
+            "unresolved": attempts,
+            "updated_at": control["updated_at"],
+        }
 
     def record_audit_anchor_failure(self, event_id: str, error: str) -> None:
         with self.transaction() as cursor:
@@ -2377,12 +3374,16 @@ class AuthorityStore:
         self,
         max_age_seconds: float | None = None,
         tenant_id: str | None = None,
+        delivery_binding: str | None = None,
     ) -> dict[str, Any]:
         where = ""
         parameters: tuple[Any, ...] = ()
         if tenant_id is not None:
             where = " WHERE tenant_id = ?"
             parameters = (tenant_id,)
+        if delivery_binding is not None:
+            where += " AND delivery_binding = ?" if where else " WHERE delivery_binding = ?"
+            parameters += (delivery_binding,)
         with self.lock:
             row = self.connection.execute(
                 f"""
@@ -2409,6 +3410,7 @@ class AuthorityStore:
             "fresh": fresh,
             "delivered_count": delivered_count,
             "last_delivered_at": last_delivered_at,
+            "delivery_binding": delivery_binding,
         }
 
     def _append_event_cursor(self, cursor: StoreCursor, tenant_id: str, run_id: str | None, event_type: str, state: str | None, actor_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -2421,12 +3423,16 @@ class AuthorityStore:
         event_hash = hashlib.sha256((previous_hash + canonical_json(core)).encode("utf-8")).hexdigest()
         sequence = self._insert_audit_event(cursor, event_id, tenant_id, run_id, event_type, state, actor_id, payload_json, created_at, previous_hash, event_hash)
         envelope = {**core, "event_hash": event_hash, "sequence": sequence}
+        control = cursor.execute("SELECT active_epoch, pending_epoch, phase FROM audit_anchor_control WHERE singleton = 1").fetchone()
+        delivery_epoch = None
+        if control:
+            delivery_epoch = control["pending_epoch"] if control["phase"] == "draining" else control["active_epoch"]
         cursor.execute(
             """
-            INSERT INTO audit_anchor_outbox(event_id, tenant_id, envelope_json, attempts, next_attempt_at, created_at)
-            VALUES (?, ?, ?, 0, ?, ?)
+            INSERT INTO audit_anchor_outbox(event_id, tenant_id, envelope_json, attempts, next_attempt_at, delivery_epoch, created_at)
+            VALUES (?, ?, ?, 0, ?, ?, ?)
             """,
-            (event_id, tenant_id, canonical_json(envelope), created_at, created_at),
+            (event_id, tenant_id, canonical_json(envelope), created_at, delivery_epoch, created_at),
         )
         return envelope
 

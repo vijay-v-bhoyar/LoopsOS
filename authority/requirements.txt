@@ -1,5 +1,7 @@
 fastapi==0.136.1
 httpx==0.28.1
+httpcore==1.0.9
+anyio==4.15.1
 pydantic==2.13.3
 psycopg[binary]==3.2.13
 PyJWT[crypto]==2.13.0

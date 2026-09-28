@@ -43,7 +43,13 @@ test("persists workspace edits, exports portable JSON, and requires confirmation
 
   await page.getByRole("button", { name: "Delete workspace" }).click();
   await expect(page.getByRole("dialog", { name: "Delete workspace?" })).toBeVisible();
-  await page.getByRole("button", { name: "Delete permanently" }).click();
+  await expect(page.getByRole("button", { name: "Remove workspace record" })).toBeDisabled();
+  await expect(page.getByText(/Downloaded exports, other browser copies or caches/)).toBeVisible();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}").workspaces.length)).toBe(1);
+  await page.getByRole("button", { name: "Delete workspace" }).click();
+  await page.getByRole("checkbox", { name: "I understand that related records and copies are not erased." }).check();
+  await page.getByRole("button", { name: "Remove workspace record" }).click();
   await expect(page.getByText("Saved Workspaces")).toBeVisible();
 
   const afterDelete = await page.evaluate(() => JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}"));

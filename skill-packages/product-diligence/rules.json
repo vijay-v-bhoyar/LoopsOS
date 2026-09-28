@@ -1,0 +1,643 @@
+{
+  "_doc": "Machine source of truth for product-diligence verdict derivation. SKILL.md tables are the human mirror; this file is authoritative. Predicate names are interpreted by scripts/derive.py; the set is closed.",
+  "severity_rank": {
+    "critical": 3,
+    "high": 2,
+    "medium": 1,
+    "low": 0
+  },
+  "grade_rank": {
+    "broken": 0,
+    "evidence-missing": 1,
+    "demo": 2,
+    "beta": 3,
+    "production": 4
+  },
+  "core_layers": [
+    "L06",
+    "L07",
+    "L08",
+    "L09",
+    "L12"
+  ],
+  "all_layers": [
+    "L01",
+    "L02",
+    "L03",
+    "L04",
+    "L05",
+    "L06",
+    "L07",
+    "L08",
+    "L09",
+    "L10",
+    "L11",
+    "L12",
+    "L13",
+    "L14",
+    "L15",
+    "L16",
+    "L17",
+    "L18",
+    "L19",
+    "L20"
+  ],
+  "mandatory_controls": [
+    "MC-1",
+    "MC-2",
+    "MC-3",
+    "MC-4",
+    "MC-5",
+    "MC-6",
+    "MC-7"
+  ],
+  "confidence_bands": [
+    {
+      "name": "high",
+      "min": 0.8
+    },
+    {
+      "name": "medium",
+      "min": 0.5
+    },
+    {
+      "name": "low",
+      "min": 0.0
+    }
+  ],
+  "d3_render_cap": 7,
+  "lenses": {
+    "D1": {
+      "title": "Beta readiness",
+      "rules": [
+        {
+          "id": "1.1",
+          "when": {
+            "pred": "risk_open_sev_eq",
+            "severity": "critical"
+          },
+          "verdict": "Not ready for external users"
+        },
+        {
+          "id": "1.2",
+          "when": {
+            "pred": "risk_open_sev_eq",
+            "severity": "high",
+            "uncompensated": true
+          },
+          "verdict": "Demo-ready only"
+        },
+        {
+          "id": "1.3",
+          "when": {
+            "any": [
+              {
+                "pred": "risk_open_high_compensated"
+              },
+              {
+                "pred": "risk_open_medium_no_mitigation"
+              }
+            ]
+          },
+          "verdict": "Beta-ready with conditions"
+        },
+        {
+          "id": "1.4",
+          "else": true,
+          "verdict": "Beta-ready"
+        }
+      ],
+      "scores": {
+        "Not ready for external users": 1,
+        "Demo-ready only": 2,
+        "Beta-ready with conditions": 4,
+        "Beta-ready": 5
+      }
+    },
+    "D2": {
+      "title": "Enterprise maturity",
+      "rules": [
+        {
+          "id": "2.1",
+          "when": {
+            "pred": "layer_count_grade_eq_min",
+            "grade": "evidence-missing",
+            "count": 8
+          },
+          "verdict": "Not enough evidence to determine"
+        },
+        {
+          "id": "2.2",
+          "when": {
+            "pred": "layer_count_grade_eq_min",
+            "grade": "broken",
+            "count": 1
+          },
+          "verdict": "Prototype-grade"
+        },
+        {
+          "id": "2.3",
+          "when": {
+            "pred": "layer_any_core_rank_max",
+            "rank_max": 2
+          },
+          "verdict": "Demo-grade only"
+        },
+        {
+          "id": "2.4",
+          "when": {
+            "pred": "layer_all_rank_min",
+            "rank_min": 4
+          },
+          "verdict": "Enterprise production-grade"
+        },
+        {
+          "id": "2.5",
+          "when": {
+            "all": [
+              {
+                "pred": "layer_all_core_rank_min",
+                "rank_min": 3
+              },
+              {
+                "pred": "layer_count_grade_rank_min",
+                "rank_min": 3,
+                "count": 15
+              }
+            ]
+          },
+          "verdict": "Enterprise beta-grade"
+        },
+        {
+          "id": "2.6",
+          "else": true,
+          "verdict": "Demo-grade only"
+        }
+      ],
+      "scores": {
+        "Prototype-grade": 1,
+        "Demo-grade only": 2,
+        "Enterprise beta-grade": 4,
+        "Enterprise production-grade": 5,
+        "Not enough evidence to determine": 0
+      }
+    },
+    "D4_posture": {
+      "title": "Acquisition diligence (posture mode)",
+      "requires_valuation_params": false,
+      "rules": [
+        {
+          "id": "4.1",
+          "when": {
+            "pred": "risk_open_sev_eq",
+            "severity": "critical"
+          },
+          "verdict": "diligence-fail"
+        },
+        {
+          "id": "4.2",
+          "when": {
+            "pred": "risk_open_sev_eq",
+            "severity": "high",
+            "uncompensated": true,
+            "surfaces": [
+              "L09",
+              "L15",
+              "V-06",
+              "S-09"
+            ]
+          },
+          "verdict": "conditional-pass"
+        },
+        {
+          "id": "4.3",
+          "else": true,
+          "verdict": "diligence-pass"
+        }
+      ],
+      "scores": {
+        "diligence-fail": 1,
+        "conditional-pass": 3,
+        "diligence-pass": 5
+      }
+    },
+    "D4_valuation": {
+      "title": "Acquisition diligence (valuation mode)",
+      "requires_valuation_params": true,
+      "rules": [
+        {
+          "id": "4.4",
+          "when": {
+            "pred": "risk_open_sev_eq",
+            "severity": "critical",
+            "surfaces": [
+              "L09",
+              "V-06"
+            ]
+          },
+          "verdict": "Do not buy"
+        },
+        {
+          "id": "4.5",
+          "when": {
+            "pred": "risk_open_sev_eq",
+            "severity": "critical"
+          },
+          "verdict": "Buy only for team/IP"
+        },
+        {
+          "id": "4.6",
+          "when": {
+            "pred": "risk_open_sev_eq",
+            "severity": "high",
+            "uncompensated": true,
+            "surfaces": [
+              "L15",
+              "S-09",
+              "S-08",
+              "V-11"
+            ]
+          },
+          "verdict": "Buy with major valuation haircut"
+        },
+        {
+          "id": "4.7",
+          "when": {
+            "pred": "strength_absent_on",
+            "surfaces": [
+              "S-03"
+            ]
+          },
+          "verdict": "Partner instead of buy"
+        },
+        {
+          "id": "4.8",
+          "else": true,
+          "verdict": "Buy at full valuation"
+        }
+      ],
+      "scores": {
+        "Do not buy": 1,
+        "Buy only for team/IP": 2,
+        "Buy with major valuation haircut": 3,
+        "Partner instead of buy": 3,
+        "Buy at full valuation": 5
+      }
+    },
+    "D5": {
+      "title": "Category / moat",
+      "rules": [
+        {
+          "id": "5.1",
+          "when": {
+            "pred": "strength_absent_on",
+            "surfaces": [
+              "S-04",
+              "S-05",
+              "S-06"
+            ]
+          },
+          "verdict": "Pure AI wrapper"
+        },
+        {
+          "id": "5.2",
+          "when": {
+            "pred": "risk_open_sev_min",
+            "severity": "high",
+            "uncompensated": true,
+            "surfaces": [
+              "S-07",
+              "S-11"
+            ]
+          },
+          "verdict": "High risk of obsolescence"
+        },
+        {
+          "id": "5.3",
+          "when": {
+            "pred": "strength_absent_on",
+            "surfaces": [
+              "S-01",
+              "S-02"
+            ]
+          },
+          "verdict": "Feature-level product"
+        },
+        {
+          "id": "5.4",
+          "else": true,
+          "verdict": "Category-defining potential"
+        }
+      ],
+      "scores": {
+        "Pure AI wrapper": 1,
+        "High risk of obsolescence": 2,
+        "Feature-level product": 3,
+        "Category-defining potential": 5
+      }
+    },
+    "D6": {
+      "title": "Future resilience",
+      "rules": [
+        {
+          "id": "6.1",
+          "when": {
+            "pred": "risk_open_sev_min",
+            "severity": "high",
+            "surfaces": [
+              "S-11"
+            ]
+          },
+          "verdict": "High risk of obsolescence"
+        },
+        {
+          "id": "6.2",
+          "when": {
+            "any": [
+              {
+                "pred": "control_absent_open",
+                "controls": [
+                  "MC-5",
+                  "MC-6",
+                  "MC-7"
+                ]
+              },
+              {
+                "pred": "risk_open_sev_min",
+                "severity": "high",
+                "surfaces": [
+                  "V-12",
+                  "V-13",
+                  "V-15",
+                  "E-01",
+                  "E-02",
+                  "E-03",
+                  "E-04",
+                  "E-05",
+                  "E-06",
+                  "E-07",
+                  "E-08"
+                ]
+              }
+            ]
+          },
+          "verdict": "Needs core adaptation"
+        },
+        {
+          "id": "6.evidence",
+          "when": {
+            "pred": "evolution_status",
+            "status": "EVIDENCE_MISSING"
+          },
+          "verdict": "Undetermined"
+        },
+        {
+          "id": "6.not-ready",
+          "when": {
+            "pred": "evolution_status",
+            "status": "NOT_READY"
+          },
+          "verdict": "Needs core adaptation"
+        },
+        {
+          "id": "6.3",
+          "positive": true,
+          "when": {
+            "all": [
+              {
+                "pred": "strength_covers_controls",
+                "controls": [
+                  "MC-5",
+                  "MC-6",
+                  "MC-7"
+                ]
+              },
+              {
+                "pred": "strength_present_on",
+                "surfaces": [
+                  "V-12"
+                ]
+              },
+              {
+                "pred": "evolution_status",
+                "status": "QUALIFIED"
+              }
+            ]
+          },
+          "verdict": "Resilient within evaluated scope"
+        },
+        {
+          "id": "6.4",
+          "else": true,
+          "verdict": "Needs core adaptation"
+        }
+      ],
+      "scores": {
+        "High risk of obsolescence": 1,
+        "Needs core adaptation": 3,
+        "Resilient within evaluated scope": 5,
+        "Undetermined": null
+      }
+    }
+  },
+  "d3_security_score": {
+    "_doc": "D3 is a render lens with no verdict enum. Its scorecard score derives directly from worst OPEN severity across all dimensions.",
+    "ladder": [
+      {
+        "if": "open_critical",
+        "score": 1,
+        "label": "open Critical"
+      },
+      {
+        "if": "open_high_uncompensated",
+        "score": 2,
+        "label": "open High, no verified control"
+      },
+      {
+        "if": "open_high_compensated",
+        "score": 3,
+        "label": "open High, compensated"
+      },
+      {
+        "if": "open_medium",
+        "score": 4,
+        "label": "Medium only"
+      },
+      {
+        "if": "clean",
+        "score": 5,
+        "label": "no open blockers"
+      }
+    ]
+  },
+  "floors": {
+    "D1": {
+      "required": [
+        "A-02",
+        "A-06",
+        "A-10",
+        "A-16"
+      ],
+      "any_of": [
+        [
+          "A-07",
+          "A-08"
+        ]
+      ],
+      "relevant": [
+        "A-02",
+        "A-06",
+        "A-10",
+        "A-16",
+        "A-07",
+        "A-08",
+        "A-01",
+        "A-09",
+        "A-11",
+        "A-14",
+        "A-17",
+        "A-18"
+      ]
+    },
+    "D2": {
+      "required": [
+        "A-03",
+        "A-04",
+        "A-06"
+      ],
+      "min_present": 10,
+      "relevant": [
+        "A-01",
+        "A-02",
+        "A-03",
+        "A-04",
+        "A-05",
+        "A-06",
+        "A-07",
+        "A-08",
+        "A-09",
+        "A-10",
+        "A-11",
+        "A-12",
+        "A-13",
+        "A-14",
+        "A-15",
+        "A-16",
+        "A-17",
+        "A-18",
+        "A-19",
+        "A-20",
+        "A-21"
+      ]
+    },
+    "D3": {
+      "required": [
+        "A-06",
+        "A-10",
+        "A-11"
+      ],
+      "any_of": [
+        [
+          "A-04",
+          "A-09"
+        ]
+      ],
+      "relevant": [
+        "A-06",
+        "A-10",
+        "A-11",
+        "A-04",
+        "A-09",
+        "A-03",
+        "A-07",
+        "A-08",
+        "A-16",
+        "A-19"
+      ]
+    },
+    "D4": {
+      "required": [
+        "A-03",
+        "A-04",
+        "A-06",
+        "A-19"
+      ],
+      "min_present": 10,
+      "relevant": [
+        "A-01",
+        "A-02",
+        "A-03",
+        "A-04",
+        "A-05",
+        "A-06",
+        "A-07",
+        "A-08",
+        "A-09",
+        "A-10",
+        "A-11",
+        "A-12",
+        "A-13",
+        "A-14",
+        "A-15",
+        "A-16",
+        "A-17",
+        "A-18",
+        "A-19",
+        "A-20",
+        "A-21"
+      ]
+    },
+    "D5": {
+      "required": [
+        "A-01",
+        "A-20"
+      ],
+      "any_of": [
+        [
+          "A-09",
+          "A-10",
+          "MOAT"
+        ]
+      ],
+      "relevant": [
+        "A-01",
+        "A-20",
+        "A-09",
+        "A-10"
+      ]
+    },
+    "D6": {
+      "required": [
+        "A-10",
+        "A-11"
+      ],
+      "any_of": [
+        [
+          "A-06",
+          "A-12"
+        ]
+      ],
+      "relevant": [
+        "A-10",
+        "A-11",
+        "A-06",
+        "A-12",
+        "A-09",
+        "A-15",
+        "A-16",
+        "A-17"
+      ]
+    }
+  },
+  "dimension_lens_map": {
+    "D1": "D1",
+    "D2": "D2",
+    "D3": "D3",
+    "D4": [
+      "D4_posture",
+      "D4_valuation"
+    ],
+    "D5": "D5",
+    "D6": "D6"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "enterprise-profile/v1",
+  "id": "local-insurance",
+  "version": "1.0.0",
+  "kind": "insurance",
+  "exposure": "ISOLATED_TEST",
+  "required_proof": "FIXTURE",
+  "limits": {
+    "max_detection_seconds": 60,
+    "max_task_error_rate": 0.01,
+    "max_cohort_loss": 100,
+    "max_stop_seconds": 2,
+    "max_unknown_effects": 0,
+    "max_monitor_blind_seconds": 5,
+    "max_review_miss_rate": 0.05,
+    "max_backlog": 10,
+    "max_total_exposure": 100,
+    "max_reconciliation_seconds": 60,
+    "max_eval_delta": 0.01,
+    "min_samples": 2
+  },
+  "max_repairs": 3,
+  "max_events": 1000,
+  "run_seconds": 86400,
+  "max_evidence_age": 3600,
+  "waiver_days": 30,
+  "nonwaivable_cases": [
+    "DISCOVERY-ROUTES",
+    "AGENT-AUTHORITY",
+    "AGENT-RESTART",
+    "CRYPTO-REPLAY",
+    "REGULATORY-COMPOSITION"
+  ],
+  "principals": [
+    "synthetic-operator"
+  ],
+  "operations": [
+    "fixture-only"
+  ],
+  "waiver_compensations": {
+    "QUALITY-DENOMINATOR": [
+      "HUMAN-REVIEW"
+    ]
+  },
+  "enterprise_prerequisites": [
+    "protected-runner",
+    "organizational-independence",
+    "live-enforcement",
+    "retention-hold",
+    "help-delivery",
+    "current-revocation"
+  ]
+}

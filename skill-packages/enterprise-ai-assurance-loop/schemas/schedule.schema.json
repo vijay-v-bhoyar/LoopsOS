@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-schedule/v1"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "due": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "interval_seconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_dispatches": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "max_failures": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "lease_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "due",
+    "interval_seconds",
+    "max_dispatches",
+    "max_failures",
+    "lease_seconds"
+  ],
+  "additionalProperties": false
+}

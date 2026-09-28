@@ -30,10 +30,23 @@ def complete_production_environment() -> dict[str, str]:
         "LOOPOS_CORS_ORIGINS": "https://console.example.com",
         "LOOPOS_AUDIT_ANCHOR_URL": "https://audit.example.com/loopos/events",
         "LOOPOS_AUDIT_ANCHOR_HMAC_SECRET": "audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+        "LOOPOS_AUDIT_ANCHOR_EPOCH": "1",
+        "LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID": "4242",
+        "LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS": "7007",
         "LOOPOS_RETENTION_POLICY_URL": "https://policy.example.com/loopos-retention",
         "LOOPOS_SUPPORT_CONTACT": "loopos-operations@example.com",
         "LOOPOS_OUTBOUND_POLICY_MODE": "allowlist",
         "LOOPOS_ALLOWED_HTTP_HOSTS": "api.example.com",
+        # Synthetic fixture limits only: this is not an organization risk policy.
+        "LOOPOS_EFFECT_BUDGET_POLICY_JSON": json.dumps({
+            "version": 1, "scope": "cumulative", "policy_epoch": 1,
+            "tenants": {"synthetic-preflight-tenant": {
+                "ceilings": {"dispatch_count": 2},
+                "routes": [{"endpoint": "https://api.example.com/fixture", "method": "POST",
+                    "evidence_ref": "fixture-only:configuration-test",
+                    "charges": [{"unit": "dispatch_count", "fixed": 1}]}],
+            }},
+        }),
         "LOOPOS_BACKUP_RESTORE_EVIDENCE_URL": "https://evidence.example.com/loopos/restore.json",
         "LOOPOS_BACKUP_RESTORE_EVIDENCE_SHA256": "a" * 64,
         "LOOPOS_BACKUP_RESTORE_VERIFIED_AT": verified_at,
@@ -59,6 +72,49 @@ def complete_production_environment() -> dict[str, str]:
 
 
 class ProductionEnvironmentVerifierTests(unittest.TestCase):
+    def test_aggregate_effect_budget_requires_explicit_valid_policy(self) -> None:
+        for policy in (None, "null", "{}", "[]", '{"version":1,"scope":"cumulative","tenants":{}}'):
+            with self.subTest(policy=policy):
+                environment = complete_production_environment()
+                if policy is None:
+                    environment.pop("LOOPOS_EFFECT_BUDGET_POLICY_JSON")
+                else:
+                    environment["LOOPOS_EFFECT_BUDGET_POLICY_JSON"] = policy
+                with patch.dict("os.environ", environment, clear=True):
+                    report = production_configuration_report()
+                check = next(item for item in report["checks"] if item["name"] == "aggregate_effect_budget_configured")
+                self.assertFalse(check["passed"])
+                self.assertEqual(report["configuration_verdict"], "NO_GO")
+
+    def test_valid_synthetic_effect_policy_is_configuration_evidence_only(self) -> None:
+        with patch.dict("os.environ", complete_production_environment(), clear=True):
+            report = production_configuration_report()
+        check = next(item for item in report["checks"] if item["name"] == "aggregate_effect_budget_configured")
+        self.assertTrue(check["passed"])
+        self.assertEqual(report["authoritative_handover"], "NOT_PROVEN")
+
+    def test_effect_policy_rejects_unsafe_or_unallowlisted_routes(self) -> None:
+        for endpoint in ("https://outside.example.com/fixture", "http://api.example.com/fixture", "https://secret@api.example.com/fixture",
+                         "https://api.example.com/fixture?case=test", "https://api.example.com/fixture?", "https://api.example.com/fixture#"):
+            with self.subTest(endpoint=endpoint):
+                environment = complete_production_environment()
+                policy = json.loads(environment["LOOPOS_EFFECT_BUDGET_POLICY_JSON"])
+                policy["tenants"]["synthetic-preflight-tenant"]["routes"][0]["endpoint"] = endpoint
+                environment["LOOPOS_EFFECT_BUDGET_POLICY_JSON"] = json.dumps(policy)
+                with patch.dict("os.environ", environment, clear=True):
+                    report = production_configuration_report()
+                self.assertFalse(next(item for item in report["checks"] if item["name"] == "aggregate_effect_budget_configured")["passed"])
+                self.assertNotIn(endpoint, json.dumps(report))
+
+    def test_deny_all_needs_no_effect_budget(self) -> None:
+        environment = complete_production_environment()
+        environment.pop("LOOPOS_EFFECT_BUDGET_POLICY_JSON")
+        environment["LOOPOS_OUTBOUND_POLICY_MODE"] = "deny_all"
+        environment["LOOPOS_ALLOWED_HTTP_HOSTS"] = ""
+        with patch.dict("os.environ", environment, clear=True):
+            report = production_configuration_report()
+        self.assertTrue(next(item for item in report["checks"] if item["name"] == "aggregate_effect_budget_configured")["passed"])
+
     def test_authority_template_covers_every_runtime_environment_name(self) -> None:
         config_path = Path("authority/loopos_authority/config.py")
         tree = ast.parse(config_path.read_text(encoding="utf-8"))
@@ -85,6 +141,17 @@ class ProductionEnvironmentVerifierTests(unittest.TestCase):
         self.assertIn("durable_postgres_configured", failed)
         self.assertIn("rate_limit_configured", failed)
         self.assertIn("production_identity_configured", failed)
+        self.assertIn("release_attestor_configured", failed)
+
+    def test_release_attestor_must_be_configured_for_production_handover(self) -> None:
+        environment = complete_production_environment()
+        environment.pop("LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS")
+        environment.pop("LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID")
+        with patch.dict("os.environ", environment, clear=True):
+            report = production_configuration_report()
+        self.assertEqual(report["configuration_verdict"], "NO_GO")
+        check = next(item for item in report["checks"] if item["name"] == "release_attestor_configured")
+        self.assertFalse(check["passed"])
 
     def test_invalid_startup_configuration_is_reported_without_secret_values(self) -> None:
         secret = "short"

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Enterprise AI Owner 6"
+  short_description: "Assess cryptographic paths, long-lived confidentiality, signer trust, revocation and downgrade resistance."

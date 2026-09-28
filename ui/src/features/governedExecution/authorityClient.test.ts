@@ -19,6 +19,7 @@ import {
   listReleaseInitiatives,
   recordReleaseInitiative,
   recordConnectorEvent,
+  revokeAuthoritySession,
   rejectGovernedRun,
   rollbackGovernedRun,
   resolveAuthorityBase,
@@ -42,6 +43,7 @@ describe("authorityClient", () => {
       storage_backend: "postgres",
       production_identity: true,
       credential_injection_broker_verified: true,
+      aggregate_effect_budget_verified: true,
       audit_anchor_configured: true,
       audit_anchor_backlog: 0,
       audit_anchor_delivery_verified: true,
@@ -181,6 +183,19 @@ describe("authorityClient", () => {
     }));
   });
 
+  it("revokes the current authority session without sending credentials in the URL", async () => {
+    const fetchImpl = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+
+    await revokeAuthoritySession("enterprise-token");
+
+    expect(fetchImpl).toHaveBeenCalledWith("/api/v1/session/revoke", expect.objectContaining({
+      method: "POST",
+      credentials: "omit",
+      redirect: "error",
+      headers: expect.objectContaining({ authorization: "Bearer enterprise-token" }),
+    }));
+  });
+
   it("times out when an authority JSON response stalls after headers", async () => {
     vi.useFakeTimers();
     try {
@@ -259,6 +274,7 @@ describe("authorityClient", () => {
       storage_backend: "postgres",
       production_identity: true,
       credential_injection_broker_verified: true,
+      aggregate_effect_budget_verified: true,
       audit_anchor_configured: true,
       audit_anchor_backlog: 0,
       audit_anchor_delivery_verified: true,
@@ -318,7 +334,7 @@ describe("authorityClient", () => {
     }));
   });
 
-  it.each(["execution_job_backlog", "operational_evidence"])(
+  it.each(["execution_job_backlog", "operational_evidence", "aggregate_effect_budget_verified"])(
     "rejects readiness proof missing %s",
     async (field) => {
       const payload = completeReadinessPayload();
@@ -335,6 +351,7 @@ describe("authorityClient", () => {
   it.each([
     ["development_auth", true],
     ["production_identity", false],
+    ["aggregate_effect_budget_verified", false],
     ["audit_anchor_backlog", 1],
     ["execution_job_backlog", 1],
   ])("rejects a structurally valid but incomplete production readiness proof for %s", async (field, value) => {
@@ -844,6 +861,15 @@ describe("authorityClient", () => {
       method: "POST",
       headers: expect.objectContaining({ authorization: "Bearer token", "idempotency-key": expect.stringContaining("release-") }),
     }));
+
+    fetchImpl.mockResolvedValueOnce(new Response(JSON.stringify([{
+      ...record,
+      review_context: {
+        subject_digest: "d".repeat(64), policy_digest: "e".repeat(64), evidence_digest: "f".repeat(64),
+        reviewable: false, blocking_reasons: ["Invalid provider check"], blocking_observed_check_event_ids: [17], latest_review: null,
+      },
+    }]), { status: 200, headers: { "content-type": "application/json" } }));
+    await expect(listReleaseInitiatives("token", "workspace-release", "local-evaluation")).rejects.toThrow("invalid release initiative data");
   });
 
   it("parses streamed audit events and stops at an authority release boundary", async () => {

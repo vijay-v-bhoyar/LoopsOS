@@ -1,0 +1,13 @@
+# Enterprise prerequisites and limitations
+
+The portable layer supplies typed contracts, content binding, Ed25519 verification, owner predicates, complete local attempt history, scoped gate reduction, repair/help records, bounded scheduler ticks, safe export and a transactional action-gateway reference. These do not install security boundaries in an assessed product.
+
+For enterprise proof provide an organization-protected runner/verifier/catalog; authenticated workload and human roles; independently administered second line; protected signing; live revocation and trustworthy time; product-specific enforcement, credential/network isolation and provider commit semantics; approved thresholds; real raw evidence; lawful retention/holds; operational monitoring/stop/recovery; and actual help delivery and scheduler supervision. The trust administrator must assess issuer and collector competence and independence. The product owns real business effects and customer remediation.
+
+SQLite history is tamper-evident relative to its retained head and protected host, not independently anchored WORM. A privileged writer can rewrite a local database and its hashes. Obtain organization-controlled storage/anchor attestations for stronger claims. Signatures do not prove truthful collection. Raw exports are confidential and require access controls; HTML output escapes content and does not render evidence as active links.
+
+The ActionGateway is an executable local adapter contract. Its configure/approve/reconciliation interfaces are privileged and must never be exposed directly to a model. It cannot enforce an OS network boundary or atomically commit a remote provider transaction. Test last controllable prevention points, unknown outcomes and idempotency with the actual provider. Cancellation is not reversal, compensation is separately authorized, and API acknowledgements are not verified customer recovery.
+
+Finite tests cannot rule out all deception, strategic behavior, hidden capability, unknown shadow assets, correlated failures, covert disclosure or human fatigue. Vendor training/deletion/routing claims can be unobservable. Report these as bounded uncertainty or known-unaddressed risks; do not manufacture a scientific or legal certification.
+
+Local fixture success cannot establish ENTERPRISE proof. Distinct test principals simulate role separation only. A production profile requires real independently supplied attestations and a separate release/deployment authorization. Missing integrations remain visible blockers, not fake handlers. No live scheduler, email integration, provider deployment or production probe is installed automatically by these packages.

@@ -1,4 +1,4 @@
-import type { SavedWorkspace } from "../types";
+import type { HelpRequest, HelpRequestEvent, OutcomeMeasurementPlan, SavedWorkspace } from "../types";
 
 const RISK_TIERS = ["R0", "R1", "R2", "R3", "R4"] as const;
 const WORKFLOW_TYPES = [
@@ -48,6 +48,10 @@ function isOneOf<T extends string>(value: unknown, values: readonly T[]): value 
   return isString(value) && values.includes(value as T);
 }
 
+function isNullableFiniteNumber(value: unknown): boolean {
+  return value === null || (typeof value === "number" && Number.isFinite(value));
+}
+
 function hasStringFields(value: Record<string, unknown>, fields: readonly string[]): boolean {
   return fields.every((field) => isString(value[field]));
 }
@@ -62,7 +66,25 @@ function isUseCase(value: unknown): boolean {
     "businessOutcome",
     "maturity",
     "constraints",
-  ]);
+  ]) && (value.outcomeMeasurement === undefined || isOutcomeMeasurementPlan(value.outcomeMeasurement));
+}
+
+function isOutcomeMeasurementPlan(value: unknown): value is OutcomeMeasurementPlan {
+  return isRecord(value)
+    && hasStringFields(value, ["metric", "source", "observation_window"])
+    && isOneOf(value.unit, ["hours", "count", "percent"] as const)
+    && isNullableFiniteNumber(value.baseline)
+    && isNullableFiniteNumber(value.target);
+}
+
+function isOutcomeMeasurementObservation(value: unknown): boolean {
+  return isRecord(value)
+    && isNonEmptyString(value.observation_id)
+    && typeof value.value === "number"
+    && Number.isFinite(value.value)
+    && isOneOf(value.unit, ["hours", "count", "percent"] as const)
+    && isNonEmptyString(value.source_ref)
+    && isNonEmptyString(value.observed_at);
 }
 
 function isExtractionWarning(value: unknown): boolean {
@@ -153,6 +175,121 @@ function isHandoff(value: unknown): boolean {
     && isOneOf(value.status, HANDOFF_STATUSES);
 }
 
+const HELP_REQUEST_STATUSES = ["draft", "delivery_failed", "waiting", "response_recorded", "revalidation_needed", "closure_review_requested"] as const;
+const HELP_REQUEST_EVENT_TYPES = ["draft_created", "delivery_recorded", "delivery_failed", "response_recorded", "revalidation_planned", "revalidation_result"] as const;
+const HELP_REVALIDATION_RESULTS = ["pass", "fail", "inconclusive"] as const;
+
+function isHelpRequestEvent(value: unknown): value is HelpRequestEvent {
+  if (!isRecord(value)
+    || !isOneOf(value.type, HELP_REQUEST_EVENT_TYPES)
+    || !isNonEmptyString(value.event_id)
+    || value.event_id.length > 200
+    || !isNonEmptyString(value.actor_id)
+    || value.actor_id.length > 200
+    || !isNonEmptyString(value.actor_name)
+    || value.actor_name.length > 240
+    || !isNonEmptyString(value.note)
+    || value.note.length > 2_000
+    || !isString(value.at)
+    || !Number.isFinite(Date.parse(value.at))) return false;
+
+  const requiresEvidence = value.type !== "draft_created";
+  const hasEvidence = isNonEmptyString(value.evidence_ref) && value.evidence_ref.length <= 512;
+  const hasResult = isOneOf(value.result, HELP_REVALIDATION_RESULTS);
+  return (requiresEvidence ? hasEvidence : value.evidence_ref === undefined)
+    && (value.type === "revalidation_result" ? hasResult : value.result === undefined);
+}
+
+function isHelpRequest(value: unknown): value is HelpRequest {
+  if (!isRecord(value)
+    || !isNonEmptyString(value.help_request_id)
+    || value.help_request_id.length > 200
+    || !isNonEmptyString(value.blocked_goal)
+    || value.blocked_goal.length > 500
+    || !isNonEmptyString(value.destination)
+    || value.destination.length > 240
+    || !isNonEmptyString(value.requested_action)
+    || value.requested_action.length > 2_000
+    || !isNonEmptyString(value.risk_while_waiting)
+    || value.risk_while_waiting.length > 2_000
+    || !isNonEmptyString(value.wake_condition)
+    || value.wake_condition.length > 1_000
+    || !isNonEmptyString(value.requested_by_id)
+    || value.requested_by_id.length > 200
+    || !isNonEmptyString(value.requested_by)
+    || value.requested_by.length > 240
+    || !isOneOf(value.status, HELP_REQUEST_STATUSES)
+    || !Number.isInteger(value.attempts)
+    || (value.attempts as number) < 0
+    || (value.attempts as number) > 3
+    || !isString(value.deadline)
+    || !isString(value.created_at)
+    || !isString(value.updated_at)
+    || !Number.isFinite(Date.parse(value.deadline))
+    || !Number.isFinite(Date.parse(value.created_at))
+    || !Number.isFinite(Date.parse(value.updated_at))
+    || !isStringArray(value.evidence_refs)
+    || value.evidence_refs.length < 1
+    || value.evidence_refs.length > 30
+    || !value.evidence_refs.every(isNonEmptyString)
+    || new Set(value.evidence_refs).size !== value.evidence_refs.length
+    || !Array.isArray(value.events)
+    || value.events.length < 1
+    || value.events.length > 25
+    || !value.events.every(isHelpRequestEvent)) return false;
+
+  const eventIds = new Set<string>();
+  let state: HelpRequest["status"] = "draft";
+  let attempts = 0;
+  let priorEventTime = Date.parse(value.created_at as string);
+  let plannerActorId: string | undefined;
+  for (let index = 0; index < value.events.length; index += 1) {
+    const event = value.events[index] as HelpRequestEvent;
+    if (eventIds.has(event.event_id)) return false;
+    eventIds.add(event.event_id);
+    const eventTime = Date.parse(event.at);
+    if (eventTime < priorEventTime) return false;
+    priorEventTime = eventTime;
+    if (index === 0) {
+      if (event.type !== "draft_created"
+        || event.actor_id !== value.requested_by_id
+        || event.actor_name !== value.requested_by
+        || event.at !== value.created_at) return false;
+      continue;
+    }
+    if (event.type === "draft_created") return false;
+    if (event.type === "delivery_failed" || event.type === "delivery_recorded") {
+      if (state !== "draft" && state !== "delivery_failed") return false;
+      attempts += 1;
+      if (attempts > 3 || !event.evidence_ref) return false;
+      state = event.type === "delivery_failed" ? "delivery_failed" : "waiting";
+      continue;
+    }
+    if (event.type === "response_recorded") {
+      if (state !== "waiting" || !event.evidence_ref) return false;
+      state = "response_recorded";
+      continue;
+    }
+    if (event.type === "revalidation_planned") {
+      const priorPlans = value.events.slice(0, index).filter((item) => item.type === "revalidation_planned").length;
+      if (state !== "response_recorded" || priorPlans >= 10 || event.actor_id === value.requested_by_id) return false;
+      plannerActorId = event.actor_id;
+      state = "revalidation_needed";
+      continue;
+    }
+    if (event.type === "revalidation_result") {
+      if (state !== "revalidation_needed"
+        || !plannerActorId
+        || event.actor_id === value.requested_by_id
+        || event.actor_id === plannerActorId) return false;
+      state = event.result === "pass" ? "closure_review_requested" : "response_recorded";
+    }
+  }
+  return state === value.status
+    && attempts === value.attempts
+    && priorEventTime === Date.parse(value.updated_at as string)
+    && value.events[value.events.length - 1]?.at === value.updated_at;
+}
 function isEffortSavingEstimate(value: unknown): boolean {
   return isRecord(value)
     && hasStringFields(value, ["initiative_id", "assumptions", "confidence_basis"])
@@ -240,8 +377,11 @@ function isReleaseAssurance(value: unknown): boolean {
 }
 
 function isInitiative(value: unknown): boolean {
-  return isRecord(value)
-    && hasStringFields(value, ["id", "title", "description", "business_outcome", "maturity", "created_at", "updated_at"])
+  if (!isRecord(value)) return false;
+  const measurement = value.outcome_measurement;
+  const measurementUnit = isOutcomeMeasurementPlan(measurement) ? measurement.unit : undefined;
+  return hasStringFields(value, ["id", "title", "description", "business_outcome", "maturity", "created_at", "updated_at"])
+    && (measurement === undefined || isOutcomeMeasurementPlan(measurement))
     && isOneOf(value.workflow_type, WORKFLOW_TYPES)
     && isOneOf(value.risk, RISK_TIERS)
     && isOneOf(value.status, INITIATIVE_STATUSES)
@@ -255,6 +395,10 @@ function isInitiative(value: unknown): boolean {
     && Array.isArray(value.handoffs)
     && value.handoffs.every(isHandoff)
     && isEffortSavingEstimate(value.roi_assumptions)
+    && (value.outcome_observations === undefined
+      || (Array.isArray(value.outcome_observations)
+        && value.outcome_observations.every((observation) => isOutcomeMeasurementObservation(observation)
+          && (measurementUnit === undefined || observation.unit === measurementUnit))))
     && (value.release_assurance === undefined || isReleaseAssurance(value.release_assurance));
 }
 
@@ -262,7 +406,15 @@ function isQuestionSuggestion(value: unknown): boolean {
   return isRecord(value)
     && hasStringFields(value, ["question_id", "question", "why_it_matters"])
     && isOneOf(value.target_field, ["title", "description", "environment", "aiScope", "dataSensitivity", "businessOutcome", "maturity", "constraints", "ownerEvidence", "approval", "execution"] as const)
-    && isOneOf(value.source, ["LLM endpoint", "deterministic fallback"] as const);
+    && isOneOf(value.source, ["LLM endpoint", "deterministic fallback"] as const)
+    && (value.provenance === undefined || isAIProvenance(value.provenance));
+}
+
+function isAIProvenance(value: unknown): boolean {
+  return isRecord(value)
+    && isOneOf(value.source, ["deterministic", "external"] as const)
+    && hasStringFields(value, ["provider", "model", "prompt_version", "generated_at"])
+    && typeof value.consent_granted === "boolean";
 }
 
 export function isSavedWorkspaceDocument(value: unknown): value is SavedWorkspace {
@@ -285,6 +437,7 @@ export function isSavedWorkspaceDocument(value: unknown): value is SavedWorkspac
     && value.initiatives.every(isInitiative)
     && Array.isArray(value.question_suggestions)
     && value.question_suggestions.every(isQuestionSuggestion)
+    && (value.help_requests === undefined || (Array.isArray(value.help_requests) && value.help_requests.every(isHelpRequest)))
     && Array.isArray(value.input_sources)
     && value.input_sources.every(isInputSource);
 }

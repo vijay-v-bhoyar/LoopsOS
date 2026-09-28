@@ -1,10 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signedResponse } from "../src/test/llmAttestation";
 
-async function openWorkspace(page: Page) {
+async function openWorkspace(page: Page, navigateToWorkspace = true) {
   await page.goto("/");
   await page.getByRole("button", { name: "Enter Evaluation Workspace" }).click();
   await page.getByRole("button", { name: "Open Use Case Advisor" }).click();
   await page.getByRole("button", { name: "Load Example" }).click();
+  if (!navigateToWorkspace) return;
+  await goToWorkspaces(page);
+}
+
+async function goToWorkspaces(page: Page) {
   if ((page.viewportSize()?.width ?? 1_440) < 1_024) {
     await page.getByRole("button", { name: "Open navigation" }).click();
     await page.getByRole("dialog", { name: "Navigation" }).getByRole("button", { name: "Workspaces" }).click();
@@ -50,7 +56,7 @@ test("uses a configured LLM endpoint when present and saves returned questions i
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
+      body: JSON.stringify(signedResponse(route.request().postData()!, {
         questions: [
           {
             question: "Which evidence store will hold approval and execution records for this pilot?",
@@ -63,12 +69,14 @@ test("uses a configured LLM endpoint when present and saves returned questions i
             target_field: "constraints",
           },
         ],
-      }),
+      })),
     });
   });
 
-  await openWorkspace(page);
-
+  await openWorkspace(page, false);
+  await expect(page.getByLabel("Data sensitivity")).toBeVisible();
+  await page.getByLabel("Data sensitivity").selectOption("internal");
+  await goToWorkspaces(page);
   await expect(page.getByText(/Provider state: LLM endpoint configured\./)).toBeVisible();
   await expect(page.getByLabel("Allow this request to send workspace details to enterprise AI")).toBeChecked({ checked: false });
   await expect(page.getByRole("button", { name: "Generate Questions" })).toBeDisabled();
@@ -81,8 +89,37 @@ test("uses a configured LLM endpoint when present and saves returned questions i
   const stored = await page.evaluate(() => JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}"));
   expect(stored.workspaces[0].question_suggestions).toHaveLength(2);
   expect(stored.workspaces[0].question_suggestions.every((question: { source: string }) => question.source === "LLM endpoint")).toBe(true);
+  expect(stored.workspaces[0].question_suggestions[0].provenance).toMatchObject({
+    provider: "fixture-provider", model: "fixture-model",
+    gateway_attestation: { verification: "configured-gateway-signature", model_revision: `sha256:${"a".repeat(64)}` },
+  });
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(overflow).toBe(false);
   await page.screenshot({ path: testInfo.outputPath("llm-questioning-configured.png"), fullPage: true });
+});
+
+test("rejects a gateway response whose signed suggestion was tampered with", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    window.__LOOPOS_RUNTIME_CONFIG__ = { llmEndpoint: "/api/mock-llm-questions" };
+  });
+  let requestCount = 0;
+  await page.route("**/api/mock-llm-questions", async (route) => {
+    requestCount += 1;
+    const envelope = signedResponse(route.request().postData()!, { questions: [{ question: "Original signed question", why_it_matters: "Evidence", target_field: "constraints" }] });
+    envelope.signed_payload = envelope.signed_payload.replace("Original signed question", "Tampered attacker question");
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(envelope) });
+  });
+  await openWorkspace(page, false);
+  await page.getByLabel("Data sensitivity").selectOption("internal");
+  await goToWorkspaces(page);
+  await page.getByLabel("Allow this request to send workspace details to enterprise AI").check();
+  await page.getByRole("button", { name: "Generate Questions" }).click();
+  await expect(page.getByText("deterministic fallback", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Tampered attacker question")).toHaveCount(0);
+  expect(requestCount).toBe(1);
+  const stored = await page.evaluate(() => JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}"));
+  expect(stored.workspaces[0].question_suggestions.every((question: { provenance: { source: string; gateway_attestation?: unknown } }) =>
+    question.provenance.source === "deterministic" && !question.provenance.gateway_attestation)).toBe(true);
 });

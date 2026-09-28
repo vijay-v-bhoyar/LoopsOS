@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthGate } from "./components/AuthGate";
 import { Shell, type ViewId } from "./components/Shell";
-import { looposData } from "./lib/loopos";
 import { recommendLoops } from "./lib/recommendation";
 import { validateUseCase } from "./lib/validation";
 import { buildEnterpriseActionPlan } from "./lib/actionPlan";
-import { buildEvaluationPackMarkdown, completeNextRunStep, createInitiativeFromWorkspace, refreshInitiative } from "./lib/sdlcProductivity";
+import { buildEvaluationPackMarkdown, completeNextRunStep, createInitiativeFromWorkspace, recordOutcomeObservation, refreshInitiative } from "./lib/sdlcProductivity";
 import { consumeCrashAuthenticatedView } from "./lib/runtimeConfig";
 import { deploymentPostureForRuntime } from "./lib/deployment";
 import { createExecution, EMPTY_WORKSPACE_USE_CASE, useWorkspaceStore } from "./lib/workspaceStore";
 import { downloadMarkdown } from "./lib/workspaceExport";
+import { loadLooposData } from "./lib/runtimeData";
 import { Dashboard } from "./screens/Dashboard";
 import { ImplementationPlan } from "./screens/ImplementationPlan";
 import { LoopExplorer } from "./screens/LoopExplorer";
@@ -18,7 +18,7 @@ import { UseCaseAdvisor, type AdvisorPane } from "./screens/UseCaseAdvisor";
 import { UseCaseLibrary } from "./screens/UseCaseLibrary";
 import { ValidationStudio } from "./screens/ValidationStudio";
 import { WorkspaceConsole } from "./screens/WorkspaceConsole";
-import type { EnterpriseActionPlan, EnterpriseUser, LoopDetail, UseCaseRecord, UseCaseSource } from "./types";
+import type { EnterpriseActionPlan, EnterpriseUser, LoopDetail, LoopOSData, UseCaseRecord, UseCaseSource } from "./types";
 
 const VIEW_IDS: ViewId[] = ["dashboard", "workspace", "loops", "advisor", "usecases", "validation", "readiness", "plan"];
 
@@ -28,6 +28,46 @@ function viewFromLocation(): ViewId {
 }
 
 export default function App() {
+  const [looposData, setLooposData] = useState<LoopOSData | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    loadLooposData()
+      .then((data) => {
+        if (active) setLooposData(data);
+      })
+      .catch((error: unknown) => {
+        if (active) setCatalogError(error instanceof Error ? error.message : "The LoopOS catalog could not be loaded.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (catalogError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-bg2 px-6 text-fg1">
+        <div role="alert" className="surface max-w-lg p-6">
+          <h1 className="text-xl font-semibold">LoopOS is unavailable</h1>
+          <p className="mt-2 text-sm text-fg2">{catalogError}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!looposData) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-bg2 px-6 text-fg1">
+        <p role="status" className="text-sm font-semibold text-fg2">Loading the LoopOS catalog...</p>
+      </main>
+    );
+  }
+
+  return <LoadedApp looposData={looposData} />;
+}
+
+function LoadedApp({ looposData }: { looposData: LoopOSData }) {
   const [activeView, setActiveView] = useState<ViewId>(viewFromLocation);
   const [advisorPane, setAdvisorPane] = useState<AdvisorPane>("input");
   const activeViewRef = useRef(activeView);
@@ -196,6 +236,16 @@ export default function App() {
     }));
   };
 
+  const recordDashboardOutcome = (value: number, sourceRef: string) => {
+    if (posture.mode === "enterprise") return;
+    const initiative = workspace.activeWorkspace?.initiatives[0];
+    if (!initiative) return;
+    workspace.mutateActiveWorkspace((current) => ({
+      ...current,
+      initiatives: current.initiatives.map((item) => item.id === initiative.id ? recordOutcomeObservation(item, value, sourceRef) : item),
+    }));
+  };
+
   const exportSdlcEvaluationPack = () => {
     const active = workspace.activeWorkspace;
     const initiative = active?.initiatives[0];
@@ -226,6 +276,7 @@ export default function App() {
           onRecordDryRun={recordDashboardDryRun}
           onCreateInitiative={createSdlcInitiative}
           onCompleteRunStep={completeSdlcRunStep}
+          onRecordOutcome={recordDashboardOutcome}
           onExportEvaluationPack={exportSdlcEvaluationPack}
           posture={posture}
         />

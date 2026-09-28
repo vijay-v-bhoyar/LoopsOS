@@ -1,3 +1,5 @@
+import ipv6EgressPolicy from "../../../authority/loopos_authority/ipv6_egress_policy.json";
+
 export type DeploymentMode = "evaluation" | "enterprise";
 export type DeploymentStatus = "evaluation_only" | "activation_blocked" | "verification_required" | "enterprise_ready";
 export type BindingStatus = "bound" | "review" | "blocked";
@@ -88,31 +90,88 @@ function isSecureLocation(location: string): boolean {
   }
 }
 
+const IPV6_GLOBAL_UNICAST_ALLOCATIONS = ipv6EgressPolicy.global_unicast_allocations;
+const IPV6_IANA_GLOBALLY_REACHABLE_SPECIALS = ipv6EgressPolicy.globally_reachable_special_assignments;
+const IPV6_IETF_PROTOCOL_ASSIGNMENTS = ipv6EgressPolicy.partially_allocated_special_parent;
+const IPV6_BLOCKED_SPECIAL_DESTINATIONS = ipv6EgressPolicy.blocked_special_destinations;
+
+function parseIpv6Words(hostname: string): number[] | undefined {
+  let value = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (!value.includes(":") || value.includes("%")) return undefined;
+
+  if (value.includes(".")) {
+    const lastColon = value.lastIndexOf(":");
+    if (lastColon < 0) return undefined;
+    const octets = value.slice(lastColon + 1).split(".").map(Number);
+    if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+      return undefined;
+    }
+    const high = ((octets[0] << 8) | octets[1]).toString(16);
+    const low = ((octets[2] << 8) | octets[3]).toString(16);
+    value = `${value.slice(0, lastColon + 1)}${high}:${low}`;
+  }
+
+  const compression = value.indexOf("::");
+  if (compression >= 0 && value.indexOf("::", compression + 2) >= 0) return undefined;
+  const left = (compression >= 0 ? value.slice(0, compression) : value).split(":").filter(Boolean);
+  const right = compression >= 0 ? value.slice(compression + 2).split(":").filter(Boolean) : [];
+  if ([...left, ...right].some((word) => !/^[0-9a-f]{1,4}$/.test(word))) return undefined;
+  const expanded = compression >= 0
+    ? [...left, ...Array(8 - left.length - right.length).fill("0"), ...right]
+    : left;
+  if (expanded.length !== 8 || (compression >= 0 && left.length + right.length >= 8)) return undefined;
+  return expanded.map((word) => Number.parseInt(word, 16));
+}
+
+function ipv6MatchesPrefix(words: number[], prefix: string): boolean {
+  const separator = prefix.lastIndexOf("/");
+  const network = parseIpv6Words(prefix.slice(0, separator));
+  const prefixLength = Number(prefix.slice(separator + 1));
+  if (!network || !Number.isInteger(prefixLength) || prefixLength < 0 || prefixLength > 128) return false;
+  const completeWords = Math.floor(prefixLength / 16);
+  const remainder = prefixLength % 16;
+  for (let index = 0; index < completeWords; index += 1) {
+    if (words[index] !== network[index]) return false;
+  }
+  if (remainder === 0) return true;
+  const mask = (0xffff << (16 - remainder)) & 0xffff;
+  return (words[completeWords] & mask) === (network[completeWords] & mask);
+}
+
+function isUnsafeIpv6Address(hostname: string): boolean {
+  const words = parseIpv6Words(hostname);
+  if (!words) return true;
+  // IANA's allocated IPv6 global-unicast prefixes, checked 2026-09-21.
+  // The partially allocated 2001::/23 is restricted to entries marked
+  // globally reachable in IANA's special-purpose registry.
+  if (ipv6MatchesPrefix(words, IPV6_IETF_PROTOCOL_ASSIGNMENTS)) {
+    return !IPV6_IANA_GLOBALLY_REACHABLE_SPECIALS.some((prefix) => ipv6MatchesPrefix(words, prefix));
+  }
+  if (!IPV6_GLOBAL_UNICAST_ALLOCATIONS.some((prefix) => ipv6MatchesPrefix(words, prefix))) return true;
+  // RFC 6052 prefixes can encode a private IPv4 destination despite global
+  // reachability flags, so this product's egress policy does not use them.
+  return IPV6_BLOCKED_SPECIAL_DESTINATIONS.some((prefix) => ipv6MatchesPrefix(words, prefix));
+}
+
 export function isUnsafeAuthorityHostname(hostname: string): boolean {
   const normalized = hostname.replace(/^\[|\]$/g, "").toLowerCase().replace(/\.+$/, "");
-  if (!normalized || normalized === "localhost" || normalized.endsWith(".localhost") || normalized === "::1") return true;
+  if (!normalized || normalized === "localhost" || normalized.endsWith(".localhost")) return true;
+  if (normalized.includes(":")) return isUnsafeIpv6Address(normalized);
   const octets = normalized.split(".").map(Number);
   const isIpv4 = octets.length === 4
     && octets.every((octet) => Number.isInteger(octet) && octet >= 0 && octet <= 255);
-  if (isIpv4) {
-    const [first, second, third] = octets;
-    return first === 0
-      || first === 10
-      || first === 127
-      || (first === 100 && second >= 64 && second <= 127)
-      || (first === 169 && second === 254)
-      || (first === 172 && second >= 16 && second <= 31)
-      || (first === 192 && (second === 0 || second === 168))
-      || (first === 198 && (second === 18 || second === 19 || (second === 51 && third === 100)))
-      || (first === 203 && second === 0 && third === 113)
-      || first >= 224;
-  }
-  return normalized.startsWith("::")
-    || normalized.startsWith("fc")
-    || normalized.startsWith("fd")
-    || /^(fe[89ab])/.test(normalized)
-    || normalized.startsWith("ff")
-    || normalized.startsWith("2001:db8");
+  if (!isIpv4) return false;
+  const [first, second, third] = octets;
+  return first === 0
+    || first === 10
+    || first === 127
+    || (first === 100 && second >= 64 && second <= 127)
+    || (first === 169 && second === 254)
+    || (first === 172 && second >= 16 && second <= 31)
+    || (first === 192 && (second === 0 || second === 168))
+    || (first === 198 && (second === 18 || second === 19 || (second === 51 && third === 100)))
+    || (first === 203 && second === 0 && third === 113)
+    || first >= 224;
 }
 
 function isAllowedAuthorityLocation(location: string, allowedHosts: string[]): boolean {

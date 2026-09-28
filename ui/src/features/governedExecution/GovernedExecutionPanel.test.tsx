@@ -227,7 +227,10 @@ describe("GovernedExecutionPanel", () => {
     const validation = validateUseCase(workspace.use_case, recommendations, looposData, []);
     const initiative = createInitiativeFromWorkspace(workspace, recommendations, validation, looposData, user.name, "2026-07-23T12:00:00.000Z");
     const authorityWorkspace = { ...workspace, initiatives: [initiative] };
-    authorityMocks.recordReleaseInitiative.mockResolvedValue({ initiative: {}, connector_events: [] });
+    authorityMocks.recordReleaseInitiative.mockImplementation(async (_token, input) => ({ initiative: {
+      ...input, initiative_id: "recorded-release", tenant_id: "local-evaluation", created_by: user.user_id,
+      created_at: "2026-09-21T01:00:00Z", updated_at: "2026-09-21T01:00:00Z",
+    }, connector_events: [] }));
 
     render(<GovernedExecutionPanel data={looposData} user={user} workspace={authorityWorkspace} />);
     fireEvent.click(await screen.findByRole("button", { name: "Record release initiative" }));

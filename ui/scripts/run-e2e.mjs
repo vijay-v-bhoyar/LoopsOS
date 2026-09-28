@@ -1,112 +1,117 @@
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  UI_ROOT,
+  assertE2EIsolation,
+  buildE2EEnvironment,
+  completeIsolatedE2ERun,
+  createIsolatedE2ERun,
+  sanitizeE2EChildEnvironment,
+  validatePlaywrightArgs,
+} from "./e2e-isolation.mjs";
 
-const root = process.cwd();
-const testArgs = process.argv.slice(2);
-const children = new Set();
+const suppliedArgs = process.argv.slice(2);
+const enterpriseFlag = "--loopos-enterprise-gate";
+const enterpriseGate = suppliedArgs[0] === enterpriseFlag;
+if (suppliedArgs.some((arg, index) => arg === enterpriseFlag && index !== 0)) {
+  throw new Error("The enterprise gate marker must be the first internal runner argument.");
+}
+const testArgs = validatePlaywrightArgs(enterpriseGate ? suppliedArgs.slice(1) : suppliedArgs);
+const environment = buildE2EEnvironment(process.env, { enterpriseGate });
 
-function findPython() {
-  const configured = process.env.LOOPOS_PYTHON?.trim();
-  const candidates = configured
-    ? [{ command: configured, prefix: [] }]
-    : process.platform === "win32"
-      ? [
-          { command: "py", prefix: ["-3"] },
-          { command: "python3", prefix: [] },
-          { command: "python", prefix: [] },
-        ]
-      : [
-          { command: "python3", prefix: [] },
-          { command: "python", prefix: [] },
-        ];
-  const probe = "import sys; sys.exit(sys.version_info < (3, 12))";
-  const selected = candidates.find(({ command, prefix }) => spawnSync(command, [...prefix, "-c", probe], {
-    stdio: "ignore",
-    windowsHide: true,
-  }).status === 0);
-  if (!selected) throw new Error("A Python 3.12+ interpreter is required for the E2E authority server. Set LOOPOS_PYTHON.");
-  return selected;
+if (environment.LOOPOS_E2E_EFFECT_BUDGET_FIXTURE === "1") {
+  if (enterpriseGate) throw new Error("Effect-budget fixtures are evaluation-only.");
+  environment.LOOPOS_EFFECT_BUDGET_POLICY_JSON = JSON.stringify({
+    version: 1,
+    scope: "cumulative",
+    policy_epoch: 1,
+    tenants: {
+      "local-evaluation": {
+        ceilings: { dispatch_count: 10 },
+        routes: ["actions", "compensate"].map((path) => ({
+          endpoint: `https://unknown.example.com/${path}`,
+          method: "POST",
+          evidence_ref: "synthetic-browser-allowlist-negative",
+          charges: [{ unit: "dispatch_count", fixed: 1 }],
+        })),
+      },
+    },
+  });
 }
 
-function start(command, args) {
-  const child = spawn(command, args, {
-    cwd: root,
-    env: { ...process.env, BROWSER: "none" },
+if (!enterpriseGate) {
+  environment.LOOPOS_WEBHOOK_SECRETS_JSON = JSON.stringify({
+    "local-evaluation:github": "loopos-e2e-webhook-fixture-secret",
+    "loopos-e2e-desktop:github": "loopos-e2e-desktop-webhook-fixture-secret",
+    "loopos-e2e-mobile:github": "loopos-e2e-mobile-webhook-fixture-secret",
+  });
+  environment.LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID = "4242";
+  environment.LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS = "7007";
+}
+
+if (environment.LOOPOS_E2E_LLM_ATTESTATION_FIXTURE === "1") {
+  if (enterpriseGate) throw new Error("LLM signing fixtures are evaluation-only.");
+  if (environment.VITE_LOOPOS_LLM_ATTESTATION_CONTRACTS) throw new Error("Refusing to replace configured LLM trust with fixture trust.");
+  const keys = JSON.parse(readFileSync(new URL("../src/test/llmAttestationKeys.json", import.meta.url), "utf8"));
+  environment.VITE_LOOPOS_LLM_ATTESTATION_CONTRACTS = JSON.stringify([
+    ["/api/mock-llm-questions", "loopos_use_case_questions"],
+    ["/api/mock-field-enhancement", "loopos_use_case_structuring"],
+  ].map(([endpoint, task]) => ({
+    endpoint,
+    task,
+    fixture_only: true,
+    provider: "fixture-provider",
+    model: "fixture-model",
+    model_revision: `sha256:${"a".repeat(64)}`,
+    prompt_version: `${task}_v1`,
+    prompt_sha256: "b".repeat(64),
+    capability_profile_sha256: "c".repeat(64),
+    evaluation_receipt_sha256: "d".repeat(64),
+    capability_evaluated_at: new Date(Date.now() - 60_000).toISOString(),
+    capability_expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+    lifecycle_status: "approved",
+    key_id: "fixture-gateway-only",
+    public_key_spki: keys.publicKeySpki,
+  })));
+}
+
+const run = createIsolatedE2ERun();
+Object.assign(environment, {
+  LOOPOS_E2E_RUN_ID: run.runId,
+  LOOPOS_E2E_RUNNER_PID: String(process.pid),
+  LOOPOS_E2E_RUN_MANIFEST: run.manifestPath,
+  LOOPOS_E2E_OUTPUT_DIR: run.artifactsDirectory,
+  LOOPOS_DATABASE_PATH: run.databasePath,
+});
+const childEnvironment = sanitizeE2EChildEnvironment(environment);
+assertE2EIsolation(childEnvironment);
+console.log(`Isolated E2E run ${run.runId}; SQLite and Playwright artifacts are scoped to ${run.runDirectory}.`);
+
+const playwrightCli = resolve(UI_ROOT, "node_modules", "playwright", "cli.js");
+let child;
+let exitCode = 1;
+try {
+  child = spawn(process.execPath, [playwrightCli, "test", ...testArgs], {
+    cwd: UI_ROOT,
+    env: childEnvironment,
     stdio: "inherit",
     windowsHide: true,
   });
-  children.add(child);
-  child.once("exit", () => children.delete(child));
-  return child;
-}
-
-async function waitFor(url, child, timeoutMs = 120_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`E2E server exited before ${url} became ready.`);
-    try {
-      const response = await fetch(url);
-      await response.text();
-      if (response.ok) return;
-    } catch {
-      // The server may still be binding its port.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250));
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.once(signal, () => child?.kill(signal));
   }
-  throw new Error(`Timed out waiting for ${url}.`);
-}
-
-function stop(child) {
-  if (!child || child.exitCode !== null) return;
-  child.kill();
-}
-
-let runner;
-let shuttingDown = false;
-function stopAll() {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  stop(runner);
-  for (const child of children) stop(child);
-}
-
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => {
-    stopAll();
-    process.exit(130);
-  });
-}
-
-let exitCode = 1;
-try {
-  const python = findPython();
-  const authorityPort = process.env.LOOPOS_E2E_AUTHORITY_PORT?.trim() || "8787";
-  const vitePort = process.env.LOOPOS_E2E_VITE_PORT?.trim() || "4273";
-  const authority = start(python.command, [
-    ...python.prefix,
-    "-m",
-    "uvicorn",
-    "loopos_authority.api:app",
-    "--app-dir",
-    "../authority",
-    "--host",
-    "127.0.0.1",
-    "--port",
-    authorityPort,
-  ]);
-  const vite = start(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", vitePort]);
-  await waitFor(`http://127.0.0.1:${authorityPort}/health/ready`, authority);
-  await waitFor(`http://127.0.0.1:${vitePort}/`, vite);
-
-  process.env.LOOPOS_E2E_EXTERNAL_SERVERS = "1";
-  runner = start(process.execPath, ["node_modules/playwright/cli.js", "test", ...testArgs]);
-  exitCode = await new Promise((resolve) => {
-    runner.once("error", () => resolve(1));
-    runner.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
+  exitCode = await new Promise((resolveExit) => {
+    child.once("error", (error) => {
+      console.error(`Failed to launch Playwright: ${error.message}`);
+      resolveExit(1);
+    });
+    child.once("exit", (code, signal) => resolveExit(code ?? (signal ? 1 : 0)));
   });
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
 } finally {
-  stopAll();
+  completeIsolatedE2ERun(run, exitCode);
 }
 
-process.exit(exitCode);
+process.exitCode = exitCode;

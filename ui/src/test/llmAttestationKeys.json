@@ -1,0 +1,5 @@
+{
+  "testOnly": true,
+  "privateKey": "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgZ4zIVx6NpQ7PJW6w\nTIujpJOsqd07cMsFAsEchGMqDQ2hRANCAASGiEvA7ytCQ4OODSF+cXNLk9+Prg1u\naDa8xXHwUzJ3vOHwnK16KAzUReyTuzUFAMpaTbC55V7wFrtWdaTPKINv\n-----END PRIVATE KEY-----\n",
+  "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEhohLwO8rQkODjg0hfnFzS5Pfj64Nbmg2vMVx8FMyd7zh8JyteigM1EXsk7s1BQDKWk2wueVe8Ba7VnWkzyiDbw=="
+}

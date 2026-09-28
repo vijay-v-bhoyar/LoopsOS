@@ -32,6 +32,7 @@ describe("Dashboard enterprise action boundary", () => {
         onRecordDryRun={vi.fn()}
         onCreateInitiative={vi.fn()}
         onCompleteRunStep={vi.fn()}
+        onRecordOutcome={vi.fn()}
         onExportEvaluationPack={vi.fn()}
         posture={posture}
       />,

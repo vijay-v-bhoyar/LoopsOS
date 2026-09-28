@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
@@ -64,7 +65,8 @@ def _workspace_array(value: dict[str, Any], field: str, path: str, validator) ->
 
 
 def _validate_workspace_use_case(value: Any, path: str) -> None:
-    _workspace_strings(_workspace_record(value, path), (
+    record = _workspace_record(value, path)
+    _workspace_strings(record, (
         "title",
         "description",
         "environment",
@@ -74,6 +76,27 @@ def _validate_workspace_use_case(value: Any, path: str) -> None:
         "maturity",
         "constraints",
     ), path)
+    if "outcomeMeasurement" in record:
+        _validate_workspace_outcome_measurement_plan(record["outcomeMeasurement"], f"{path}.outcomeMeasurement")
+
+
+def _validate_workspace_outcome_measurement_plan(value: Any, path: str) -> None:
+    record = _workspace_record(value, path)
+    _workspace_strings(record, ("metric", "source", "observation_window"), path)
+    _workspace_enum(record, "unit", ("hours", "count", "percent"), path)
+    for field in ("baseline", "target"):
+        item = record.get(field)
+        if item is not None and (isinstance(item, bool) or not isinstance(item, (int, float)) or not math.isfinite(item)):
+            raise ValueError(f"{path}.{field} must be null or a finite number.")
+
+
+def _validate_workspace_outcome_measurement_observation(value: Any, path: str) -> None:
+    record = _workspace_record(value, path)
+    _workspace_strings(record, ("observation_id", "source_ref", "observed_at"), path, non_empty=True)
+    item = record.get("value")
+    if isinstance(item, bool) or not isinstance(item, (int, float)) or not math.isfinite(item):
+        raise ValueError(f"{path}.value must be a finite number.")
+    _workspace_enum(record, "unit", ("hours", "count", "percent"), path)
 
 
 def _validate_workspace_warning(value: Any, path: str) -> None:
@@ -229,7 +252,7 @@ def _validate_workspace_metric(value: Any, path: str) -> None:
     _workspace_strings_array(record, "source_ref_ids", path)
 
 
-def _validate_workspace_release_assurance(value: Any, path: str) -> None:
+def _validate_workspace_release_assurance(value: Any, path: str, *, strict_decisions: bool = True) -> dict[str, Any]:
     record = _workspace_record(value, path)
     _workspace_strings(record, ("profile_id", "initiative_id", "release_name"), path, non_empty=True)
     _workspace_enum(record, "operating_mode", ("local_draft", "shadow_release", "gated_release"), path)
@@ -282,9 +305,13 @@ def _validate_workspace_release_assurance(value: Any, path: str) -> None:
     for index, gate in enumerate(record["gates"]):
         gate_id = gate["gate_id"]
         last_decision = gate.get("last_decision")
-        decision = last_decision or decisions_by_gate.get(gate_id)
+        # The decisions array owns the current review. An embedded copy is only
+        # a compatibility projection, never an alternate source of authority.
+        decision = decisions_by_gate.get(gate_id) if strict_decisions else (last_decision or decisions_by_gate.get(gate_id))
         if decision is None:
             raise ValueError(f"{path}.gates[{index}] must have a current human decision.")
+        if strict_decisions and last_decision is not None and last_decision != decision:
+            raise ValueError(f"{path}.gates[{index}].last_decision must match the complete current gate decision.")
         if decision["gate_id"] != gate_id or decision["status"] != gate["status"]:
             raise ValueError(f"{path}.gates[{index}] decision must match the current gate status.")
         if any(ref_id not in external_ref_ids for ref_id in decision["source_ref_ids"]):
@@ -321,6 +348,18 @@ def _validate_workspace_initiative(value: Any, path: str) -> None:
     _workspace_array(record, "approvals", path, _validate_workspace_approval)
     _workspace_array(record, "handoffs", path, _validate_workspace_handoff)
     _validate_workspace_roi(record.get("roi_assumptions"), f"{path}.roi_assumptions")
+    measurement = record.get("outcome_measurement")
+    if "outcome_measurement" in record:
+        _validate_workspace_outcome_measurement_plan(measurement, f"{path}.outcome_measurement")
+    if "outcome_observations" in record:
+        observations = record["outcome_observations"]
+        if not isinstance(observations, list):
+            raise ValueError(f"{path}.outcome_observations must be an array.")
+        for index, observation in enumerate(observations):
+            observation_path = f"{path}.outcome_observations[{index}]"
+            _validate_workspace_outcome_measurement_observation(observation, observation_path)
+            if measurement is not None and observation["unit"] != measurement["unit"]:
+                raise ValueError(f"{observation_path}.unit must match {path}.outcome_measurement.unit.")
     if "release_assurance" in record and record["release_assurance"] is not None:
         _validate_workspace_release_assurance(record["release_assurance"], f"{path}.release_assurance")
 
@@ -330,6 +369,116 @@ def _validate_workspace_question(value: Any, path: str) -> None:
     _workspace_strings(record, ("question_id", "question", "why_it_matters"), path)
     _workspace_enum(record, "target_field", ("title", "description", "environment", "aiScope", "dataSensitivity", "businessOutcome", "maturity", "constraints", "ownerEvidence", "approval", "execution"), path)
     _workspace_enum(record, "source", ("LLM endpoint", "deterministic fallback"), path)
+
+
+def _help_request_timestamp(value: Any, path: str) -> datetime:
+    if not isinstance(value, str):
+        raise ValueError(f"{path} must be an ISO-8601 timestamp.")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError(f"{path} must be an ISO-8601 timestamp.") from error
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _validate_workspace_help_request(value: Any, path: str) -> None:
+    request = _workspace_record(value, path)
+    _workspace_strings(request, (
+        "help_request_id", "blocked_goal", "destination", "requested_action",
+        "risk_while_waiting", "wake_condition", "requested_by_id", "requested_by",
+        "status", "deadline", "created_at", "updated_at",
+    ), path, non_empty=True)
+    limits = {
+        "help_request_id": 200, "blocked_goal": 500, "destination": 240,
+        "requested_action": 2_000, "risk_while_waiting": 2_000,
+        "wake_condition": 1_000, "requested_by_id": 200, "requested_by": 240,
+    }
+    for field, maximum in limits.items():
+        if len(request[field]) > maximum:
+            raise ValueError(f"{path}.{field} exceeds {maximum} characters.")
+    _workspace_enum(request, "status", (
+        "draft", "delivery_failed", "waiting", "response_recorded",
+        "revalidation_needed", "closure_review_requested",
+    ), path)
+    attempts = request.get("attempts")
+    if type(attempts) is not int or attempts < 0 or attempts > 3:
+        raise ValueError(f"{path}.attempts must be an integer from 0 through 3.")
+    evidence_refs = request.get("evidence_refs")
+    if (not isinstance(evidence_refs, list) or not 1 <= len(evidence_refs) <= 30
+            or not all(isinstance(item, str) and item.strip() and len(item) <= 512 for item in evidence_refs)
+            or len(set(evidence_refs)) != len(evidence_refs)):
+        raise ValueError(f"{path}.evidence_refs must contain 1 to 30 unique non-empty references.")
+    created_at = _help_request_timestamp(request.get("created_at"), f"{path}.created_at")
+    updated_at = _help_request_timestamp(request.get("updated_at"), f"{path}.updated_at")
+    deadline = _help_request_timestamp(request.get("deadline"), f"{path}.deadline")
+    if deadline <= created_at or updated_at < created_at:
+        raise ValueError(f"{path} has an invalid deadline or update time.")
+    events = request.get("events")
+    if not isinstance(events, list) or not 1 <= len(events) <= 25:
+        raise ValueError(f"{path}.events must contain 1 to 25 entries.")
+    state = "draft"
+    delivery_attempts = 0
+    planner_actor_id: str | None = None
+    previous_time = created_at
+    event_ids: set[str] = set()
+    for index, item in enumerate(events):
+        event_path = f"{path}.events[{index}]"
+        event = _workspace_record(item, event_path)
+        _workspace_strings(event, ("event_id", "type", "actor_id", "actor_name", "at", "note"), event_path, non_empty=True)
+        for field, maximum in (("event_id", 200), ("actor_id", 200), ("actor_name", 240), ("note", 2_000)):
+            if len(event[field]) > maximum:
+                raise ValueError(f"{event_path}.{field} exceeds {maximum} characters.")
+        _workspace_enum(event, "type", (
+            "draft_created", "delivery_recorded", "delivery_failed",
+            "response_recorded", "revalidation_planned", "revalidation_result",
+        ), event_path)
+        if event["event_id"] in event_ids:
+            raise ValueError(f"{event_path}.event_id must be unique within the request.")
+        event_ids.add(event["event_id"])
+        event_time = _help_request_timestamp(event["at"], f"{event_path}.at")
+        if event_time < previous_time:
+            raise ValueError(f"{event_path}.at cannot move backward.")
+        previous_time = event_time
+        event_type = event["type"]
+        evidence_ref = event.get("evidence_ref")
+        if event_type == "draft_created":
+            if index != 0 or "evidence_ref" in event or "result" in event:
+                raise ValueError(f"{event_path} must be the single initial draft event.")
+            if event["actor_id"] != request["requested_by_id"] or event["actor_name"] != request["requested_by"] or event["at"] != request["created_at"]:
+                raise ValueError(f"{event_path} must match the recorded requester and creation time.")
+            continue
+        if (not isinstance(evidence_ref, str) or not evidence_ref.strip() or len(evidence_ref) > 512):
+            raise ValueError(f"{event_path}.evidence_ref is required and must be at most 512 characters.")
+        if event_type == "revalidation_result":
+            if event.get("result") not in ("pass", "fail", "inconclusive"):
+                raise ValueError(f"{event_path}.result is required for a revalidation result.")
+        elif "result" in event:
+            raise ValueError(f"{event_path}.result is only valid for a revalidation result.")
+        if event_type in ("delivery_failed", "delivery_recorded"):
+            if state not in ("draft", "delivery_failed"):
+                raise ValueError(f"{event_path} cannot record delivery from state {state}.")
+            delivery_attempts += 1
+            if delivery_attempts > 3:
+                raise ValueError(f"{event_path} exceeds the three-attempt delivery limit.")
+            state = "delivery_failed" if event_type == "delivery_failed" else "waiting"
+        elif event_type == "response_recorded":
+            if state != "waiting":
+                raise ValueError(f"{event_path} cannot record a response from state {state}.")
+            state = "response_recorded"
+        elif event_type == "revalidation_planned":
+            prior_plans = sum(1 for prior in events[:index] if prior.get("type") == "revalidation_planned")
+            if state != "response_recorded" or prior_plans >= 10 or event["actor_id"] == request["requested_by_id"]:
+                raise ValueError(f"{event_path} cannot plan revalidation in the current state or actor context.")
+            planner_actor_id = event["actor_id"]
+            state = "revalidation_needed"
+        elif event_type == "revalidation_result":
+            if state != "revalidation_needed" or not planner_actor_id or event["actor_id"] in (request["requested_by_id"], planner_actor_id):
+                raise ValueError(f"{event_path} requires a third-party revalidation result.")
+            state = "closure_review_requested" if event["result"] == "pass" else "response_recorded"
+    if state != request["status"] or delivery_attempts != attempts or previous_time != updated_at or events[-1].get("at") != request["updated_at"]:
+        raise ValueError(f"{path} status, attempts, and updated_at must match its event history.")
 
 
 def validate_workspace_document(value: Any) -> dict[str, Any]:
@@ -344,6 +493,17 @@ def validate_workspace_document(value: Any) -> dict[str, Any]:
     _workspace_array(record, "initiatives", "document", _validate_workspace_initiative)
     _workspace_array(record, "question_suggestions", "document", _validate_workspace_question)
     _workspace_array(record, "input_sources", "document", _validate_workspace_input_source)
+    if "help_requests" in record:
+        requests = record["help_requests"]
+        if not isinstance(requests, list) or len(requests) > 100:
+            raise ValueError("document.help_requests must be an array of at most 100 requests.")
+        _workspace_array(record, "help_requests", "document", _validate_workspace_help_request)
+        request_ids = [item["help_request_id"] for item in requests]
+        event_ids = [event["event_id"] for item in requests for event in item["events"]]
+        if len(set(request_ids)) != len(request_ids):
+            raise ValueError("document.help_requests must have unique help_request_id values.")
+        if len(set(event_ids)) != len(event_ids):
+            raise ValueError("document.help_requests must have event IDs unique across the workspace.")
     return record
 
 
@@ -357,6 +517,12 @@ class Actor(BaseModel):
 
 class DevSessionRequest(Actor):
     ttl_seconds: int = Field(default=3600, ge=60, le=28_800)
+
+
+class SessionRevocationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_id: str = Field(min_length=1, max_length=160)
+    reason: str = Field(min_length=1, max_length=240)
 
 
 ENTERPRISE_SESSION_MAX_SECONDS = 900
@@ -612,6 +778,7 @@ class ReleaseInitiativeRecord(BaseModel):
     release_assurance: dict[str, Any]
     freshness_summary: dict[str, Any] = Field(default_factory=dict)
     readiness_verdict: dict[str, Any] = Field(default_factory=dict)
+    review_context: dict[str, Any] = Field(default_factory=dict)
     created_by: str
     created_at: str
     updated_at: str
@@ -619,7 +786,27 @@ class ReleaseInitiativeRecord(BaseModel):
     @field_validator("release_assurance")
     @classmethod
     def release_assurance_matches_contract(cls, value: dict[str, Any]) -> dict[str, Any]:
-        return validate_release_assurance(value)
+        # Preserve historical conflicting records for audit instead of making
+        # them unreadable. The store re-evaluates the strict contract on every
+        # read and proof-pack export; only ingress uses the strict validator.
+        return _validate_workspace_release_assurance(value, "release_assurance", strict_decisions=False)
+
+
+class ReleaseReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["approve", "reject"]
+    subject_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    policy_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    evidence_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    previous_review_id: str | None = Field(default=None, min_length=1, max_length=160)
+    basis: str = Field(min_length=10, max_length=4000)
+
+    @field_validator("basis")
+    @classmethod
+    def basis_is_meaningful(cls, value: str) -> str:
+        if len(value.strip()) < 10:
+            raise ValueError("A review requires a substantive rationale.")
+        return value.strip()
 
 
 class ReleaseProofPack(BaseModel):
@@ -663,6 +850,20 @@ class KillSwitchRequest(BaseModel):
 class KillSwitchStatus(BaseModel):
     tenant_id: str
     scope: Literal["tenant"] = "tenant"
+    active: bool
+    global_active: bool = False
+    activation_id: str | None = None
+    reason: str | None = None
+    actor_id: str | None = None
+    activated_at: str | None = None
+    deactivated_at: str | None = None
+    deactivated_by: str | None = None
+    deactivation_reason: str | None = None
+    semantics: Literal["pre_dispatch_block_and_in_flight_interrupt"] = "pre_dispatch_block_and_in_flight_interrupt"
+
+
+class GlobalKillSwitchStatus(BaseModel):
+    scope: Literal["global"] = "global"
     active: bool
     activation_id: str | None = None
     reason: str | None = None

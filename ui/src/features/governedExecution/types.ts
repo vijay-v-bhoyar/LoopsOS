@@ -152,6 +152,7 @@ export interface KillSwitchStatus {
   tenant_id: string;
   scope: "tenant";
   active: boolean;
+  global_active?: boolean;
   activation_id: string | null;
   reason: string | null;
   actor_id: string | null;
@@ -180,6 +181,7 @@ export interface CreateReleaseInitiative {
 export interface ReleaseInitiativeRecord extends CreateReleaseInitiative {
   initiative_id: string;
   tenant_id: string;
+  review_context?: ReleaseReviewContext;
   freshness_summary?: {
     status?: "fresh" | "stale" | "missing";
     policy?: string;
@@ -204,6 +206,28 @@ export interface ReleaseInitiativeRecord extends CreateReleaseInitiative {
   created_by: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ReleaseReview {
+  review_id: string;
+  decision: "approve" | "reject";
+  reviewer_id: string;
+  reviewer_role: "Approver" | "Executive";
+  reviewed_at: string;
+  basis: string;
+  subject_digest: string;
+  policy_digest: string;
+  evidence_digest: string;
+}
+
+export interface ReleaseReviewContext {
+  subject_digest: string;
+  policy_digest: string;
+  evidence_digest: string;
+  reviewable: boolean;
+  blocking_reasons: string[];
+  blocking_observed_check_event_ids?: string[];
+  latest_review: ReleaseReview | null;
 }
 
 export interface ReleaseProofPack {

@@ -21,14 +21,15 @@ from pydantic import ValidationError
 
 from loopos_authority.api import create_app
 from loopos_authority.audit_anchor import AuditAnchorDispatcher
+from loopos_authority.auth import InvalidSession, SessionSigner
 from loopos_authority.config import Settings, operational_binding_status
 from loopos_authority.corpus import Corpus
 from loopos_authority.engine import ExecutionEngine
-from loopos_authority.models import Actor, ApprovalRequest, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, ENTERPRISE_SESSION_MAX_SECONDS, EnterpriseSessionResponse, EvidenceRequest, ExecutionPlan, ProbeSpec, RecordReleaseInitiativeRequest, RunCommandResponse, RunRecord, SessionResponse
+from loopos_authority.models import Actor, ApprovalRequest, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, ENTERPRISE_SESSION_MAX_SECONDS, EnterpriseSessionResponse, EvidenceRequest, ExecutionPlan, ProbeSpec, RecordReleaseInitiativeRequest, RunCommandResponse, RunRecord, SessionResponse, WorkspaceDocumentRequest
 from loopos_authority.persistence import create_authority_store
 from loopos_authority.postgres_store import REQUIRED_AUDIT_TRIGGERS, REQUIRED_POSTGRES_TABLES, PostgresAuthorityStore, PostgresConnection, split_postgres_script
-from loopos_authority.store import AuthorityStore, Conflict, Forbidden, NotFound
-from loopos_authority.tools import TerminalToolFailure, ToolRegistry
+from loopos_authority.store import AuthorityStore, Conflict, Forbidden, NotFound, sha256_json
+from loopos_authority.tools import CredentialLease, TerminalToolFailure, ToolRegistry
 from loopos_authority.worker import ExecutionJobWorker
 
 
@@ -36,6 +37,29 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class SessionContractTests(unittest.TestCase):
+    def test_session_signer_rejects_a_revoked_registered_session(self) -> None:
+        class Registry:
+            def __init__(self) -> None:
+                self.revoked: set[str] = set()
+
+            def register_session(self, *_args: object) -> None:
+                return None
+
+            def is_session_revoked(self, jti: str) -> bool:
+                return jti in self.revoked
+
+            def revoke_session(self, jti: str, _reason: str) -> None:
+                self.revoked.add(jti)
+
+        signer = SessionSigner("session-secret", registry=Registry())
+        actor = Actor(tenant_id="tenant-enterprise", user_id="user-42", name="Operator", role="Operator")
+        token = signer.issue(actor, ttl_seconds=900)
+
+        self.assertEqual(signer.verify(token), actor)
+        signer.revoke(token)
+        with self.assertRaisesRegex(InvalidSession, "revoked"):
+            signer.verify(token)
+
     def test_session_response_rejects_an_excessive_lifetime(self) -> None:
         with self.assertRaises(ValidationError):
             SessionResponse(
@@ -61,6 +85,63 @@ class SessionContractTests(unittest.TestCase):
                     role="Operator",
                 ),
             )
+
+
+class WorkspaceOutcomeContractTests(unittest.TestCase):
+    def test_workspace_outcome_measurement_plan_and_observation_are_validated(self) -> None:
+        document = workspace_document()
+        document["use_case"]["outcomeMeasurement"] = {
+            "metric": "Claims cycle time",
+            "unit": "hours",
+            "baseline": 40,
+            "target": 16,
+            "source": "Claims report",
+            "observation_window": "90 days",
+        }
+        WorkspaceDocumentRequest(document=document)
+
+        malformed = json.loads(json.dumps(document))
+        malformed["use_case"]["outcomeMeasurement"]["baseline"] = "40"
+        with self.assertRaisesRegex(ValueError, "baseline"):
+            WorkspaceDocumentRequest(document=malformed)
+
+        mismatch = json.loads(json.dumps(document))
+        mismatch["initiatives"] = [{
+            "id": "initiative-1",
+            "title": "Claims initiative",
+            "description": "Measure claims cycle time.",
+            "business_outcome": "Reduce cycle time.",
+            "maturity": "pilot",
+            "created_at": "2026-07-30T12:00:00+00:00",
+            "updated_at": "2026-07-30T12:00:00+00:00",
+            "workflow_type": "ai_use_case",
+            "risk": "R2",
+            "status": "planned",
+            "loop_bundle_ids": [],
+            "execution_records": [],
+            "evidence_records": [],
+            "approvals": [],
+            "handoffs": [],
+            "roi_assumptions": {
+                "initiative_id": "initiative-1",
+                "meetings_avoided": 0,
+                "review_cycles_reduced": 0,
+                "evidence_items_reused": 0,
+                "hours_saved_estimate": 0,
+                "assumptions": "Draft",
+                "confidence_basis": "Draft",
+            },
+            "outcome_measurement": document["use_case"]["outcomeMeasurement"],
+            "outcome_observations": [{
+                "observation_id": "observation-1",
+                "value": 18,
+                "unit": "count",
+                "source_ref": "claims-report",
+                "observed_at": "2026-08-30T12:00:00+00:00",
+            }],
+        }]
+        with self.assertRaisesRegex(ValueError, "must match"):
+            WorkspaceDocumentRequest(document=mismatch)
 
     def test_run_command_response_rejects_an_unknown_lifecycle_status(self) -> None:
         with self.assertRaises(ValidationError):
@@ -285,6 +366,35 @@ class PostgresConnectionContractTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "append-only audit triggers.*audit_events_no_update"):
             store.verify_schema()
 
+    def test_postgres_schema_verification_rejects_missing_release_policy_epoch_triggers(self) -> None:
+        class FakeResult:
+            def __init__(self, rows: list[dict[str, str]]) -> None:
+                self.rows = rows
+
+            def fetchall(self) -> list[dict[str, str]]:
+                return self.rows
+
+        class FakeConnection:
+            def execute(self, sql: str, _parameters: tuple[object, ...] = ()) -> FakeResult:
+                if "information_schema.tables" in sql:
+                    return FakeResult([{"table_name": table} for table in REQUIRED_POSTGRES_TABLES])
+                if "pg_class" in sql:
+                    return FakeResult([{"relname": table} for table in REQUIRED_POSTGRES_TABLES])
+                if "public.audit_events" in sql:
+                    return FakeResult([{"tgname": trigger} for trigger in REQUIRED_AUDIT_TRIGGERS])
+                if "public.release_policy_control" in sql:
+                    return FakeResult([])
+                if "information_schema.columns" in sql:
+                    return FakeResult([{"column_name": "delivery_binding"}, {"column_name": "delivery_epoch"}])
+                return FakeResult([])
+
+        store = object.__new__(PostgresAuthorityStore)
+        store.lock = threading.RLock()
+        store.connection = FakeConnection()
+
+        with self.assertRaisesRegex(RuntimeError, "release-policy monotonicity triggers.*release_policy_control_monotonic"):
+            store.verify_schema()
+
     def test_postgres_audit_appends_lock_the_tenant_chain_before_reading_previous_hash(self) -> None:
         store = object.__new__(PostgresAuthorityStore)
         cursor = Mock()
@@ -328,10 +438,13 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "identity.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=(),
             cors_origins=(),
             rate_limit_requests=120,
+            effect_budget_policy=external_effect_fixture_policy("tenant-enterprise", "https://api.example.com"),
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
         )
 
     def tearDown(self) -> None:
@@ -347,10 +460,13 @@ class ProductionIdentityApiTests(unittest.TestCase):
             postgres_dsn="postgresql://unused.example/loopos",
             audit_anchor_url="https://audit.example.com/loopos/events",
             audit_anchor_hmac_secret="audit-anchor-secret-that-is-at-least-thirty-two-bytes",
+            github_release_attestor_app_id=4242,
+            github_release_workflow_ids=(7007,),
             audit_anchor_poll_seconds=3600,
             retention_policy_url="https://policy.example.com/loopos-retention",
             support_contact="loopos-operations@example.com",
             outbound_policy_mode="allowlist",
+            effect_budget_policy=external_effect_fixture_policy("tenant-enterprise", "https://api.example.com"),
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=verified_at,
@@ -359,6 +475,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             operational_evidence_verified_at=verified_at,
             worker_token="execution-worker-token-that-is-at-least-thirty-two-bytes",
             execution_worker_mode="external",
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
         )
 
     def test_request_rate_limit_is_durable_and_returns_retry_metadata(self) -> None:
@@ -394,6 +511,26 @@ class ProductionIdentityApiTests(unittest.TestCase):
         self.assertEqual(second.status_code, 429)
         self.assertIn(int(second.headers["retry-after"]), range(1, 61))
         self.assertEqual(second.headers["x-ratelimit-remaining"], "0")
+
+    def test_api_rate_limit_uses_verified_tenant_buckets(self) -> None:
+        settings = replace(
+            self.settings,
+            allow_dev_auth=True,
+            rate_limit_requests=1,
+            rate_limit_window_seconds=60,
+            database_path=Path(self.tempdir.name) / "tenant-rate-limit-api.db",
+        )
+        signer = SessionSigner(settings.session_secret)
+        tenant_a_token = signer.issue(Actor(tenant_id="tenant-a", user_id="user-a", name="User A", role="Operator"), 900)
+        tenant_b_token = signer.issue(Actor(tenant_id="tenant-b", user_id="user-b", name="User B", role="Operator"), 900)
+        with TestClient(create_app(settings)) as client:
+            first_tenant_a = client.get("/v1/session", headers={"authorization": f"Bearer {tenant_a_token}"})
+            second_tenant_a = client.get("/v1/session", headers={"authorization": f"Bearer {tenant_a_token}"})
+            first_tenant_b = client.get("/v1/session", headers={"authorization": f"Bearer {tenant_b_token}"})
+
+        self.assertEqual(first_tenant_a.status_code, 200, first_tenant_a.text)
+        self.assertEqual(second_tenant_a.status_code, 429, second_tenant_a.text)
+        self.assertEqual(first_tenant_b.status_code, 200, first_tenant_b.text)
 
     def test_api_rate_limit_fails_closed_when_counter_storage_is_unavailable(self) -> None:
         settings = replace(
@@ -444,6 +581,105 @@ class ProductionIdentityApiTests(unittest.TestCase):
                 )
                 self.assertEqual(verified.status_code, 200)
                 self.assertEqual(verified.json()["role"], "Approver")
+
+    def test_revokes_a_registered_session_before_expiry(self) -> None:
+        settings = replace(
+            self.settings,
+            allow_dev_auth=True,
+            database_path=Path(self.tempdir.name) / "session-revocation.db",
+        )
+        with TestClient(create_app(settings)) as client:
+            session = client.post(
+                "/v1/dev/sessions",
+                json={"tenant_id": "tenant-enterprise", "user_id": "operator", "name": "Operator", "role": "Operator"},
+            ).json()
+            headers = {"authorization": f"Bearer {session['access_token']}"}
+            self.assertEqual(client.get("/v1/session", headers=headers).status_code, 200)
+
+            revoked = client.post("/v1/session/revoke", headers=headers)
+            self.assertEqual(revoked.status_code, 204, revoked.text)
+
+            response = client.get("/v1/session", headers=headers)
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["detail"], "Session has been revoked.")
+
+    def test_global_kill_switch_requires_a_break_glass_token_and_executive_session(self) -> None:
+        settings = replace(
+            self.settings,
+            allow_dev_auth=True,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
+            database_path=Path(self.tempdir.name) / "global-kill-switch-api.db",
+        )
+        with TestClient(create_app(settings)) as client:
+            session = client.post(
+                "/v1/dev/sessions",
+                json={"tenant_id": "tenant-enterprise", "user_id": "executive", "name": "Executive", "role": "Executive"},
+            ).json()
+            headers = {"authorization": f"Bearer {session['access_token']}"}
+            missing = client.post(
+                "/v1/controls/global-kill-switch",
+                headers=headers,
+                json={"reason": "Stop all tenants during provider incident."},
+            )
+            invalid = client.post(
+                "/v1/controls/global-kill-switch",
+                headers={**headers, "x-loopos-break-glass-token": "wrong"},
+                json={"reason": "Stop all tenants during provider incident."},
+            )
+            active = client.post(
+                "/v1/controls/global-kill-switch",
+                headers={**headers, "x-loopos-break-glass-token": settings.break_glass_token},
+                json={"reason": "Stop all tenants during provider incident."},
+            )
+            observed = client.get(
+                "/v1/controls/global-kill-switch",
+                headers={**headers, "x-loopos-break-glass-token": settings.break_glass_token},
+            )
+            cleared = client.post(
+                "/v1/controls/global-kill-switch/deactivate",
+                headers={**headers, "x-loopos-break-glass-token": settings.break_glass_token},
+                json={"reason": "Provider incident contained; resume only with fresh approvals."},
+            )
+
+        self.assertEqual(missing.status_code, 403)
+        self.assertEqual(invalid.status_code, 403)
+        self.assertEqual(active.status_code, 200, active.text)
+        self.assertEqual(active.json()["scope"], "global")
+        self.assertTrue(active.json()["active"])
+        self.assertEqual(observed.status_code, 200, observed.text)
+        self.assertTrue(observed.json()["active"])
+        self.assertEqual(cleared.status_code, 200, cleared.text)
+        self.assertFalse(cleared.json()["active"])
+
+    def test_executive_can_revoke_all_sessions_for_a_user_in_the_same_tenant(self) -> None:
+        settings = replace(
+            self.settings,
+            allow_dev_auth=True,
+            database_path=Path(self.tempdir.name) / "user-session-revocation.db",
+        )
+        with TestClient(create_app(settings)) as client:
+            target = client.post(
+                "/v1/dev/sessions",
+                json={"tenant_id": "tenant-enterprise", "user_id": "operator", "name": "Operator", "role": "Operator"},
+            ).json()
+            executive = client.post(
+                "/v1/dev/sessions",
+                json={"tenant_id": "tenant-enterprise", "user_id": "executive", "name": "Executive", "role": "Executive"},
+            ).json()
+            response = client.post(
+                "/v1/controls/sessions/revoke-user",
+                headers={"authorization": f"Bearer {executive['access_token']}"},
+                json={"user_id": "operator", "reason": "employment ended"},
+            )
+            target_check = client.get(
+                "/v1/session",
+                headers={"authorization": f"Bearer {target['access_token']}"},
+            )
+
+        self.assertEqual(response.status_code, 204, response.text)
+        self.assertEqual(target_check.status_code, 401)
+        self.assertEqual(target_check.json()["detail"], "Session has been revoked.")
 
     def test_enterprise_session_rejects_a_disallowed_origin(self) -> None:
         settings = self.complete_production_settings("identity-origin-rejected.db")
@@ -652,10 +888,12 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "operations.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=(),
             cors_origins=(),
             rate_limit_requests=120,
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
             storage_backend="postgres",
             postgres_dsn="postgresql://unused.example/loopos",
             audit_anchor_url="https://audit.example.com/loopos/events",
@@ -699,6 +937,20 @@ class ProductionIdentityApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503, response.text)
         self.assertEqual(response.json()["detail"], "Production execution job backlog contains 1 job(s).")
 
+    def test_production_readiness_rejects_missing_aggregate_external_effect_policy(self) -> None:
+        settings = replace(self.complete_production_settings("missing-effect-budget.db"), effect_budget_policy=None)
+        store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
+        with patch("loopos_authority.api.create_authority_store", return_value=store):
+            with TestClient(create_app(settings, identity_verifier=self.IdentityVerifier(), transport=httpx.MockTransport(lambda _request: httpx.Response(202)))) as client:
+                drain = client.post(
+                    "/v1/operations/jobs/drain",
+                    headers={"x-loopos-worker-token": settings.worker_token},
+                )
+                self.assertEqual(drain.status_code, 200, drain.text)
+                response = client.get("/health/ready")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"], "Production aggregate external-effect policy is unavailable.")
+
     def test_production_readiness_accepts_complete_recent_operational_evidence(self) -> None:
         restore_verified_at = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
         settings = Settings(
@@ -706,10 +958,14 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "operations-ready.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
+            github_release_attestor_app_id=4242,
+            github_release_workflow_ids=(7007,),
             allowed_http_hosts=("api.example.com",),
             cors_origins=(),
             rate_limit_requests=120,
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
             storage_backend="postgres",
             postgres_dsn="postgresql://unused.example/loopos",
             audit_anchor_url="https://audit.example.com/loopos/events",
@@ -718,6 +974,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             retention_policy_url="https://policy.example.com/loopos-retention",
             support_contact="loopos-operations@example.com",
             outbound_policy_mode="allowlist",
+            effect_budget_policy=external_effect_fixture_policy("tenant-enterprise", "https://api.example.com"),
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=restore_verified_at,
@@ -759,6 +1016,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             "worker_dispatch_verified": True,
         })
         self.assertTrue(response.json()["rate_limit_configured"])
+        self.assertTrue(response.json()["aggregate_effect_budget_verified"])
         self.assertFalse(response.json()["credential_injection_broker_verified"])
         self.assertEqual(response.json()["configuration_contract"], {
             "allowed_http_hosts": ["api.example.com"],
@@ -785,10 +1043,12 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "operations-stale-audit.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=("api.example.com",),
             cors_origins=(),
             rate_limit_requests=120,
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
             storage_backend="postgres",
             postgres_dsn="postgresql://unused.example/loopos",
             audit_anchor_url="https://audit.example.com/loopos/events",
@@ -796,6 +1056,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             retention_policy_url="https://policy.example.com/loopos-retention",
             support_contact="loopos-operations@example.com",
             outbound_policy_mode="allowlist",
+            effect_budget_policy=external_effect_fixture_policy("tenant-enterprise", "https://api.example.com"),
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=verified_at,
@@ -825,6 +1086,21 @@ class ProductionIdentityApiTests(unittest.TestCase):
             "Production audit anchoring has not completed a recent verified delivery.",
         )
 
+    def test_production_readiness_requires_release_attestor_configuration(self) -> None:
+        settings = replace(
+            self.complete_production_settings("release-attestor-missing.db"),
+            github_release_attestor_app_id=None,
+            github_release_workflow_ids=(),
+        )
+        store = AuthorityStore(settings.database_path, Corpus.load(REPO_ROOT))
+        with patch("loopos_authority.api.create_authority_store", return_value=store):
+            with TestClient(create_app(settings, identity_verifier=self.IdentityVerifier(), transport=httpx.MockTransport(lambda _request: httpx.Response(202)))) as client:
+                drain = client.post("/v1/operations/jobs/drain", headers={"x-loopos-worker-token": settings.worker_token})
+                self.assertEqual(drain.status_code, 200, drain.text)
+                response = client.get("/health/ready")
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("release publisher", response.json()["detail"])
+
     def test_production_readiness_rejects_insecure_cors_origins(self) -> None:
         restore_verified_at = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
         settings = Settings(
@@ -832,10 +1108,12 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "operations-insecure-cors.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=("api.example.com",),
             cors_origins=("http://untrusted.example.com",),
             rate_limit_requests=120,
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
             storage_backend="postgres",
             postgres_dsn="postgresql://unused.example/loopos",
             audit_anchor_url="https://audit.example.com/loopos/events",
@@ -844,6 +1122,7 @@ class ProductionIdentityApiTests(unittest.TestCase):
             retention_policy_url="https://policy.example.com/loopos-retention",
             support_contact="loopos-operations@example.com",
             outbound_policy_mode="allowlist",
+            effect_budget_policy=external_effect_fixture_policy("tenant-enterprise", "https://api.example.com"),
             backup_restore_evidence_url="https://evidence.example.com/loopos/restore-test",
             backup_restore_evidence_sha256="a" * 64,
             backup_restore_verified_at=restore_verified_at,
@@ -875,10 +1154,12 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "operations-unallowlisted-connector.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=("api.example.com",),
             cors_origins=(),
             rate_limit_requests=120,
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
             storage_backend="postgres",
             postgres_dsn="postgresql://unused.example/loopos",
             connector_bearer_tokens={"rogue.example.com": "connector-token"},
@@ -903,13 +1184,16 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "operations-malformed-outbound-policy.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=("api.example.com/path",),
             cors_origins=(),
             rate_limit_requests=120,
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
             storage_backend="postgres",
             postgres_dsn="postgresql://unused.example/loopos",
             outbound_policy_mode="allowlist",
+            effect_budget_policy=external_effect_fixture_policy("tenant-enterprise", "https://api.example.com"),
             audit_anchor_url="https://audit.example.com/loopos/events",
             audit_anchor_hmac_secret="audit-anchor-secret-that-is-at-least-thirty-two-bytes",
             audit_anchor_poll_seconds=3600,
@@ -931,10 +1215,12 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "operations-unproven-audit.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=(),
             cors_origins=(),
             rate_limit_requests=120,
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
             storage_backend="postgres",
             postgres_dsn="postgresql://unused.example/loopos",
             audit_anchor_url="https://audit.example.com/loopos/events",
@@ -957,9 +1243,11 @@ class ProductionIdentityApiTests(unittest.TestCase):
                 response = client.get("/health/ready")
 
         self.assertEqual(response.status_code, 503)
+        # Startup records the active release-policy epoch in the anchored audit
+        # chain; the explicit readiness probe is a second undelivered event.
         self.assertEqual(
             response.json()["detail"],
-            "Production audit anchor backlog contains 1 event(s).",
+            "Production audit anchor backlog contains 2 event(s).",
         )
 
     def test_production_readiness_rejects_a_worker_token_without_a_dispatch_heartbeat(self) -> None:
@@ -968,10 +1256,12 @@ class ProductionIdentityApiTests(unittest.TestCase):
             database_path=Path(self.tempdir.name) / "operations-unproven-worker.db",
             session_secret="identity-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=(),
             cors_origins=(),
             rate_limit_requests=120,
             rate_limit_window_seconds=60,
+            break_glass_token="global-break-glass-token-that-is-at-least-thirty-two-bytes",
             storage_backend="postgres",
             postgres_dsn="postgresql://unused.example/loopos",
             audit_anchor_url="https://audit.example.com/loopos/events",
@@ -1249,6 +1539,14 @@ def webhook_signature(secret: str, body: bytes) -> str:
     return "sha256=" + hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
 
 
+def external_effect_fixture_policy(tenant_id: str = "tenant-a", origin: str = "http://localhost") -> dict:
+    return {"version": 1, "scope": "cumulative", "tenants": {tenant_id: {
+        "ceilings": {"dispatch_count": 20},
+        "routes": [{"endpoint": f"{origin}/{path}", "method": "POST", "evidence_ref": "fixture-effect-contract",
+            "charges": [{"unit": "dispatch_count", "fixed": 1}]} for path in ("change", "compensate")],
+    }}}
+
+
 class AuthorityHarness(unittest.TestCase):
     def setUp(self) -> None:
         self.tempdir = tempfile.TemporaryDirectory()
@@ -1426,11 +1724,11 @@ class StoreAndEngineTests(AuthorityHarness):
         })
         initiative = self.store.create_release_initiative(self.operator, ready_request, "release-ready-key")
 
-        self.assertEqual(initiative.readiness_verdict["verdict"], "REVIEW_REQUIRED")
-        self.assertEqual(initiative.readiness_verdict["failing_reasons"], [])
+        self.assertEqual(initiative.readiness_verdict["verdict"], "NO_GO")
+        self.assertTrue(any("policy binding" in reason for reason in initiative.readiness_verdict["failing_reasons"]))
         self.assertTrue(any("not provider-verified" in reason for reason in initiative.readiness_verdict["review_reasons"]))
 
-    def test_release_initiative_marks_all_passed_fresh_provider_verified_gates_go(self) -> None:
+    def test_release_initiative_legacy_incomplete_claims_cannot_yield_go(self) -> None:
         connector = connector_event_request(observed_at=datetime.now(timezone.utc).isoformat()).model_copy(
             update={"verification_status": "verified_webhook", "delivery_id": "release-ready-delivery"}
         )
@@ -1451,9 +1749,11 @@ class StoreAndEngineTests(AuthorityHarness):
         initiative = self.store.create_release_initiative(self.operator, ready_request, "release-provider-ready-key")
 
         self.assertEqual(initiative.freshness_summary["verified_webhook_count"], 1)
-        self.assertEqual(initiative.readiness_verdict["verdict"], "GO")
-        self.assertEqual(initiative.readiness_verdict["failing_reasons"], [])
-        self.assertEqual(initiative.readiness_verdict["review_reasons"], [])
+        # The old fixture lacked protected requirements and authenticated review.
+        # Retain its exact input as a negative; test_release_review proves real GO.
+        self.assertEqual(initiative.readiness_verdict["verdict"], "NO_GO")
+        self.assertTrue(initiative.readiness_verdict["failing_reasons"])
+        self.assertTrue(initiative.readiness_verdict["review_reasons"])
 
     def test_release_readiness_rejects_gate_records_without_unique_ids(self) -> None:
         connector = connector_event_request(observed_at=datetime.now(timezone.utc).isoformat()).model_copy(
@@ -1501,7 +1801,8 @@ class StoreAndEngineTests(AuthorityHarness):
             }
         })
         initiative = self.store.create_release_initiative(self.operator, ready_request, "release-aging-key")
-        self.assertEqual(initiative.readiness_verdict["verdict"], "GO")
+        self.assertEqual(initiative.readiness_verdict["verdict"], "NO_GO")
+        self.assertEqual(initiative.freshness_summary["status"], "fresh")
 
         self.store.connection.execute(
             "UPDATE connector_events SET observed_at = ? WHERE connector_event_id = ?",
@@ -1545,7 +1846,7 @@ class StoreAndEngineTests(AuthorityHarness):
         self.assertEqual(initiative.freshness_summary["future_observed_at_event_ids"], [record.connector_event_id])
         self.assertEqual(initiative.readiness_verdict["verdict"], "NO_GO")
 
-    def test_release_initiative_marks_review_gates_review_required(self) -> None:
+    def test_release_initiative_incomplete_review_gates_fail_closed(self) -> None:
         connector = self.store.record_connector_event(self.operator, connector_event_request(observed_at=datetime.now(timezone.utc).isoformat()))
         review_request = release_request([connector.connector_event_id])
         review_request = review_request.model_copy(update={
@@ -1567,8 +1868,8 @@ class StoreAndEngineTests(AuthorityHarness):
         })
         initiative = self.store.create_release_initiative(self.operator, review_request, "release-review-key")
 
-        self.assertEqual(initiative.readiness_verdict["verdict"], "REVIEW_REQUIRED")
-        self.assertEqual(initiative.readiness_verdict["failing_reasons"], [])
+        self.assertEqual(initiative.readiness_verdict["verdict"], "NO_GO")
+        self.assertTrue(any("policy binding" in reason for reason in initiative.readiness_verdict["failing_reasons"]))
         self.assertTrue(initiative.readiness_verdict["review_reasons"])
 
     def test_release_initiative_fails_closed_for_an_unknown_gate_status(self) -> None:
@@ -1677,6 +1978,42 @@ class StoreAndEngineTests(AuthorityHarness):
         valid, _, invalid = self.store.verify_audit_chain(run.tenant_id)
         self.assertTrue(valid)
         self.assertIsNone(invalid)
+
+    def test_global_kill_switch_blocks_queued_work_across_tenants(self) -> None:
+        operator_b = Actor(tenant_id="tenant-b", user_id="operator-b", name="Operator B", role="Operator")
+        run_a = self.store.create_run(self.operator, request(), "create-global-kill-switch-a")
+        run_b = self.store.create_run(operator_b, request(), "create-global-kill-switch-b")
+        self.store.queue_run(run_a.tenant_id, run_a.run_id, self.operator.user_id)
+        self.store.queue_run(run_b.tenant_id, run_b.run_id, operator_b.user_id)
+
+        with self.assertRaises(Forbidden):
+            self.store.activate_global_kill_switch(self.approver, "Approver cannot activate the global stop.")
+
+        status = self.store.activate_global_kill_switch(
+            self.executive,
+            "Stop every tenant while the provider incident is investigated.",
+        )
+        self.assertTrue(status["active"])
+        self.assertEqual(status["scope"], "global")
+        self.assertTrue(self.store.is_kill_switch_active(run_a.tenant_id))
+        self.assertTrue(self.store.is_kill_switch_active(run_b.tenant_id))
+        self.assertTrue(self.store.kill_switch_status(run_a.tenant_id)["global_active"])
+        self.assertEqual(self.store.get_run(run_a.tenant_id, run_a.run_id).state, "BLOCKED")
+        self.assertEqual(self.store.get_run(run_b.tenant_id, run_b.run_id).state, "BLOCKED")
+        self.assertEqual(self.store.claim_execution_jobs("worker", 30), [])
+        global_events = self.store.events_after("__loopos_global__", None)
+        self.assertTrue(any(event["event_type"] == "KILL_SWITCH_ACTIVATED" for event in global_events))
+
+        cleared = self.store.deactivate_global_kill_switch(
+            self.executive,
+            "Provider incident contained; require fresh approvals before restart.",
+        )
+        self.assertFalse(cleared["active"])
+        self.assertFalse(self.store.is_kill_switch_active(run_a.tenant_id))
+        self.assertFalse(self.store.is_kill_switch_active(run_b.tenant_id))
+        self.assertFalse(self.store.kill_switch_status(run_a.tenant_id)["global_active"])
+        new_run = self.store.create_run(operator_b, request(), "create-global-kill-switch-after-deactivation")
+        self.assertNotEqual(new_run.run_id, run_b.run_id)
 
     def test_kill_switch_deactivation_does_not_resume_blocked_runs(self) -> None:
         run = self.store.create_run(self.operator, request(), "create-kill-switch-restart")
@@ -1889,8 +2226,11 @@ class StoreAndEngineTests(AuthorityHarness):
 
         def handler(request_value: httpx.Request) -> httpx.Response:
             requests.append(request_value)
-            expected = hmac.new(secret.encode("utf-8"), request_value.content, hashlib.sha256).hexdigest()
+            epoch = request_value.headers["x-loopos-anchor-epoch"]
+            signed = b"loopos-audit-anchor-v2\n" + epoch.encode("ascii") + b"\n" + request_value.content
+            expected = hmac.new(secret.encode("utf-8"), signed, hashlib.sha256).hexdigest()
             self.assertEqual(request_value.headers["x-loopos-signature-256"], f"sha256={expected}")
+            self.assertEqual(epoch, "1")
             self.assertEqual(request_value.headers["x-loopos-event-id"], json.loads(request_value.content)["event_id"])
             return httpx.Response(202)
 
@@ -1997,7 +2337,7 @@ class StoreAndEngineTests(AuthorityHarness):
         self.assertFalse(status["fresh"])
         self.assertEqual(status["delivered_count"], 1)
 
-    def test_http_tool_retries_retryable_failures_with_one_idempotency_key(self) -> None:
+    def test_http_tool_retains_uncertain_503_outcome_without_unsafe_redispatch(self) -> None:
         calls = []
 
         def handler(request_value: httpx.Request) -> httpx.Response:
@@ -2007,6 +2347,7 @@ class StoreAndEngineTests(AuthorityHarness):
             return httpx.Response(200, json={"change_id": "change-123"})
 
         retry_settings = Settings(
+            effect_budget_policy=external_effect_fixture_policy(),
             repo_root=REPO_ROOT,
             database_path=self.settings.database_path,
             session_secret=self.settings.session_secret,
@@ -2023,11 +2364,13 @@ class StoreAndEngineTests(AuthorityHarness):
             arguments={"endpoint": "http://localhost/change", "method": "POST", "body": {"enabled": True}},
         )
         run = self.store.create_run(self.operator, request(execution_plan=execution_plan), "create-http-retry")
-        result = asyncio.run(retry_tools.execute_action(run.tenant_id, run.run_id, execution_plan.action, 3))
+        with self.assertRaisesRegex(TerminalToolFailure, "reconciliation"):
+            asyncio.run(retry_tools.execute_action(run.tenant_id, run.run_id, execution_plan.action, 3))
+        with self.assertRaises(TerminalToolFailure):
+            asyncio.run(retry_tools.execute_action(run.tenant_id, run.run_id, execution_plan.action, 3))
         asyncio.run(retry_tools.close())
 
-        self.assertEqual(result["response"]["change_id"], "change-123")
-        self.assertEqual(len(calls), 3)
+        self.assertEqual(len(calls), 1)
         self.assertEqual({item.headers["idempotency-key"] for item in calls}, {"action-test-key"})
         self.assertEqual({item.headers["x-loopos-run-id"] for item in calls}, {run.run_id})
         self.assertEqual(len({item.headers["x-loopos-invocation-id"] for item in calls}), 1)
@@ -2036,10 +2379,35 @@ class StoreAndEngineTests(AuthorityHarness):
             event for event in self.store.events_after(run.tenant_id, run.run_id)
             if event["event_type"] == "TOOL_SUCCEEDED"
         ]
-        self.assertEqual(len(succeeded), 1)
-        observability = succeeded[0]["payload"]["observability"]
-        self.assertGreaterEqual(observability["latency_ms"], 0)
-        self.assertEqual(observability["retry_count"], 2)
+        self.assertEqual(len(succeeded), 0)
+        reservation = self.store.connection.execute("SELECT status FROM effect_budget_reservations").fetchone()
+        self.assertEqual(reservation["status"], "unknown")
+
+    def test_http_tool_request_limit_rejects_before_network_and_records_failure(self) -> None:
+        calls = []
+        bounded_settings = replace(self.settings, allowed_http_hosts=("localhost",), http_max_request_bytes=32, effect_budget_policy=external_effect_fixture_policy())
+        bounded_tools = ToolRegistry(
+            bounded_settings,
+            self.store,
+            transport=httpx.MockTransport(lambda request_value: calls.append(request_value) or httpx.Response(200, json={"ok": True})),
+        )
+        execution_plan = plan(
+            rollback=True,
+            external=True,
+            tool="http_json_action",
+            arguments={"endpoint": "http://localhost/change", "method": "POST", "body": {"payload": "x" * 100}},
+        )
+        run = self.store.create_run(self.operator, request(execution_plan=execution_plan), "create-http-request-limit")
+        try:
+            with self.assertRaisesRegex(TerminalToolFailure, "configured size limit"):
+                asyncio.run(bounded_tools.execute_action(run.tenant_id, run.run_id, execution_plan.action, 3))
+        finally:
+            asyncio.run(bounded_tools.close())
+
+        self.assertEqual(calls, [])
+        failed = [event for event in self.store.events_after(run.tenant_id, run.run_id) if event["event_type"] == "TOOL_FAILED"]
+        self.assertEqual(len(failed), 1)
+        self.assertEqual(failed[0]["payload"]["code"], "terminal_dependency_failure")
 
     def test_failed_tool_invocation_records_failure_observability(self) -> None:
         execution_plan = plan(tool="record_action", arguments={"operation": "unsupported"})
@@ -2117,7 +2485,7 @@ class StoreAndEngineTests(AuthorityHarness):
         for suffix in ("?token=secret", "#fragment"):
             with self.subTest(suffix=suffix):
                 with self.assertRaisesRegex(Exception, "query strings or fragments"):
-                    self.tools._validate_endpoint(f"https://enterprise.example/evidence{suffix}")
+                    asyncio.run(self.tools._validate_endpoint(f"https://enterprise.example/evidence{suffix}"))
 
     def test_production_connector_credentials_fail_closed_without_a_credential_broker(self) -> None:
         connector_settings = replace(
@@ -2133,13 +2501,101 @@ class StoreAndEngineTests(AuthorityHarness):
         finally:
             asyncio.run(connector_tools.close())
 
+    def test_production_connector_uses_a_scoped_expiring_broker_lease(self) -> None:
+        class Broker:
+            def __init__(self) -> None:
+                self.requests: list[dict[str, str]] = []
+
+            def issue_lease(self, **request: str) -> CredentialLease:
+                self.requests.append(request)
+                now = time.time()
+                return CredentialLease(
+                    credential_ref="lease-123",
+                    tenant_id=request["tenant_id"],
+                    connector_ref=request["connector_ref"],
+                    action_class=request["action_class"],
+                    issued_at=now - 1,
+                    expires_at=now + 60,
+                    bearer_token="server-only-credential",
+                )
+
+        connector_settings = replace(
+            self.settings,
+            allow_dev_auth=False,
+            allowed_http_hosts=("enterprise.example",),
+            connector_bearer_tokens={},
+        )
+        broker = Broker()
+        connector_tools = ToolRegistry(
+            connector_settings,
+            self.store,
+            credential_broker=broker,
+            workload_identity_ref="vercel-workload:loopos",
+        )
+        try:
+            with patch(
+                "loopos_authority.tools.socket.getaddrinfo",
+                return_value=[(2, 1, 6, "", ("93.184.216.34", 443))],
+            ):
+                headers = connector_tools._connector_headers(
+                    "https://enterprise.example/action",
+                    tenant_id="tenant-a",
+                    action_class="http_action",
+                )
+            self.assertEqual(headers["authorization"], "Bearer server-only-credential")
+            self.assertEqual(
+                broker.requests,
+                [{
+                    "workload_identity_ref": "vercel-workload:loopos",
+                    "tenant_id": "tenant-a",
+                    "connector_ref": "enterprise.example",
+                    "action_class": "http_action",
+                }],
+            )
+            self.assertNotIn("server-only-credential", repr(CredentialLease(
+                credential_ref="lease-123",
+                tenant_id="tenant-a",
+                connector_ref="enterprise.example",
+                action_class="http_action",
+                issued_at=time.time() - 1,
+                expires_at=time.time() + 60,
+                bearer_token="server-only-credential",
+            )))
+        finally:
+            asyncio.run(connector_tools.close())
+
+    def test_credential_lease_rejects_wrong_scope_and_expiry(self) -> None:
+        lease = CredentialLease(
+            credential_ref="lease-123",
+            tenant_id="tenant-a",
+            connector_ref="enterprise.example",
+            action_class="http_action",
+            issued_at=100,
+            expires_at=110,
+            bearer_token="server-only-credential",
+        )
+        with self.assertRaisesRegex(TerminalToolFailure, "outside the requested scope"):
+            lease.validate(
+                tenant_id="tenant-b",
+                connector_ref="enterprise.example",
+                action_class="http_action",
+                now=105,
+            )
+        with self.assertRaisesRegex(TerminalToolFailure, "expired"):
+            lease.validate(
+                tenant_id="tenant-a",
+                connector_ref="enterprise.example",
+                action_class="http_action",
+                now=110,
+            )
+
     def test_connector_dns_rejects_non_global_addresses(self) -> None:
         with patch(
             "loopos_authority.tools.socket.getaddrinfo",
             return_value=[(2, 1, 6, "", ("100.64.0.1", 443))],
         ):
             with self.assertRaisesRegex(Exception, "non-global"):
-                self.tools._validate_endpoint("https://enterprise.example/evidence")
+                asyncio.run(self.tools._validate_endpoint("https://enterprise.example/evidence"))
 
     def test_external_connector_executes_probes_and_compensates_failed_validation(self) -> None:
         calls: list[tuple[str, str, str | None]] = []
@@ -2161,6 +2617,7 @@ class StoreAndEngineTests(AuthorityHarness):
             allowed_http_hosts=("localhost",),
             cors_origins=self.settings.cors_origins,
             connector_bearer_tokens={"localhost": "server-only-token"},
+            effect_budget_policy=external_effect_fixture_policy(),
             retry_wait_seconds=0,
         )
         connector_tools = ToolRegistry(connector_settings, self.store, transport=httpx.MockTransport(handler))
@@ -2442,6 +2899,7 @@ class StorageBackendTests(unittest.TestCase):
             {
                 "LOOPOS_REPO_ROOT": str(REPO_ROOT),
                 "LOOPOS_SESSION_HMAC_SECRET": "vercel-session-secret-that-is-at-least-thirty-two-bytes",
+                "LOOPOS_AUDIT_ANCHOR_EPOCH": "1",
                 "LOOPOS_RATE_LIMIT_REQUESTS": "120",
                 "LOOPOS_RATE_LIMIT_WINDOW_SECONDS": "60",
                 "VERCEL": "1",
@@ -2473,6 +2931,7 @@ class StorageBackendTests(unittest.TestCase):
             "os.environ",
             {
                 "LOOPOS_SESSION_HMAC_SECRET": "vercel-session-secret-that-is-at-least-thirty-two-bytes",
+                "LOOPOS_AUDIT_ANCHOR_EPOCH": "1",
                 "LOOPOS_EXECUTION_WORKER_MODE": "internal",
                 "VERCEL": "1",
             },
@@ -2504,6 +2963,7 @@ class StorageBackendTests(unittest.TestCase):
         for variable in (
             "LOOPOS_EXECUTION_JOB_LEASE_SECONDS",
             "LOOPOS_EXECUTION_JOB_MAX_ATTEMPTS",
+            "LOOPOS_HTTP_MAX_REQUEST_BYTES",
         ):
             for value in ("0", "-1", "0.5", "1.5", "Infinity", "NaN"):
                 with self.subTest(variable=variable, value=value):
@@ -2517,6 +2977,19 @@ class StorageBackendTests(unittest.TestCase):
                     ):
                         with self.assertRaisesRegex(ValueError, "positive integer"):
                             Settings.from_env()
+
+    def test_http_request_limit_defaults_safely_and_rejects_unbounded_configuration(self) -> None:
+        with patch.dict("os.environ", {"LOOPOS_REPO_ROOT": str(REPO_ROOT)}, clear=True):
+            settings = Settings.from_env()
+        self.assertEqual(settings.http_max_request_bytes, 256_000)
+
+        with patch.dict(
+            "os.environ",
+            {"LOOPOS_REPO_ROOT": str(REPO_ROOT), "LOOPOS_HTTP_MAX_REQUEST_BYTES": str(10 * 1024 * 1024 + 1)},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "must not exceed"):
+                Settings.from_env()
 
     def test_postgres_backend_requires_a_dsn(self) -> None:
         settings = Settings(
@@ -2575,12 +3048,36 @@ class StorageBackendTests(unittest.TestCase):
 
         self.assertEqual(settings.audit_anchor_url, "http://localhost:9000/events")
 
+    def test_release_attestor_configuration_requires_a_complete_bounded_pair(self) -> None:
+        valid = {
+            "LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID": "4242",
+            "LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS": "7007,7008",
+        }
+        with patch.dict("os.environ", valid, clear=True):
+            settings = Settings.from_env()
+        self.assertEqual(settings.github_release_attestor_app_id, 4242)
+        self.assertEqual(settings.github_release_workflow_ids, (7007, 7008))
+
+        invalid = (
+            {"LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID": "4242"},
+            {"LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS": "7007"},
+            {**valid, "LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS": "7007,7007"},
+            {**valid, "LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS": "7007,,7008"},
+            {**valid, "LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS": "7007,0"},
+            {**valid, "LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID": "9223372036854775808"},
+        )
+        for environment in invalid:
+            with self.subTest(environment=environment), patch.dict("os.environ", environment, clear=True):
+                with self.assertRaises(ValueError):
+                    Settings.from_env()
+
     def test_production_app_rejects_a_local_http_audit_anchor(self) -> None:
         settings = Settings(
             repo_root=REPO_ROOT,
             database_path=Path("unused.db"),
             session_secret="production-anchor-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=(),
             cors_origins=(),
             audit_anchor_url="http://localhost:9000/events",
@@ -2628,6 +3125,7 @@ class StorageBackendTests(unittest.TestCase):
             database_path=Path("unused.db"),
             session_secret="operations-test-secret-that-is-at-least-thirty-two-bytes",
             allow_dev_auth=False,
+            audit_anchor_epoch=1,
             allowed_http_hosts=(),
             cors_origins=(),
             retention_policy_url="https://policy.example.com/retention",
@@ -2746,6 +3244,8 @@ class ApiTests(unittest.TestCase):
             webhook_secrets={"tenant-api:github": "github-webhook-secret", "tenant-api:jira": "jira-webhook-secret"},
             worker_token="api-worker-token-that-is-at-least-thirty-two-bytes",
             execution_worker_poll_seconds=0.01,
+            github_release_attestor_app_id=4242,
+            github_release_workflow_ids=(7007,),
         )
         self.app = create_app(settings)
         self.store = self.app.state.store
@@ -2755,6 +3255,27 @@ class ApiTests(unittest.TestCase):
         session = self.client.post("/v1/dev/sessions", json={"tenant_id": "tenant-api", "user_id": "operator", "name": "Operator", "role": "Operator"})
         self.token = session.json()["access_token"]
         self.headers = {"authorization": f"Bearer {self.token}"}
+
+    def test_inbound_request_limit_rejects_before_endpoint_validation(self) -> None:
+        before = self.store.connection.execute("SELECT COUNT(*) AS count FROM sessions").fetchone()["count"]
+        response = self.client.post(
+            "/v1/dev/sessions",
+            headers={"content-type": "application/json"},
+            content=b"x" * (self.app.state.settings.http_max_request_bytes + 1),
+        )
+
+        self.assertEqual(response.status_code, 413, response.text)
+        self.assertEqual(response.json()["detail"], "Request body exceeds the configured size limit.")
+        after = self.store.connection.execute("SELECT COUNT(*) AS count FROM sessions").fetchone()["count"]
+        self.assertEqual(after, before)
+
+        oversized_get = self.client.request(
+            "GET",
+            "/health/live",
+            content=b"x" * (self.app.state.settings.http_max_request_bytes + 1),
+        )
+        self.assertEqual(oversized_get.status_code, 413, oversized_get.text)
+        self.assertEqual(oversized_get.json()["detail"], "Request body exceeds the configured size limit.")
 
     def tearDown(self) -> None:
         self.client_context.__exit__(None, None, None)
@@ -2920,6 +3441,260 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(rejected_initiative.status_code, 422, rejected_initiative.text)
 
+    def test_help_request_history_is_authenticated_append_only_and_not_deletable(self) -> None:
+        def help_request(requester_id: str = "operator", requester_name: str = "Operator") -> dict:
+            created_at = "2026-07-30T12:00:00+00:00"
+            return {
+                "help_request_id": "help-001", "blocked_goal": "Finish assurance",
+                "destination": "Security owner", "requested_action": "Review proof",
+                "evidence_refs": ["risk-register:F01"], "risk_while_waiting": "Release remains blocked",
+                "deadline": "2026-08-01T12:00:00+00:00", "wake_condition": "Owner records a response",
+                "requested_by_id": requester_id, "requested_by": requester_name, "status": "draft",
+                "attempts": 0, "created_at": created_at, "updated_at": created_at,
+                "events": [{"event_id": "help-event-001", "type": "draft_created",
+                    "actor_id": requester_id, "actor_name": requester_name, "at": created_at,
+                    "note": "Help request draft created; no message was sent."}],
+            }
+
+        forged_create = workspace_document("help-history")
+        forged_create["help_requests"] = [help_request("spoofed-user", "Spoofed User")]
+        denied_create = self.client.put(
+            "/v1/workspaces/help-history", headers={**self.headers, "if-none-match": "*"},
+            json={"document": forged_create},
+        )
+        self.assertEqual(denied_create.status_code, 403, denied_create.text)
+
+        document = workspace_document("help-history")
+        document["help_requests"] = [help_request()]
+        created = self.client.put(
+            "/v1/workspaces/help-history", headers={**self.headers, "if-none-match": "*"},
+            json={"document": document},
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+
+        forged_update = json.loads(json.dumps(document))
+        forged_request = forged_update["help_requests"][0]
+        forged_request["events"].append({
+            "event_id": "help-event-forged", "type": "delivery_failed",
+            "actor_id": "spoofed-user", "actor_name": "Operator",
+            "at": "2026-07-30T12:01:00+00:00", "note": "Attempted delivery",
+            "evidence_ref": "ticket:1",
+        })
+        forged_request.update(status="delivery_failed", attempts=1, updated_at="2026-07-30T12:01:00+00:00")
+        denied_actor = self.client.put(
+            "/v1/workspaces/help-history", headers={**self.headers, "if-match": '"1"'},
+            json={"document": forged_update},
+        )
+        self.assertEqual(denied_actor.status_code, 403, denied_actor.text)
+
+        rewritten = json.loads(json.dumps(document))
+        rewritten["help_requests"][0]["events"][0]["note"] = "History rewritten by the client"
+        denied_rewrite = self.client.put(
+            "/v1/workspaces/help-history", headers={**self.headers, "if-match": '"1"'},
+            json={"document": rewritten},
+        )
+        self.assertEqual(denied_rewrite.status_code, 409, denied_rewrite.text)
+
+        valid_update = json.loads(json.dumps(document))
+        valid_request = valid_update["help_requests"][0]
+        valid_request["events"].append({
+            "event_id": "help-event-002", "type": "delivery_failed",
+            "actor_id": "operator", "actor_name": "Operator",
+            "at": "2026-07-30T12:01:00+00:00", "note": "Delivery failed; retry required.",
+            "evidence_ref": "ticket:2",
+        })
+        valid_request.update(status="delivery_failed", attempts=1, updated_at="2026-07-30T12:01:00+00:00")
+        saved = self.client.put(
+            "/v1/workspaces/help-history", headers={**self.headers, "if-match": '"1"'},
+            json={"document": valid_update},
+        )
+        self.assertEqual(saved.status_code, 200, saved.text)
+
+        audit_events = [
+            event for event in self.store.events_after(self.operator.tenant_id, None, 0, 500)
+            if event["event_type"] == "HELP_REQUEST_EVENT_APPENDED"
+        ]
+        expected_help_events = [
+            ("help-event-001", document["help_requests"][0]["events"][0]),
+            ("help-event-002", valid_request["events"][1]),
+        ]
+        self.assertEqual(len(audit_events), len(expected_help_events))
+        for audit_event, (expected_event_id, source_event) in zip(audit_events, expected_help_events):
+            self.assertEqual(audit_event["actor_id"], self.operator.user_id)
+            self.assertEqual(audit_event["payload"]["workspace_id"], "help-history")
+            self.assertEqual(audit_event["payload"]["help_request_id"], "help-001")
+            self.assertEqual(audit_event["payload"]["help_event_id"], expected_event_id)
+            self.assertEqual(audit_event["payload"]["help_event_type"], source_event["type"])
+            self.assertEqual(audit_event["payload"]["help_event_at"], source_event["at"])
+            self.assertEqual(audit_event["payload"]["help_event_sha256"], sha256_json(source_event))
+            self.assertNotIn("note", audit_event["payload"])
+            self.assertNotIn("evidence_ref", audit_event["payload"])
+        self.assertTrue(self.store.verify_audit_chain(self.operator.tenant_id)[0])
+
+        deleted_history = json.loads(json.dumps(valid_update))
+        deleted_history["help_requests"] = []
+        denied_delete = self.client.put(
+            "/v1/workspaces/help-history", headers={**self.headers, "if-match": '"2"'},
+            json={"document": deleted_history},
+        )
+        self.assertEqual(denied_delete.status_code, 409, denied_delete.text)
+
+        rollback_document = workspace_document("help-history-rollback")
+        rollback_created = self.client.put(
+            "/v1/workspaces/help-history-rollback",
+            headers={**self.headers, "if-none-match": "*"},
+            json={"document": rollback_document},
+        )
+        self.assertEqual(rollback_created.status_code, 201, rollback_created.text)
+        rollback_update = json.loads(json.dumps(rollback_document))
+        rollback_request = help_request()
+        rollback_request["help_request_id"] = "help-rollback"
+        rollback_request["events"][0]["event_id"] = "help-rollback-event"
+        rollback_update["help_requests"] = [rollback_request]
+        real_append = self.store._append_event_cursor
+
+        def fail_help_audit(*args: object, **kwargs: object) -> dict:
+            if len(args) > 3 and args[3] == "HELP_REQUEST_EVENT_APPENDED":
+                raise RuntimeError("synthetic audit append failure")
+            return real_append(*args, **kwargs)
+
+        with patch.object(self.store, "_append_event_cursor", side_effect=fail_help_audit):
+            with self.assertRaisesRegex(RuntimeError, "synthetic audit append failure"):
+                self.store.put_workspace(
+                    self.operator,
+                    "help-history-rollback",
+                    rollback_update,
+                    expected_revision=1,
+                    create_only=False,
+                )
+        rollback_row = self.store.connection.execute(
+            "SELECT revision, document_json FROM workspaces WHERE tenant_id = ? AND workspace_id = ?",
+            (self.operator.tenant_id, "help-history-rollback"),
+        ).fetchone()
+        self.assertIsNotNone(rollback_row)
+        self.assertEqual(int(rollback_row["revision"]), 1)
+        self.assertEqual(json.loads(rollback_row["document_json"]).get("help_requests", []), [])
+        rollback_audits = [
+            event for event in self.store.events_after(self.operator.tenant_id, None, 0, 500)
+            if event["event_type"] == "HELP_REQUEST_EVENT_APPENDED"
+            and event["payload"].get("workspace_id") == "help-history-rollback"
+        ]
+        self.assertEqual(rollback_audits, [])
+        self.assertTrue(self.store.verify_audit_chain(self.operator.tenant_id)[0])
+
+    def test_help_request_revalidation_requires_three_authenticated_people(self) -> None:
+        created_at = "2026-07-30T12:00:00+00:00"
+        request = {
+            "help_request_id": "help-003", "blocked_goal": "Verify the repaired gate",
+            "destination": "Product owner", "requested_action": "Supply closure evidence",
+            "evidence_refs": ["risk-register:F12"], "risk_while_waiting": "Release remains blocked",
+            "deadline": "2026-08-01T12:00:00+00:00", "wake_condition": "Independent check is recorded",
+            "requested_by_id": "operator", "requested_by": "Operator", "status": "draft",
+            "attempts": 0, "created_at": created_at, "updated_at": created_at,
+            "events": [{"event_id": "help-event-101", "type": "draft_created",
+                "actor_id": "operator", "actor_name": "Operator", "at": created_at,
+                "note": "Help request draft created; no message was sent."}],
+        }
+        document = workspace_document("help-independence")
+        document["help_requests"] = [request]
+        created = self.client.put(
+            "/v1/workspaces/help-independence", headers={**self.headers, "if-none-match": "*"},
+            json={"document": document},
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        revision = 1
+
+        def add_event(actor_headers: dict[str, str], actor_id: str, actor_name: str, event_type: str,
+                      event_id: str, at: str, note: str, evidence_ref: str, *, result: str | None = None,
+                      status: str, attempts: int) -> object:
+            nonlocal document, revision
+            candidate_document = json.loads(json.dumps(document))
+            item = candidate_document["help_requests"][0]
+            event = {"event_id": event_id, "type": event_type, "actor_id": actor_id,
+                     "actor_name": actor_name, "at": at, "note": note, "evidence_ref": evidence_ref}
+            if result is not None:
+                event["result"] = result
+            item["events"].append(event)
+            item.update(status=status, attempts=attempts, updated_at=at)
+            response = self.client.put(
+                "/v1/workspaces/help-independence",
+                headers={**actor_headers, "if-match": f'"{revision}"'},
+                json={"document": candidate_document},
+            )
+            if response.status_code == 200:
+                document = candidate_document
+                revision += 1
+            return response
+
+        delivery = add_event(
+            self.headers, "operator", "Operator", "delivery_recorded", "help-event-102",
+            "2026-07-30T12:01:00+00:00", "Delivered to owner", "ticket:delivery",
+            status="waiting", attempts=1,
+        )
+        self.assertEqual(delivery.status_code, 200, delivery.text)
+        response = add_event(
+            self.headers, "operator", "Operator", "response_recorded", "help-event-103",
+            "2026-07-30T12:02:00+00:00", "Owner responded", "ticket:response",
+            status="response_recorded", attempts=1,
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+
+        operator_planner_session = self.client.post(
+            "/v1/dev/sessions", json={"tenant_id": "tenant-api", "user_id": "operator-b",
+                "name": "Operator B", "role": "Operator"},
+        ).json()
+        operator_planner_headers = {"authorization": f"Bearer {operator_planner_session['access_token']}"}
+        unqualified_plan = add_event(
+            operator_planner_headers, "operator-b", "Operator B", "revalidation_planned", "help-event-103b",
+            "2026-07-30T12:03:00+00:00", "Attempted independent retest plan", "ticket:plan-unqualified",
+            status="revalidation_needed", attempts=1,
+        )
+        self.assertEqual(unqualified_plan.status_code, 403, unqualified_plan.text)
+        planner_session = self.client.post(
+            "/v1/dev/sessions", json={"tenant_id": "tenant-api", "user_id": "reviewer-b",
+                "name": "Reviewer B", "role": "Approver"},
+        ).json()
+        planner_headers = {"authorization": f"Bearer {planner_session['access_token']}"}
+        planned = add_event(
+            planner_headers, "reviewer-b", "Reviewer B", "revalidation_planned", "help-event-104",
+            "2026-07-30T12:03:00+00:00", "Independent retest planned", "ticket:plan",
+            status="revalidation_needed", attempts=1,
+        )
+        self.assertEqual(planned.status_code, 200, planned.text)
+
+        operator_result_session = self.client.post(
+            "/v1/dev/sessions", json={"tenant_id": "tenant-api", "user_id": "operator-c",
+                "name": "Operator C", "role": "Operator"},
+        ).json()
+        operator_result_headers = {"authorization": f"Bearer {operator_result_session['access_token']}"}
+        unqualified_result = add_event(
+            operator_result_headers, "operator-c", "Operator C", "revalidation_result", "help-event-104b",
+            "2026-07-30T12:04:00+00:00", "Attempted revalidation result", "ticket:result-unqualified",
+            result="pass", status="closure_review_requested", attempts=1,
+        )
+        self.assertEqual(unqualified_result.status_code, 403, unqualified_result.text)
+        same_person_result = add_event(
+            planner_headers, "reviewer-b", "Reviewer B", "revalidation_result", "help-event-105",
+            "2026-07-30T12:04:00+00:00", "Retest passed", "ticket:result-invalid",
+            result="pass", status="closure_review_requested", attempts=1,
+        )
+        self.assertEqual(same_person_result.status_code, 422, same_person_result.text)
+
+        reviewer_session = self.client.post(
+            "/v1/dev/sessions", json={"tenant_id": "tenant-api", "user_id": "reviewer-c",
+                "name": "Reviewer C", "role": "Approver"},
+        ).json()
+        reviewer_headers = {"authorization": f"Bearer {reviewer_session['access_token']}"}
+        verified = add_event(
+            reviewer_headers, "reviewer-c", "Reviewer C", "revalidation_result", "help-event-106",
+            "2026-07-30T12:04:00+00:00", "Independent retest passed", "ticket:result-valid",
+            result="pass", status="closure_review_requested", attempts=1,
+        )
+        self.assertEqual(verified.status_code, 200, verified.text)
+        stored = self.client.get("/v1/workspaces/help-independence", headers=self.headers)
+        self.assertEqual(stored.status_code, 200, stored.text)
+        self.assertEqual(stored.json()["document"]["help_requests"][0]["status"], "closure_review_requested")
+
     def test_release_api_rejects_weak_evidence_hashes_and_missing_decisions(self) -> None:
         weak_hash = release_request().model_dump(mode="json")
         weak_hash["release_assurance"]["external_refs"][0]["evidence_hash"] = "local-fnv1a-deadbeef"
@@ -3019,7 +3794,11 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status_response.status_code, 200, status_response.text)
         self.assertFalse(status_response.json()["configured"])
         self.assertEqual(status_response.json()["backlog"], 1)
-        self.assertEqual(status_response.json()["delivery"]["delivered_count"], 1)
+        self.assertEqual(status_response.json()["delivery"]["delivered_count"], 0)
+        self.assertFalse(status_response.json()["delivery"]["verified"])
+        # Historical acknowledgments remain retained, but an unconfigured
+        # destination cannot claim them as current delivery evidence.
+        self.assertEqual(self.store.audit_anchor_delivery_status(tenant_id="tenant-api")["delivered_count"], 1)
         self.assertNotEqual(primary_event["event_id"], primary_pending_event["event_id"])
         self.assertNotEqual(primary_event["event_id"], secondary_event["event_id"])
         self.assertEqual(self.client.post("/v1/audit/anchors/drain", headers=executive_headers).status_code, 503)

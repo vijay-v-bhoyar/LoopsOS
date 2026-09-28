@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-envelope/v1"
+      ]
+    },
+    "issuer": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "body": {
+      "type": "object",
+      "properties": {
+        "purpose": {
+          "enum": [
+            "evidence",
+            "risk",
+            "challenge",
+            "waiver",
+            "resume",
+            "help",
+            "operation"
+          ]
+        },
+        "principal": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+        },
+        "subject_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "profile_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+        },
+        "invocation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+        },
+        "nonce": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+        },
+        "issued_at": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "purpose",
+        "principal",
+        "subject_sha",
+        "profile_sha",
+        "run_id",
+        "invocation_id",
+        "nonce",
+        "issued_at",
+        "expires_at",
+        "payload"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema",
+    "issuer",
+    "signature",
+    "body"
+  ],
+  "additionalProperties": false
+}

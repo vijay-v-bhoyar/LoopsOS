@@ -12,11 +12,14 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import parse_qs, urlparse
 
+from .network_policy import is_public_global_address
+
 
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 HTTP_HOST_LABEL_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 DEVELOPMENT_SESSION_SECRET = "loopos-local-development-secret-change-before-production"
 SECURE_POSTGRES_SSLMODES = {"require", "verify-ca", "verify-full"}
+MAX_HTTP_REQUEST_BYTES = 10 * 1024 * 1024
 POSTGRES_PORT_KEY_PATTERN = re.compile(r"(?:^|\s)port\s*=", re.IGNORECASE)
 POSTGRES_PORT_VALUE_PATTERN = re.compile(
     r"""(?:^|\s)port\s*=\s*(?:(?P<single>'(?:\\.|[^'])*')|(?P<double>\"(?:\\.|[^\"])*\")|(?P<bare>[^\s]+))""",
@@ -92,8 +95,8 @@ def _validate_audit_anchor(
         or not _http_host_is_valid(parsed.hostname.lower(), allow_local=allow_local_http)
         or parsed.username
         or parsed.password
-        or parsed.query
-        or parsed.fragment
+        or "?" in url
+        or "#" in url
         or "\\" in url
     ):
         raise ValueError("LOOPOS_AUDIT_ANCHOR_URL must be a credential-free URL without query, fragment, or backslash.")
@@ -156,17 +159,7 @@ def _http_host_is_valid(host: str, *, allow_local: bool = False) -> bool:
         address = ipaddress.ip_address(normalized)
         if normalized == "127.0.0.1" and allow_local:
             return True
-        if (
-            address.is_private
-            or address.is_loopback
-            or address.is_link_local
-            or address.is_multicast
-            or address.is_reserved
-            or address.is_unspecified
-            or not address.is_global
-        ):
-            return False
-        return True
+        return is_public_global_address(address)
     except ValueError:
         pass
     labels = normalized.split(".")
@@ -290,6 +283,7 @@ class Settings:
     webhook_secrets: dict[str, str] | None = None
     event_poll_seconds: float = 0.25
     http_timeout_seconds: float = 15.0
+    http_max_request_bytes: int = 256_000
     http_max_response_bytes: int = 1_000_000
     max_retry_attempts: int = 5
     retry_wait_seconds: float = 0.1
@@ -300,10 +294,15 @@ class Settings:
     oidc_tenant_claim: str = "tenant_id"
     oidc_role_claim: str = "groups"
     oidc_role_mapping: dict[str, Literal["Executive", "Approver", "Operator", "Auditor"]] | None = None
+    oidc_jwks_allowed_networks: tuple[str, ...] = ()
     audit_anchor_url: str | None = None
     audit_anchor_hmac_secret: str | None = None
+    audit_anchor_epoch: int | None = None
     audit_anchor_poll_seconds: float = 5.0
     audit_anchor_delivery_max_age_seconds: float = 300.0
+    github_release_attestor_app_id: int | None = None
+    github_release_workflow_ids: tuple[int, ...] = ()
+    release_policy_epoch: int = 1
     retention_policy_url: str | None = None
     support_contact: str | None = None
     outbound_policy_mode: str | None = None
@@ -323,6 +322,8 @@ class Settings:
     execution_worker_heartbeat_max_age_seconds: float = 180.0
     rate_limit_requests: int | None = None
     rate_limit_window_seconds: int | None = None
+    break_glass_token: str | None = None
+    effect_budget_policy: dict | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -348,6 +349,9 @@ class Settings:
         oidc_tenant_claim = os.getenv("LOOPOS_OIDC_TENANT_CLAIM", "tenant_id").strip()
         oidc_role_claim = os.getenv("LOOPOS_OIDC_ROLE_CLAIM", "groups").strip()
         oidc_role_mapping = _role_mapping(os.getenv("LOOPOS_OIDC_ROLE_MAPPING_JSON", "{}"))
+        oidc_jwks_allowed_networks = _oidc_jwks_allowed_networks(
+            os.getenv("LOOPOS_OIDC_JWKS_ALLOWED_CIDRS", "")
+        )
         oidc_values = (oidc_issuer, oidc_audience, oidc_jwks_url)
         if any(oidc_values) and (not all(oidc_values) or not oidc_role_mapping):
             raise ValueError("OIDC configuration requires issuer, audience, JWKS URL, and at least one role mapping.")
@@ -362,6 +366,33 @@ class Settings:
             os.getenv("LOOPOS_AUDIT_ANCHOR_HMAC_SECRET"),
             allow_local_http=allow_dev_auth,
         )
+        audit_anchor_epoch = _optional_positive_int("LOOPOS_AUDIT_ANCHOR_EPOCH")
+        if audit_anchor_epoch is not None and audit_anchor_epoch > 9_223_372_036_854_775_807:
+            raise ValueError("LOOPOS_AUDIT_ANCHOR_EPOCH must be a positive 64-bit integer.")
+        if not allow_dev_auth and audit_anchor_epoch is None:
+            raise ValueError("LOOPOS_AUDIT_ANCHOR_EPOCH is required in production.")
+        github_release_attestor_app_id = _optional_positive_int("LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID")
+        if github_release_attestor_app_id is not None and github_release_attestor_app_id > 9_223_372_036_854_775_807:
+            raise ValueError("LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID must be a positive 64-bit integer.")
+        release_policy_epoch = _positive_int("LOOPOS_RELEASE_POLICY_EPOCH", 1)
+        if release_policy_epoch > 9_223_372_036_854_775_807:
+            raise ValueError("LOOPOS_RELEASE_POLICY_EPOCH must be a positive 64-bit integer.")
+        workflow_raw = (os.getenv("LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS") or "").strip()
+        workflow_parts = workflow_raw.split(",") if workflow_raw else []
+        if any(not part.strip() or not part.strip().isascii() or not part.strip().isdigit() for part in workflow_parts):
+            raise ValueError("LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS must be comma-separated positive integers without empty entries.")
+        try:
+            github_release_workflow_ids = tuple(
+                int(part.strip()) for part in workflow_parts
+            )
+        except ValueError as error:
+            raise ValueError("LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS must be comma-separated positive integers.") from error
+        if any(value <= 0 or value > 9_223_372_036_854_775_807 for value in github_release_workflow_ids):
+            raise ValueError("LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS must contain positive 64-bit integers.")
+        if len(set(github_release_workflow_ids)) != len(github_release_workflow_ids):
+            raise ValueError("LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS must not contain duplicates.")
+        if bool(github_release_attestor_app_id) != bool(github_release_workflow_ids):
+            raise ValueError("GitHub release attestor app ID and workflow IDs must be configured together.")
         outbound_policy_mode = os.getenv("LOOPOS_OUTBOUND_POLICY_MODE")
         if outbound_policy_mode and outbound_policy_mode not in {"allowlist", "deny_all"}:
             raise ValueError("LOOPOS_OUTBOUND_POLICY_MODE must be 'allowlist' or 'deny_all'.")
@@ -401,6 +432,12 @@ class Settings:
             raise ValueError(
                 "Production request rate limiting requires LOOPOS_RATE_LIMIT_REQUESTS and LOOPOS_RATE_LIMIT_WINDOW_SECONDS."
             )
+        break_glass_token = os.getenv("LOOPOS_BREAK_GLASS_TOKEN") or None
+        if break_glass_token and len(break_glass_token.encode("utf-8")) < 32:
+            raise ValueError("LOOPOS_BREAK_GLASS_TOKEN must contain at least 32 bytes when configured.")
+        http_max_request_bytes = _positive_int("LOOPOS_HTTP_MAX_REQUEST_BYTES", 256_000)
+        if http_max_request_bytes > MAX_HTTP_REQUEST_BYTES:
+            raise ValueError(f"LOOPOS_HTTP_MAX_REQUEST_BYTES must not exceed {MAX_HTTP_REQUEST_BYTES} bytes.")
         return cls(
             repo_root=repo_root,
             database_path=database_path,
@@ -415,19 +452,26 @@ class Settings:
                 os.getenv("LOOPOS_WEBHOOK_SECRETS_JSON", "{}"),
                 allow_global=allow_dev_auth,
             ),
+            effect_budget_policy=json.loads(os.getenv("LOOPOS_EFFECT_BUDGET_POLICY_JSON", "null")),
+            http_max_request_bytes=http_max_request_bytes,
             oidc_issuer=oidc_issuer,
             oidc_audience=oidc_audience,
             oidc_jwks_url=oidc_jwks_url,
             oidc_tenant_claim=oidc_tenant_claim,
             oidc_role_claim=oidc_role_claim,
             oidc_role_mapping=oidc_role_mapping,
+            oidc_jwks_allowed_networks=oidc_jwks_allowed_networks,
             audit_anchor_url=audit_anchor_url,
             audit_anchor_hmac_secret=audit_anchor_hmac_secret,
+            audit_anchor_epoch=audit_anchor_epoch,
             audit_anchor_poll_seconds=_positive_float("LOOPOS_AUDIT_ANCHOR_POLL_SECONDS", 5.0),
             audit_anchor_delivery_max_age_seconds=_positive_float(
                 "LOOPOS_AUDIT_ANCHOR_DELIVERY_MAX_AGE_SECONDS",
                 300.0,
             ),
+            github_release_attestor_app_id=github_release_attestor_app_id,
+            github_release_workflow_ids=github_release_workflow_ids,
+            release_policy_epoch=release_policy_epoch,
             retention_policy_url=retention_policy_url,
             support_contact=os.getenv("LOOPOS_SUPPORT_CONTACT"),
             outbound_policy_mode=outbound_policy_mode,
@@ -450,6 +494,7 @@ class Settings:
             ),
             rate_limit_requests=rate_limit_requests,
             rate_limit_window_seconds=rate_limit_window_seconds,
+            break_glass_token=break_glass_token,
         )
 
 
@@ -499,3 +544,27 @@ def _role_mapping(raw: str) -> dict[str, Literal["Executive", "Approver", "Opera
             "LOOPOS_OIDC_ROLE_MAPPING_JSON must map non-blank external role names to supported LoopOS roles."
         )
     return value
+
+
+def _oidc_jwks_allowed_networks(raw: str) -> tuple[str, ...]:
+    if not raw.strip():
+        return ()
+    parts = [item.strip() for item in raw.split(",")]
+    if any(not item for item in parts):
+        raise ValueError("LOOPOS_OIDC_JWKS_ALLOWED_CIDRS must contain non-empty CIDRs.")
+    try:
+        networks = tuple(ipaddress.ip_network(item, strict=True) for item in parts)
+    except ValueError as error:
+        raise ValueError("LOOPOS_OIDC_JWKS_ALLOWED_CIDRS must contain strict CIDR networks.") from error
+    if len(set(networks)) != len(networks):
+        raise ValueError("LOOPOS_OIDC_JWKS_ALLOWED_CIDRS must not contain duplicates.")
+    if any(
+        not network.is_private
+        or network.is_loopback
+        or network.is_link_local
+        or network.is_multicast
+        or network.is_reserved
+        for network in networks
+    ):
+        raise ValueError("LOOPOS_OIDC_JWKS_ALLOWED_CIDRS may contain only private unicast networks.")
+    return tuple(str(network) for network in networks)

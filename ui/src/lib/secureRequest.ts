@@ -3,7 +3,10 @@ import { allowedEndpointHosts as runtimeAllowedEndpointHosts } from "./runtimeCo
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 1_000_000;
+const DEFAULT_MAX_REQUEST_BYTES = 256_000;
+const HARD_MAX_REQUEST_BYTES = 10 * 1024 * 1024;
 const RESPONSE_LIMIT_MESSAGE = "Enterprise endpoint response exceeded the response limit.";
+const REQUEST_LIMIT_MESSAGE = "Enterprise endpoint request exceeded the request limit.";
 
 function requestAbortError(): DOMException {
   return new DOMException("The request was aborted.", "AbortError");
@@ -75,9 +78,29 @@ export interface SecureJsonRequestOptions<T = unknown> {
   fetchImpl?: typeof fetch;
   init?: RequestInit;
   maxResponseBytes?: number;
+  maxRequestBytes?: number;
   timeoutMs?: number;
   validate?: (value: unknown) => value is T;
   invalidResponseMessage?: string;
+}
+
+function requestBodyBytes(body: BodyInit | null | undefined): number | null {
+  if (body === undefined || body === null) return 0;
+  if (typeof body === "string") return new TextEncoder().encode(body).byteLength;
+  if (body instanceof Blob) return body.size;
+  if (body instanceof ArrayBuffer) return body.byteLength;
+  if (ArrayBuffer.isView(body)) return body.byteLength;
+  if (body instanceof URLSearchParams) return new TextEncoder().encode(body.toString()).byteLength;
+  if (body instanceof FormData) {
+    let bytes = 0;
+    for (const [name, value] of body.entries()) {
+      bytes += new TextEncoder().encode(name).byteLength + 128;
+      bytes += typeof value === "string" ? new TextEncoder().encode(value).byteLength : value.size;
+      if (typeof value !== "string" && "name" in value) bytes += new TextEncoder().encode(value.name).byteLength;
+    }
+    return bytes;
+  }
+  return null;
 }
 
 async function readResponseText(response: Response, maxResponseBytes: number, signal: AbortSignal): Promise<string> {
@@ -116,6 +139,14 @@ async function readResponseText(response: Response, maxResponseBytes: number, si
 export async function secureJsonRequest<T>(endpoint: string, options: SecureJsonRequestOptions<T> = {}): Promise<T> {
   const allowedHosts = options.allowedHosts ?? allowedHostsForConfiguredEndpoint(endpoint);
   const url = assertAllowedEndpoint(endpoint, allowedHosts, options.baseOrigin);
+  const requestedMaxRequestBytes = options.maxRequestBytes ?? DEFAULT_MAX_REQUEST_BYTES;
+  const maxRequestBytes = Number.isFinite(requestedMaxRequestBytes)
+    ? Math.min(requestedMaxRequestBytes, HARD_MAX_REQUEST_BYTES)
+    : 0;
+  const bodyBytes = requestBodyBytes(options.init?.body);
+  if (maxRequestBytes <= 0 || bodyBytes === null || bodyBytes > maxRequestBytes) {
+    throw new Error(REQUEST_LIMIT_MESSAGE);
+  }
   const controller = new AbortController();
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);

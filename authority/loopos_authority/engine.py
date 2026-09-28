@@ -48,7 +48,7 @@ class ExecutionEngine:
             try:
                 action_output = await self.tools.execute_action(tenant_id, run_id, run.plan.action, run.plan.max_attempts)
             except ToolFailure as error:
-                await self._fail_action(run, str(error))
+                await self._fail_action(run, str(error), error.code)
                 return
 
             if self._interrupt_if_kill_switch_active(
@@ -144,7 +144,7 @@ class ExecutionEngine:
         all_passed = True
         for probe in probes:
             try:
-                passed, detail = await self.tools.run_probe(probe, action_output, evidence)
+                passed, detail = await self.tools.run_probe(probe, action_output, evidence, tenant_id=run.tenant_id)
             except ToolFailure as error:
                 passed, detail = False, {"error": str(error), "code": error.code}
             self.store.save_probe(run.tenant_id, run.run_id, phase, probe.probe_id, passed, detail)
@@ -170,12 +170,18 @@ class ExecutionEngine:
             self.store.transition(run.tenant_id, run.run_id, "EFFECTIVENESS_FAILED", "authority-engine", {"probe_results": effectiveness_results})
             self.store.release_run(run.tenant_id, run.run_id, "failed", "Effectiveness probes failed.")
 
-    async def _fail_action(self, run, message: str) -> None:
+    async def _fail_action(self, run, message: str, code: str = "tool_failure") -> None:
         self.store.set_output(run.tenant_id, run.run_id, {
             "action_error": message,
+            "action_error_code": code,
             "invariant": self.corpus.state_machine["invariant"],
             "standard_hash": self.corpus.standard_hash,
         })
+        if code in {"external_outcome_unknown", "external_effect_denied"}:
+            if self.corpus.allows_transition("ACTION_IN_PROGRESS", "BLOCKED"):
+                self.store.transition(run.tenant_id, run.run_id, "BLOCKED", "authority-engine", {"tool_error": message, "code": code, "automatic_compensation": False})
+            self.store.release_run(run.tenant_id, run.run_id, "failed", message)
+            return
         if self.corpus.allows_transition("ACTION_IN_PROGRESS", "VALIDATION_FAILED"):
             failed = self.store.transition(run.tenant_id, run.run_id, "VALIDATION_FAILED", "authority-engine", {"tool_error": message})
             await self._rollback_or_block(failed, message)

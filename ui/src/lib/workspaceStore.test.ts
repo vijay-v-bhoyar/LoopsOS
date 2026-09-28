@@ -4,6 +4,7 @@ import { AuthorityError, type AuthorityReadiness } from "../features/governedExe
 import { evaluateDeploymentPosture } from "./deployment";
 import {
   canApprove,
+  clearLocalWorkspaceState,
   createApproval,
   createExecution,
   createUser,
@@ -22,7 +23,7 @@ const HEALTHY_READINESS: AuthorityReadiness = {
   rate_limit_configured: true,
   storage_backend: "postgres",
   production_identity: true,
-  credential_injection_broker_verified: true,
+  credential_injection_broker_verified: true, aggregate_effect_budget_verified: true,
   audit_anchor_configured: true,
   audit_anchor_backlog: 0,
   audit_anchor_delivery_verified: true,
@@ -107,6 +108,7 @@ describe("workspaceStore", () => {
     const state = loadWorkspaceState();
 
     expect(state.workspaces[0].input_sources).toEqual([]);
+    expect(state.workspaces[0].help_requests).toEqual([]);
   });
 
   it("rejects malformed workspace records instead of trusting local storage", () => {
@@ -120,6 +122,14 @@ describe("workspaceStore", () => {
     expect(state.current_user).toBeNull();
     expect(state.workspaces).toEqual([]);
     expect(state.active_workspace_id).toBeNull();
+  });
+
+  it("clears browser workspace data explicitly when local persistence is no longer authorized", () => {
+    window.localStorage.setItem("loopos.v2.workspace-state", JSON.stringify({ workspaces: [{ sensitive: "workspace data" }] }));
+
+    clearLocalWorkspaceState();
+
+    expect(window.localStorage.getItem("loopos.v2.workspace-state")).toBeNull();
   });
 
   it("rejects malformed nested governance records from local storage", () => {
@@ -140,6 +150,21 @@ describe("workspaceStore", () => {
     expect(state.active_workspace_id).toBeNull();
   });
 
+  it("rejects malformed outcome measurement records while preserving legacy workspaces", () => {
+    const user = createUser("Vijay", "vijay@example.local", "Operator");
+    const workspace = createWorkspace(user, "Measured workspace", DEFAULT_WORKSPACE_USE_CASE);
+    const malformedPlan = {
+      ...workspace,
+      use_case: { ...workspace.use_case, outcomeMeasurement: { metric: "Cycle time", unit: "hours", baseline: "40", target: 16, source: "report", observation_window: "30 days" } },
+    };
+    window.localStorage.setItem("loopos.v2.workspace-state", JSON.stringify({ current_user: user, active_workspace_id: workspace.workspace_id, workspaces: [malformedPlan] }));
+    expect(loadWorkspaceState().workspaces).toEqual([]);
+
+    const legacyWorkspace = createWorkspace(user, "Legacy measured workspace", DEFAULT_WORKSPACE_USE_CASE);
+    window.localStorage.setItem("loopos.v2.workspace-state", JSON.stringify({ current_user: user, active_workspace_id: legacyWorkspace.workspace_id, workspaces: [legacyWorkspace] }));
+    expect(loadWorkspaceState().workspaces).toHaveLength(1);
+  });
+
   it("reports storage and size failures to the caller", () => {
     const tooLarge = { ...DEFAULT_WORKSPACE_USE_CASE, description: "x".repeat(MAX_WORKSPACE_STORAGE_BYTES) };
     const user = createUser("Vijay", "vijay@example.local", "Operator");
@@ -157,6 +182,26 @@ describe("workspaceStore", () => {
     expect(canApprove(createUser("Executive", "exec@example.local", "Executive"))).toBe(true);
     expect(canApprove(createUser("Operator", "operator@example.local", "Operator"))).toBe(false);
     expect(canApprove(null)).toBe(false);
+  });
+
+  it("preserves the local evaluation workspace when switching simulation roles", async () => {
+    const user = createUser("Operator", "operator@example.local", "Operator");
+    const workspace = createWorkspace(user, "Role-switch workspace", DEFAULT_WORKSPACE_USE_CASE);
+    window.localStorage.setItem(
+      "loopos.v2.workspace-state",
+      JSON.stringify({ current_user: user, active_workspace_id: workspace.workspace_id, workspaces: [workspace] }),
+    );
+
+    const { result } = renderHook(() => useWorkspaceStore({ mode: "evaluation" }));
+
+    act(() => result.current.signOut());
+    expect(result.current.state).toMatchObject({ current_user: null, active_workspace_id: workspace.workspace_id });
+    expect(result.current.activeWorkspace?.workspace_id).toBe(workspace.workspace_id);
+    await waitFor(() => expect(loadWorkspaceState()).toMatchObject({ current_user: null, active_workspace_id: workspace.workspace_id }));
+
+    act(() => result.current.signIn("Approver", "approver@example.local", "Approver"));
+    expect(result.current.activeWorkspace?.workspace_id).toBe(workspace.workspace_id);
+    expect(result.current.state.current_user?.role).toBe("Approver");
   });
 
   it("creates pending approval and execution records", () => {
@@ -198,7 +243,7 @@ describe("workspaceStore", () => {
         rate_limit_configured: true,
         storage_backend: "postgres",
         production_identity: true,
-        credential_injection_broker_verified: true,
+        credential_injection_broker_verified: true, aggregate_effect_budget_verified: true,
         audit_anchor_configured: true,
         audit_anchor_backlog: 0,
         audit_anchor_delivery_verified: true,
@@ -409,7 +454,7 @@ describe("workspaceStore", () => {
         rate_limit_configured: true,
         storage_backend: "postgres",
         production_identity: true,
-        credential_injection_broker_verified: true,
+        credential_injection_broker_verified: true, aggregate_effect_budget_verified: true,
         audit_anchor_configured: true,
         audit_anchor_backlog: 0,
         audit_anchor_delivery_verified: true,
@@ -542,7 +587,7 @@ describe("workspaceStore", () => {
       rate_limit_configured: true,
       storage_backend: "postgres",
       production_identity: true,
-      credential_injection_broker_verified: true,
+      credential_injection_broker_verified: true, aggregate_effect_budget_verified: true,
       audit_anchor_configured: true,
       audit_anchor_backlog: 0,
       audit_anchor_delivery_verified: true,
@@ -595,7 +640,7 @@ describe("workspaceStore", () => {
         rate_limit_configured: true,
         storage_backend: "postgres",
         production_identity: true,
-        credential_injection_broker_verified: true,
+        credential_injection_broker_verified: true, aggregate_effect_budget_verified: true,
         audit_anchor_configured: true,
         audit_anchor_backlog: 0,
         audit_anchor_delivery_verified: true,

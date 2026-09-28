@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
           cache-dependency-path: ui/package-lock.json
       - name: Install UI dependencies
@@ -70,10 +70,16 @@ jobs:
         run: npm run build
       - name: Browser tests
         working-directory: ui
+        env:
+          VITE_LOOPOS_DEPLOYMENT_MODE: evaluation
+          LOOPOS_E2E_LLM_ATTESTATION_FIXTURE: "1"
+          LOOPOS_E2E_EFFECT_BUDGET_FIXTURE: "1"
+          LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID: "4242"
+          LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS: "7007"
         run: npm run test:e2e
       - name: Dependency audit
         working-directory: ui
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=moderate
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
       - name: Build attested UI OCI image

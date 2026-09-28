@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authorityConfigurationMatches, evaluateDeploymentPosture } from "./deployment";
+import { authorityConfigurationMatches, evaluateDeploymentPosture, isUnsafeAuthorityHostname } from "./deployment";
 
 const enterpriseConfig = {
   VITE_LOOPOS_DEPLOYMENT_MODE: "enterprise",
@@ -81,6 +81,26 @@ describe("evaluateDeploymentPosture", () => {
       "https://[::1]/api",
       "https://[::ffff:127.0.0.1]/api",
       "https://[::]/api",
+      // Translation and tunneling ranges can encode private IPv4 destinations
+      // while looking syntactically like IPv6 literals.
+      "https://[64:ff9b::a00:1]/api",
+      "https://[64:ff9b:1::a00:1]/api",
+      "https://[2002:7f00:1::]/api",
+      "https://[2001:0:7f00:1::]/api",
+      // Reject unallocated and special-purpose ranges even when the runtime
+      // reports them as globally routable.
+      "https://[100::1]/api",
+      "https://[100:0:0:1::1]/api",
+      "https://[2001:2::1]/api",
+      "https://[2001:10::1]/api",
+      "https://[2001:1::4]/api",
+      "https://[2001:db8::1]/api",
+      "https://[2001:ffff::1]/api",
+      "https://[2a20::1]/api",
+      "https://[2d00::1]/api",
+      "https://[3ffe::1]/api",
+      "https://[3fff::1]/api",
+      "https://[5f00::1]/api",
     ]) {
       const hostname = new URL(authorityUrl).hostname;
       const posture = evaluateDeploymentPosture({
@@ -91,6 +111,40 @@ describe("evaluateDeploymentPosture", () => {
 
       expect(posture.enterpriseReady).toBe(false);
       expect(posture.bindings.find((binding) => binding.id === "transport")?.status).toBe("blocked");
+    }
+  });
+
+  it("accepts IANA globally reachable IPv6 assignments and ordinary global unicast", () => {
+    for (const authorityUrl of [
+      "https://[2001:1::1]/api",
+      "https://[2001:1::2]/api",
+      "https://[2001:1::3]/api",
+      "https://[2001:3::1]/api",
+      "https://[2001:4:112::1]/api",
+      "https://[2001:20::1]/api",
+      "https://[2001:30::1]/api",
+      "https://[2001:4000::1]/api",
+      "https://[2400::1]/api",
+      "https://[2410::1]/api",
+      "https://[2600::1]/api",
+      "https://[2610::1]/api",
+      "https://[2620::1]/api",
+      "https://[2630::1]/api",
+      "https://[2800::1]/api",
+      "https://[2a00::1]/api",
+      "https://[2a10::1]/api",
+      "https://[2c00::1]/api",
+      "https://[2606:4700:4700::1111]/api",
+    ]) {
+      const hostname = new URL(authorityUrl).hostname;
+      expect(isUnsafeAuthorityHostname(hostname)).toBe(false);
+      const posture = evaluateDeploymentPosture({
+        ...enterpriseConfig,
+        VITE_LOOPOS_API_BASE_URL: authorityUrl,
+        VITE_LOOPOS_AUTHORITY_HOST_ALLOWLIST: hostname,
+      });
+
+      expect(posture.bindings.find((binding) => binding.id === "transport")?.status).not.toBe("blocked");
     }
   });
 

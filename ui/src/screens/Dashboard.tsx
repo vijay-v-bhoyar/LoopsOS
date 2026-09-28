@@ -1,5 +1,6 @@
 import { BookOpenCheck, CheckCircle2, ClipboardList, Download, FileCheck2, FlaskConical, GitBranch, GitPullRequest, Layers3, Link2, LockKeyhole, PlayCircle, ShieldAlert, ShieldCheck, Workflow } from "lucide-react";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Card, SectionHeader } from "../components/Card";
@@ -24,6 +25,7 @@ export function Dashboard({
   onRecordDryRun,
   onCreateInitiative,
   onCompleteRunStep,
+  onRecordOutcome,
   onExportEvaluationPack,
   posture = deploymentPosture,
 }: {
@@ -40,6 +42,7 @@ export function Dashboard({
   onRecordDryRun: () => void;
   onCreateInitiative: () => void;
   onCompleteRunStep: () => void;
+  onRecordOutcome: (value: number, sourceRef: string) => void;
   onExportEvaluationPack: () => void;
   posture?: DeploymentPosture;
 }) {
@@ -179,7 +182,7 @@ export function Dashboard({
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <HandoffPanel initiative={activeInitiative} data={data} />
-        <ProductivityPanel initiative={activeInitiative} evaluationMode={evaluationMode} />
+        <ProductivityPanel initiative={activeInitiative} evaluationMode={evaluationMode} onRecordOutcome={onRecordOutcome} />
       </div>
 
       <ReleaseAssurancePanel initiative={activeInitiative} data={data} evaluationMode={evaluationMode} />
@@ -483,8 +486,32 @@ function HandoffPanel({ initiative, data }: { initiative: InitiativeWorkspace | 
   );
 }
 
-function ProductivityPanel({ initiative, evaluationMode }: { initiative: InitiativeWorkspace | null; evaluationMode: boolean }) {
+function ProductivityPanel({ initiative, evaluationMode, onRecordOutcome }: { initiative: InitiativeWorkspace | null; evaluationMode: boolean; onRecordOutcome: (value: number, sourceRef: string) => void }) {
   const estimate = initiative?.roi_assumptions;
+  const measurement = initiative?.outcome_measurement;
+  const observations = initiative?.outcome_observations ?? [];
+  const [value, setValue] = useState("");
+  const [sourceRef, setSourceRef] = useState("");
+  const [error, setError] = useState("");
+  const submitObservation = () => {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      setError("Enter a finite numeric outcome value.");
+      return;
+    }
+    if (!sourceRef.trim()) {
+      setError("Name the evidence source for this observation.");
+      return;
+    }
+    try {
+      onRecordOutcome(numericValue, sourceRef);
+      setValue("");
+      setSourceRef("");
+      setError("");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Outcome observation could not be recorded.");
+    }
+  };
   return (
     <Card>
       <SectionHeader title="SDLC Productivity Planning" description={evaluationMode ? "Transparent planning estimate from visible evaluation workspace records." : "Transparent planning estimate from workspace drafts; replace it with measured authority observations before production claims."} />
@@ -497,6 +524,27 @@ function ProductivityPanel({ initiative, evaluationMode }: { initiative: Initiat
       <div className="mt-3 rounded-panel border border-border2 bg-bg2 p-3 text-sm text-fg2">
         {estimate?.assumptions ?? "Create an initiative to calculate SDLC productivity impact."}
         {estimate ? <div className="mt-2 text-xs text-fg3">{estimate.confidence_basis}</div> : null}
+      </div>
+      <div className="mt-3 rounded-panel border border-border2 bg-bg2 p-3">
+        <div className="mb-2 text-sm font-semibold text-fg1">Outcome measurement</div>
+        {measurement ? (
+          <div className="grid gap-2 text-xs text-fg2 sm:grid-cols-2">
+            <div><span className="text-fg3">Metric:</span> {measurement.metric || "Not defined"}</div>
+            <div><span className="text-fg3">Baseline / target:</span> {measurement.baseline ?? "?"} / {measurement.target ?? "?"} {measurement.unit}</div>
+            <div><span className="text-fg3">Source:</span> {measurement.source || "Not defined"}</div>
+            <div><span className="text-fg3">Window:</span> {measurement.observation_window || "Not defined"}</div>
+          </div>
+        ) : <div className="text-sm text-warning">Add a structured measurement plan in Use Case Advisor before collecting outcome evidence.</div>}
+        {evaluationMode && measurement ? (
+          <div className="mt-3 grid gap-2 md:grid-cols-[0.7fr_1fr_auto]">
+            <input className="control min-h-10 px-3 text-sm" type="number" placeholder={`Actual ${measurement.unit}`} aria-label="Actual outcome value" value={value} onChange={(event) => setValue(event.target.value)} />
+            <input className="control min-h-10 px-3 text-sm" placeholder="Evidence source reference" aria-label="Outcome evidence source" value={sourceRef} onChange={(event) => setSourceRef(event.target.value)} />
+            <Button onClick={submitObservation}>Record actual</Button>
+          </div>
+        ) : null}
+        {error ? <div className="mt-2 text-xs text-danger" role="alert">{error}</div> : null}
+        <div className="mt-3 text-xs text-fg3">Actual observations: {observations.length}. Local observations are draft evidence and do not prove enterprise value.</div>
+        {observations.length ? <div className="mt-2 space-y-1 text-xs text-fg2">{observations.map((observation) => <div key={observation.observation_id}>{observation.value} {observation.unit} on {new Date(observation.observed_at).toLocaleString()} from {observation.source_ref}</div>)}</div> : null}
       </div>
     </Card>
   );

@@ -10,6 +10,7 @@ import {
   deriveHandoffs,
   estimateEffortSaving,
   inferWorkflowType,
+  recordOutcomeObservation,
 } from "./sdlcProductivity";
 import { validateUseCase } from "./validation";
 import { createUser, createWorkspace } from "./workspaceStore";
@@ -38,6 +39,49 @@ describe("sdlcProductivity", () => {
     expect(initiative.handoffs.length).toBeGreaterThan(0);
     expect(initiative.roi_assumptions.hours_saved_estimate).toBeGreaterThan(0);
     expect(initiative.roi_assumptions.confidence_basis).toContain("No model confidence");
+  });
+
+  it("carries the measurement plan and records actual observations with source evidence", () => {
+    const measuredWorkspace = {
+      ...workspace,
+      use_case: {
+        ...workspace.use_case,
+        outcomeMeasurement: {
+          metric: "Review cycle time",
+          unit: "hours" as const,
+          baseline: 40,
+          target: 16,
+          source: "Approved review report",
+          observation_window: "90 days",
+        },
+      },
+    };
+    const measuredRecommendations = recommendLoops(measuredWorkspace.use_case, looposData);
+    const measuredValidation = validateUseCase(measuredWorkspace.use_case, measuredRecommendations, looposData, []);
+    const initiative = createInitiativeFromWorkspace(measuredWorkspace, measuredRecommendations, measuredValidation, looposData, user.name, "2026-07-23T12:00:00.000Z");
+    const observed = recordOutcomeObservation(initiative, 18, "review-report-2026-08", "2026-08-30T12:00:00.000Z");
+
+    expect(initiative.outcome_measurement?.target).toBe(16);
+    expect(observed.outcome_observations).toHaveLength(1);
+    expect(observed.outcome_observations?.[0]).toMatchObject({ value: 18, unit: "hours", source_ref: "review-report-2026-08", observed_at: "2026-08-30T12:00:00.000Z" });
+    expect(buildEvaluationPackMarkdown(measuredWorkspace, observed, looposData, measuredValidation)).toContain("18 hours at 2026-08-30T12:00:00.000Z from review-report-2026-08");
+  });
+
+  it("rejects outcome observations without a plan or evidence source", () => {
+    const initiative = createInitiativeFromWorkspace(workspace, recommendations, validation, looposData, user.name);
+    expect(() => recordOutcomeObservation(initiative, 12, "source")).toThrow("measurement plan");
+    const measuredInitiative = {
+      ...initiative,
+      outcome_measurement: {
+        metric: "Cycle time",
+        unit: "hours" as const,
+        baseline: 10,
+        target: 5,
+        source: "Report",
+        observation_window: "30 days",
+      },
+    };
+    expect(() => recordOutcomeObservation(measuredInitiative, 5, " ")).toThrow("source");
   });
 
   it("advances a loop run checklist and updates validation output", () => {

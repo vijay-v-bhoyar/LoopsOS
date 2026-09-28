@@ -9,6 +9,9 @@ import type {
   LoopRecommendation,
   LoopRun,
   LoopRunStep,
+  OutcomeMeasurementObservation,
+  OutcomeMeasurementPlan,
+  OutcomeMeasurementUnit,
   RiskTier,
   SavedWorkspace,
   UseCaseValidationResult,
@@ -155,6 +158,30 @@ export function estimateEffortSaving(initiativeId: string, loopCount: number, ha
   };
 }
 
+export function recordOutcomeObservation(
+  initiative: InitiativeWorkspace,
+  value: number,
+  sourceRef: string,
+  timestamp = nowIso(),
+): InitiativeWorkspace {
+  const plan = initiative.outcome_measurement;
+  if (!plan) throw new Error("An outcome measurement plan is required before recording an observation.");
+  if (!Number.isFinite(value)) throw new Error("Outcome observation value must be finite.");
+  if (!sourceRef.trim()) throw new Error("Outcome observation source is required.");
+  const observation: OutcomeMeasurementObservation = {
+    observation_id: uid("outcome-observation"),
+    value,
+    unit: plan.unit,
+    source_ref: sourceRef.trim(),
+    observed_at: timestamp,
+  };
+  return {
+    ...initiative,
+    outcome_observations: [...(initiative.outcome_observations ?? []), observation],
+    updated_at: timestamp,
+  };
+}
+
 export function createInitiativeFromWorkspace(
   workspace: SavedWorkspace,
   recommendations: LoopRecommendation[],
@@ -193,6 +220,8 @@ export function createInitiativeFromWorkspace(
     approvals: workspace.approvals,
     handoffs,
     roi_assumptions: estimateEffortSaving(id, loopIds.length, handoffs.length, evidence_records.length, 0),
+    outcome_measurement: workspace.use_case.outcomeMeasurement,
+    outcome_observations: [],
   };
   return {
     ...initiative,
@@ -216,6 +245,8 @@ export function refreshInitiative(initiative: InitiativeWorkspace, validation: U
 
 export function buildEvaluationPackMarkdown(workspace: SavedWorkspace, initiative: InitiativeWorkspace, data: LoopOSData, validation: UseCaseValidationResult): string {
   const loops = initiative.loop_bundle_ids.map((id) => data.loops.find((loop) => loop.loop_id === id)).filter((loop): loop is LoopDetail => Boolean(loop));
+  const measurement = initiative.outcome_measurement;
+  const observations = initiative.outcome_observations ?? [];
   return [
     `# LoopOS SDLC Evaluation Pack: ${initiative.title}`,
     "",
@@ -231,6 +262,23 @@ export function buildEvaluationPackMarkdown(workspace: SavedWorkspace, initiativ
     "## Business Outcome",
     "",
     initiative.business_outcome,
+    "",
+    "## Outcome Measurement",
+    "",
+    ...(measurement
+      ? [
+          `Metric: ${measurement.metric || "Not defined"}`,
+          `Unit: ${measurement.unit}`,
+          `Baseline: ${measurement.baseline ?? "Not defined"}`,
+          `Target: ${measurement.target ?? "Not defined"}`,
+          `Evidence source: ${measurement.source || "Not defined"}`,
+          `Observation window: ${measurement.observation_window || "Not defined"}`,
+        ]
+      : ["No structured outcome measurement plan recorded."]),
+    `Actual observations recorded: ${observations.length}`,
+    ...(observations.length
+      ? observations.map((observation) => `- ${observation.value} ${observation.unit} at ${observation.observed_at} from ${observation.source_ref}`)
+      : ["- No actual outcome observations recorded; value remains unproven."]),
     "",
     "## Loop Bundle",
     "",

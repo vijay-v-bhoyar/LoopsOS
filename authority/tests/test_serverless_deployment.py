@@ -159,6 +159,7 @@ class ServerlessDeploymentContractTests(unittest.TestCase):
                 {
                     "VERCEL": "1",
                     "LOOPOS_SESSION_HMAC_SECRET": "serverless-postgres-test-secret-value",
+                    "LOOPOS_AUDIT_ANCHOR_EPOCH": "1",
                     "LOOPOS_STORAGE_BACKEND": "postgres",
                     "LOOPOS_POSTGRES_DSN": "postgresql://loopos-probe.invalid/loopos?sslmode=require",
                     "LOOPOS_RATE_LIMIT_REQUESTS": "120",
@@ -202,6 +203,7 @@ class ServerlessDeploymentContractTests(unittest.TestCase):
                         "VERCEL": "1",
                         "LOOPOS_ALLOW_DEV_AUTH": "false",
                         "LOOPOS_SESSION_HMAC_SECRET": "serverless-sqlite-test-secret-value",
+                        "LOOPOS_AUDIT_ANCHOR_EPOCH": "1",
                         "LOOPOS_RATE_LIMIT_REQUESTS": "120",
                         "LOOPOS_RATE_LIMIT_WINDOW_SECONDS": "60",
                         "LOOPOS_DATABASE_PATH": temporary_directory,

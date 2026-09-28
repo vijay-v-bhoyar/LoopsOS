@@ -20,6 +20,7 @@ import {
   listConnectorEvents,
   listGovernedRuns,
   listReleaseInitiatives,
+  reviewReleaseInitiative,
   recoverGovernedRun,
   rejectGovernedRun,
   rollbackGovernedRun,
@@ -29,6 +30,7 @@ import {
 } from "./authorityClient";
 import { requireConnectorUrl } from "./endpointValidation";
 import { buildConnectorEventsForRelease, buildReleaseInitiativeRecord, buildWorkspaceExecutionPlan, type AuditVerification, type AuthorityEvent, type ConnectorEventRecord, type GovernedRun, type KillSwitchStatus, type ReleaseInitiativeRecord } from "./types";
+import { ReleaseReviewPanel } from "./ReleaseReviewPanel";
 
 type ConnectionState = "connecting" | "available" | "unavailable";
 
@@ -348,6 +350,22 @@ export function GovernedExecutionPanel({
     }
   };
 
+  const reviewRelease = async (record: ReleaseInitiativeRecord, decision: "approve" | "reject", basis: string) => {
+    if (!tokenRef.current || record.workspace_id !== workspace.workspace_id) return;
+    const generation = connectionGenerationRef.current;
+    setBusy(true);
+    setError("");
+    try {
+      const reviewed = await reviewReleaseInitiative(tokenRef.current, record, decision, basis, tenantRef.current, user.user_id);
+      if (generation !== connectionGenerationRef.current) return;
+      setReleaseInitiatives((current) => current.map((item) => item.initiative_id === reviewed.initiative_id ? reviewed : item));
+    } catch (reason) {
+      if (generation === connectionGenerationRef.current) handleAuthorityFailure(reason);
+    } finally {
+      if (generation === connectionGenerationRef.current) setBusy(false);
+    }
+  };
+
   const canApprove = user.role === "Approver" || user.role === "Executive";
   const canExecute = user.role !== "Auditor";
   const killSwitchActive = killSwitch?.active === true;
@@ -358,7 +376,7 @@ export function GovernedExecutionPanel({
   const eventSummary = useMemo(() => events.slice().reverse(), [events]);
 
   return (
-    <Card className="xl:col-span-2">
+    <Card className="min-w-0 xl:col-span-2 [overflow-wrap:anywhere]">
       <SectionHeader
         title="Governed Execution Authority"
         description="Creates durable runs, enforces the corpus state machine and approvals, invokes registered tools, records evidence and probes, and streams append-only audit events."
@@ -486,10 +504,11 @@ export function GovernedExecutionPanel({
                   ) : null}
                 </div>
               ) : null}
+              {releaseInitiatives[0] ? <ReleaseReviewPanel record={releaseInitiatives[0]} user={user} busy={busy} onReview={reviewRelease} /> : null}
               {connectorEvents.length ? (
                 <div className="mt-3 grid gap-2 lg:grid-cols-3">
                   {connectorEvents.slice(0, 6).map((event) => (
-                    <div key={event.connector_event_id} className="rounded-panel border border-border2 bg-bg1 p-2 text-xs">
+                    <div key={event.connector_event_id} className="min-w-0 rounded-panel border border-border2 bg-bg1 p-2 text-xs">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={event.verification_status === "verified_webhook" ? "success" : "warning"}>
                           {event.verification_status === "verified_webhook" ? "verified webhook" : "session snapshot"}

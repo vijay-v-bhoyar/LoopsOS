@@ -138,6 +138,25 @@ export interface UseCaseRecord {
   source: string;
 }
 
+export type OutcomeMeasurementUnit = "hours" | "count" | "percent";
+
+export interface OutcomeMeasurementPlan {
+  metric: string;
+  unit: OutcomeMeasurementUnit;
+  baseline: number | null;
+  target: number | null;
+  source: string;
+  observation_window: string;
+}
+
+export interface OutcomeMeasurementObservation {
+  observation_id: string;
+  value: number;
+  unit: OutcomeMeasurementUnit;
+  source_ref: string;
+  observed_at: string;
+}
+
 export interface UseCaseInput {
   title: string;
   description: string;
@@ -147,7 +166,10 @@ export interface UseCaseInput {
   businessOutcome: string;
   maturity: string;
   constraints: string;
+  outcomeMeasurement?: OutcomeMeasurementPlan;
 }
+
+export type UseCaseTextField = Exclude<keyof UseCaseInput, "outcomeMeasurement">;
 
 export type InputSourceKind = "text" | "document" | "voice";
 export type InputSourceStatus = "processing" | "ready_for_review" | "accepted" | "error";
@@ -172,11 +194,12 @@ export interface UseCaseSource {
 }
 
 export interface UseCaseFieldProposal {
-  field: keyof UseCaseInput;
+  field: UseCaseTextField;
   value: string;
   evidence_excerpt: string;
   source_ids: string[];
   method: "deterministic" | "enterprise LLM";
+  provenance: AIProvenance;
 }
 
 export interface UseCaseDraft {
@@ -185,6 +208,31 @@ export interface UseCaseDraft {
   fields: UseCaseFieldProposal[];
   method: "deterministic" | "enterprise LLM";
   created_at: string;
+  provenance: AIProvenance;
+}
+
+export interface AIProvenance {
+  source: "deterministic" | "external";
+  provider: string;
+  model: string;
+  prompt_version: string;
+  consent_granted: boolean;
+  generated_at: string;
+  gateway_attestation?: {
+    verification: "configured-gateway-signature";
+    model_revision: string;
+    prompt_sha256: string;
+    capability_profile_sha256: string;
+    evaluation_receipt_sha256: string;
+    capability_evaluated_at: string;
+    capability_expires_at: string;
+    lifecycle_status: "approved";
+    key_id: string;
+    request_sha256: string;
+    signed_payload: string;
+    signature: string;
+    verified_at: string;
+  };
 }
 
 export type VoiceCaptureState = "idle" | "requesting_permission" | "listening" | "stopped" | "transcribing" | "review" | "unavailable" | "error";
@@ -273,6 +321,39 @@ export interface ApprovalRecord {
   decided_at?: string;
 }
 
+export type HelpRequestStatus = "draft" | "delivery_failed" | "waiting" | "response_recorded" | "revalidation_needed" | "closure_review_requested";
+export type HelpRequestEventType = "draft_created" | "delivery_recorded" | "delivery_failed" | "response_recorded" | "revalidation_planned" | "revalidation_result";
+export type HelpRevalidationResult = "pass" | "fail" | "inconclusive";
+
+export interface HelpRequestEvent {
+  event_id: string;
+  type: HelpRequestEventType;
+  actor_id: string;
+  actor_name: string;
+  at: string;
+  note: string;
+  evidence_ref?: string;
+  result?: HelpRevalidationResult;
+}
+
+/** A durable workspace record. Delivery, responses, and revalidation are user-recorded claims. */
+export interface HelpRequest {
+  help_request_id: string;
+  blocked_goal: string;
+  destination: string;
+  requested_action: string;
+  evidence_refs: string[];
+  risk_while_waiting: string;
+  deadline: string;
+  wake_condition: string;
+  requested_by_id: string;
+  requested_by: string;
+  status: HelpRequestStatus;
+  attempts: number;
+  created_at: string;
+  updated_at: string;
+  events: HelpRequestEvent[];
+}
 export interface ExecutionRecord {
   execution_id: string;
   loop_id: string;
@@ -457,6 +538,8 @@ export interface InitiativeWorkspace {
   approvals: ApprovalRecord[];
   handoffs: HandoffAction[];
   roi_assumptions: EffortSavingEstimate;
+  outcome_measurement?: OutcomeMeasurementPlan;
+  outcome_observations?: OutcomeMeasurementObservation[];
   release_assurance?: ReleaseAssuranceProfile;
 }
 
@@ -466,6 +549,7 @@ export interface QuestionSuggestion {
   why_it_matters: string;
   target_field: keyof UseCaseInput | "ownerEvidence" | "approval" | "execution";
   source: "LLM endpoint" | "deterministic fallback";
+  provenance: AIProvenance;
 }
 
 export interface SavedWorkspace {
@@ -483,6 +567,8 @@ export interface SavedWorkspace {
   initiatives: InitiativeWorkspace[];
   question_suggestions: QuestionSuggestion[];
   input_sources: UseCaseSource[];
+  /** Optional for legacy workspace migration; new workspaces initialize it to []. */
+  help_requests?: HelpRequest[];
 }
 
 export interface WorkspaceState {

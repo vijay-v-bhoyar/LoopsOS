@@ -1,5 +1,5 @@
 import type { LoopDetail, LoopOSData, LoopRecommendation, MatchFactor, RecommendationContext, UseCaseInput } from "../types";
-import { riskRank } from "./loopos";
+import { riskRank } from "./risk";
 
 const STOP_WORDS = new Set([
   "the",

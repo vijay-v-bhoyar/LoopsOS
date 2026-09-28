@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-waiver/v1"
+      ]
+    },
+    "risk_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "risk_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "case_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "compensating_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "exposure_limit": {
+      "type": "number",
+      "minimum": 0
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    }
+  },
+  "required": [
+    "schema",
+    "risk_id",
+    "risk_sha",
+    "case_ids",
+    "compensating_evidence",
+    "exposure_limit",
+    "scope",
+    "reason"
+  ],
+  "additionalProperties": false
+}

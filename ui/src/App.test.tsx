@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { looposData } from "./lib/loopos";
 
-function renderSignedIn(role: "Operator" | "Approver" = "Operator") {
+async function renderSignedIn(role: "Operator" | "Approver" = "Operator") {
   render(<App />);
-  expect(screen.getByText("LoopOS Evaluation Workspace")).toBeInTheDocument();
+  expect(await screen.findByText("LoopOS Evaluation Workspace")).toBeInTheDocument();
   if (role !== "Operator") fireEvent.change(screen.getByLabelText("Simulation role"), { target: { value: role } });
   fireEvent.click(screen.getByText("Enter Evaluation Workspace"));
 }
@@ -22,13 +23,14 @@ function loadExampleUseCase() {
 describe("LoopOS Enterprise UI", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => looposData }));
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
     window.localStorage.clear();
     window.history.replaceState(null, "", "/");
   });
 
-  it("renders dashboard corpus counts", () => {
-    renderSignedIn();
+  it("renders dashboard corpus counts", async () => {
+    await renderSignedIn();
     expect(screen.getByText("LoopOS Enterprise Console")).toBeInTheDocument();
     expect(screen.getByText("108")).toBeInTheDocument();
     expect(screen.getByText("109")).toBeInTheDocument();
@@ -37,8 +39,8 @@ describe("LoopOS Enterprise UI", () => {
     expect(screen.getAllByText(/Evaluation only/i).length).toBeGreaterThan(0);
   });
 
-  it("turns dashboard actions into workspace outputs", () => {
-    renderSignedIn();
+  it("turns dashboard actions into workspace outputs", async () => {
+    await renderSignedIn();
     loadExampleUseCase();
     expect(screen.getByText("SDLC Command Center")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Record Dry Run" }));
@@ -60,8 +62,8 @@ describe("LoopOS Enterprise UI", () => {
     expect(state.workspaces[0].action_plan_markdown).toContain("LOCAL EVALUATION DRAFT");
   });
 
-  it("creates SDLC initiatives, runs evaluation checklist steps, and exports evaluation packs from the command center", () => {
-    renderSignedIn();
+  it("creates SDLC initiatives, runs evaluation checklist steps, and exports evaluation packs from the command center", async () => {
+    await renderSignedIn();
     loadExampleUseCase();
     expect(screen.getByText("SDLC Command Center")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Create SDLC Initiative" }));
@@ -81,8 +83,8 @@ describe("LoopOS Enterprise UI", () => {
     expect(screen.getByText("Issue-ticket-ready output")).toBeInTheDocument();
   });
 
-  it("exposes every primary destination through the mobile navigation menu", () => {
-    renderSignedIn();
+  it("exposes every primary destination through the mobile navigation menu", async () => {
+    await renderSignedIn();
     fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
     const navigation = screen.getByRole("dialog", { name: "Navigation" });
     expect(navigation).toBeInTheDocument();
@@ -90,8 +92,8 @@ describe("LoopOS Enterprise UI", () => {
     expect(screen.getByRole("heading", { name: "Enterprise Activation Readiness" })).toBeInTheDocument();
   });
 
-  it("opens the advisor and shows recommendations", () => {
-    renderSignedIn();
+  it("opens the advisor and shows recommendations", async () => {
+    await renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
     expect(screen.getAllByText("Use Case Advisor").length).toBeGreaterThan(0);
     expect(screen.getByText("Recommendation Result")).toBeInTheDocument();
@@ -102,8 +104,8 @@ describe("LoopOS Enterprise UI", () => {
     expect(screen.getByRole("button", { name: "Load Example" })).toBeInTheDocument();
   });
 
-  it("lets users deep dive into what a loop will do", () => {
-    renderSignedIn();
+  it("lets users deep dive into what a loop will do", async () => {
+    await renderSignedIn();
     fireEvent.click(screen.getByText("Loop Explorer"));
     expect(screen.getByRole("heading", { name: "Production-Grade Run Sequence" })).toBeInTheDocument();
     expect(screen.getByText("First 10 Minutes")).toBeInTheDocument();
@@ -114,15 +116,15 @@ describe("LoopOS Enterprise UI", () => {
     expect(screen.getByRole("heading", { name: "Connected Loop Handoffs" })).toBeInTheDocument();
   });
 
-  it("opens validation studio without overstating readiness", () => {
-    renderSignedIn();
+  it("opens validation studio without overstating readiness", async () => {
+    await renderSignedIn();
     fireEvent.click(screen.getByText("Validation Studio"));
     expect(screen.getAllByText("Activation gaps").length).toBeGreaterThan(0);
     expect(screen.getByText(/Framework-level DRAFT gaps/)).toBeInTheDocument();
   });
 
   it("runs the workspace flow for questions, owner evidence, approvals, and governed execution access", async () => {
-    renderSignedIn("Approver");
+    await renderSignedIn("Approver");
     openWorkspaces();
 
     expect(screen.getByText("Saved Workspace Console")).toBeInTheDocument();
@@ -145,8 +147,8 @@ describe("LoopOS Enterprise UI", () => {
     await waitFor(() => expect(screen.getAllByText(/Authority unavailable/i).length).toBeGreaterThan(0));
   });
 
-  it("saves an enterprise action plan into the active workspace", () => {
-    renderSignedIn();
+  it("saves an enterprise action plan into the active workspace", async () => {
+    await renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
     fireEvent.click(screen.getByRole("button", { name: "Load Example" }));
     fireEvent.click(screen.getByText("Send To Action Plan"));
@@ -158,12 +160,14 @@ describe("LoopOS Enterprise UI", () => {
     expect(state.workspaces[0].selected_loop_ids).toHaveLength(12);
   });
 
-  it("requires confirmation before permanently deleting a local workspace", async () => {
-    renderSignedIn();
+  it("requires acknowledgment before removing a local workspace record", async () => {
+    await renderSignedIn();
     openWorkspaces();
     fireEvent.click(screen.getByRole("button", { name: "Delete workspace" }));
     expect(screen.getByRole("dialog", { name: "Delete workspace?" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
+    expect(screen.getByRole("button", { name: "Remove workspace record" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "I understand that related records and copies are not erased." }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove workspace record" }));
 
     expect(screen.getByText("Saved Workspaces")).toBeInTheDocument();
     await waitFor(() => {
@@ -173,7 +177,7 @@ describe("LoopOS Enterprise UI", () => {
   });
 
   it("accepts reviewed multimodal text into the workspace and groups source-backed recommendations", async () => {
-    renderSignedIn();
+    await renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
     const brief = [
       "# Agentic claims triage",
@@ -201,7 +205,7 @@ describe("LoopOS Enterprise UI", () => {
   });
 
   it("does not mix a real use case with the preloaded demonstration", async () => {
-    renderSignedIn();
+    await renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
     fireEvent.change(screen.getByLabelText("Describe the use case"), {
       target: {
@@ -225,7 +229,7 @@ describe("LoopOS Enterprise UI", () => {
   });
 
   it("switches to recommendation mode after applying intake and lets the user return to input", async () => {
-    renderSignedIn();
+    await renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
     expect(screen.getByRole("button", { name: /Show input/i })).toHaveAttribute("aria-pressed", "true");
 
@@ -241,7 +245,7 @@ describe("LoopOS Enterprise UI", () => {
   });
 
   it("records view history and provides an in-app back control", async () => {
-    renderSignedIn();
+    await renderSignedIn();
     fireEvent.click(screen.getByText("Open Use Case Advisor"));
     expect(window.location.hash).toBe("#advisor");
 

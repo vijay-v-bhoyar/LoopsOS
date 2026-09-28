@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 import jwt
 
+from .identity_transport import BoundedJwksClient
 from .models import Actor, UserRole
 
 
@@ -48,6 +49,8 @@ class OIDCIdentityVerifier:
         role_claim: str,
         role_mapping: dict[str, UserRole],
         jwks_client: Any | None = None,
+        jwks_allowed_networks: tuple[str, ...] = (),
+        allow_local_jwks: bool = False,
     ) -> None:
         self.issuer = _https_url(issuer, "OIDC issuer")
         if not isinstance(audience, str) or not audience.strip():
@@ -56,8 +59,10 @@ class OIDCIdentityVerifier:
         self.tenant_claim = _claim_name(tenant_claim, "OIDC tenant claim")
         self.role_claim = _claim_name(role_claim, "OIDC role claim")
         self.role_mapping = role_mapping
-        self.jwks_client = jwks_client or jwt.PyJWKClient(
+        self.jwks_client = jwks_client or BoundedJwksClient(
             _https_url(jwks_url, "OIDC JWKS URL"),
+            allowed_networks=jwks_allowed_networks,
+            allow_localhost=allow_local_jwks,
             cache_jwk_set=True,
             lifespan=300,
             timeout=5,

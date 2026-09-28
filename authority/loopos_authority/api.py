@@ -23,20 +23,90 @@ from .config import Settings, _connector_credentials_allowlisted, _connector_cre
 from .corpus import Corpus
 from .engine import ExecutionEngine
 from .identity import OIDCIdentityVerifier
-from .models import Actor, ApprovalCommandResponse, ApprovalRequest, AuditVerification, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, DevSessionRequest, EnterpriseSessionResponse, KillSwitchRequest, KillSwitchStatus, RecordReleaseInitiativeRequest, RecordReleaseInitiativeResponse, RejectionCommandResponse, ReleaseInitiativeRecord, ReleaseProofPack, RunCommandResponse, RunRecord, SessionResponse, WorkspaceDocumentRequest, WorkspaceRecord, ENTERPRISE_SESSION_MAX_SECONDS
+from .models import Actor, ApprovalCommandResponse, ApprovalRequest, AuditVerification, ConnectorEventRecord, ConnectorEventRequest, CreateReleaseInitiativeRequest, CreateRunRequest, DevSessionRequest, EnterpriseSessionResponse, GlobalKillSwitchStatus, KillSwitchRequest, KillSwitchStatus, RecordReleaseInitiativeRequest, RecordReleaseInitiativeResponse, RejectionCommandResponse, ReleaseInitiativeRecord, ReleaseProofPack, RunCommandResponse, RunRecord, SessionResponse, SessionRevocationRequest, WorkspaceDocumentRequest, WorkspaceRecord, ENTERPRISE_SESSION_MAX_SECONDS
 from .persistence import create_authority_store
 from .store import Conflict, Forbidden, NotFound
-from .tools import ToolRegistry
+from .tools import CredentialBroker, ToolRegistry
+from .models import ReleaseReviewRequest
+from .release_policy import release_policy
 from .worker import ExecutionJobWorker
 
 logger = logging.getLogger(__name__)
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
 
+class RequestBodyLimitMiddleware:
+    def __init__(self, app, max_bytes: int):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http" or scope.get("method") == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
+
+        if not isinstance(self.max_bytes, int) or isinstance(self.max_bytes, bool) or self.max_bytes <= 0:
+            await self._reject(send, 503, "Request size limiting is not configured.")
+            return
+
+        body = bytearray()
+        while True:
+            message = await receive()
+            if message.get("type") == "http.disconnect":
+                return
+            if message.get("type") != "http.request":
+                await self.app(scope, receive, send)
+                return
+            body.extend(message.get("body", b""))
+            if len(body) > self.max_bytes:
+                await self._reject(send, 413, "Request body exceeds the configured size limit.")
+                return
+            if not message.get("more_body", False):
+                break
+
+        replayed = False
+        response_completed = asyncio.Event()
+
+        async def replay_receive():
+            nonlocal replayed
+            if replayed:
+                await response_completed.wait()
+                return {"type": "http.disconnect"}
+            replayed = True
+            return {"type": "http.request", "body": bytes(body), "more_body": False}
+
+        async def bounded_send(message):
+            await send(message)
+            if message.get("type") == "http.response.body" and not message.get("more_body", False):
+                response_completed.set()
+
+        try:
+            await self.app(scope, replay_receive, bounded_send)
+        finally:
+            response_completed.set()
+
+    @staticmethod
+    async def _reject(send, status_code: int, detail: str) -> None:
+        content = json.dumps({"detail": detail}).encode("utf-8")
+        await send(
+            {
+                "type": "http.response.start",
+                "status": status_code,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(content)).encode("ascii")),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": content})
+
+
 def create_app(
     settings: Settings | None = None,
     transport=None,
     identity_verifier: IdentityVerifier | None = None,
+    credential_broker: CredentialBroker | None = None,
+    workload_identity_ref: str | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if not settings.allow_dev_auth:
@@ -45,6 +115,8 @@ def create_app(
             settings.audit_anchor_hmac_secret,
             allow_local_http=False,
         )
+        if settings.audit_anchor_epoch is None:
+            raise ValueError("LOOPOS_AUDIT_ANCHOR_EPOCH is required in production.")
     if identity_verifier is None and settings.oidc_issuer and settings.oidc_audience and settings.oidc_jwks_url and settings.oidc_role_mapping:
         identity_verifier = OIDCIdentityVerifier(
             issuer=settings.oidc_issuer,
@@ -53,10 +125,29 @@ def create_app(
             tenant_claim=settings.oidc_tenant_claim,
             role_claim=settings.oidc_role_claim,
             role_mapping=settings.oidc_role_mapping,
+            jwks_allowed_networks=settings.oidc_jwks_allowed_networks,
+            allow_local_jwks=settings.allow_dev_auth,
         )
     corpus = Corpus.load(settings.repo_root)
     store = create_authority_store(settings, corpus)
-    tools = ToolRegistry(settings, store, transport=transport)
+    # Publisher trust is immutable process configuration. It is included in the
+    # release policy digest so a restart under changed trust invalidates reviews.
+    store.github_release_attestor_app_id = settings.github_release_attestor_app_id
+    store.github_release_workflow_ids = settings.github_release_workflow_ids
+    store.activate_release_policy(
+        release_policy(
+            settings.github_release_attestor_app_id,
+            settings.github_release_workflow_ids,
+            policy_epoch=settings.release_policy_epoch,
+        )
+    )
+    tools = ToolRegistry(
+        settings,
+        store,
+        transport=transport,
+        credential_broker=credential_broker,
+        workload_identity_ref=workload_identity_ref,
+    )
     engine = ExecutionEngine(corpus, store, tools)
     execution_worker = ExecutionJobWorker(
         store,
@@ -71,8 +162,10 @@ def create_app(
         settings.audit_anchor_hmac_secret,
         transport=transport,
         timeout_seconds=settings.http_timeout_seconds,
+        allow_local_http=settings.allow_dev_auth,
+        epoch=settings.audit_anchor_epoch or 1,
     ) if settings.audit_anchor_url and settings.audit_anchor_hmac_secret else None
-    signer = SessionSigner(settings.session_secret)
+    signer = SessionSigner(settings.session_secret, registry=store)
     bearer = HTTPBearer(auto_error=False)
 
     @asynccontextmanager
@@ -149,6 +242,7 @@ def create_app(
         ],
         expose_headers=["etag"],
     )
+    app.add_middleware(RequestBodyLimitMiddleware, max_bytes=settings.http_max_request_bytes)
 
     @app.middleware("http")
     async def request_rate_limit(request: Request, call_next):
@@ -160,9 +254,19 @@ def create_app(
         ):
             return await call_next(request)
         client_key = request.client.host if request.client else "unknown"
+        rate_limit_key = f"ip:{client_key}"
+        authorization = request.headers.get("authorization", "")
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() == "bearer" and token:
+            try:
+                actor = signer.verify(token)
+            except InvalidSession:
+                pass
+            else:
+                rate_limit_key = f"tenant:{actor.tenant_id}"
         try:
             decision = store.consume_request_rate_limit(
-                client_key,
+                rate_limit_key,
                 settings.rate_limit_requests,
                 settings.rate_limit_window_seconds,
             )
@@ -218,6 +322,13 @@ def create_app(
             return signer.verify(credentials.credentials)
         except InvalidSession as error:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+
+    def require_break_glass_token(token: str | None) -> None:
+        configured = settings.break_glass_token
+        if not configured:
+            raise HTTPException(status_code=503, detail="Global break-glass control is not configured.")
+        if not token or not hmac.compare_digest(token, configured):
+            raise HTTPException(status_code=403, detail="A valid break-glass token is required.")
 
     def map_store_error(error: Exception) -> HTTPException:
         if isinstance(error, NotFound):
@@ -349,6 +460,12 @@ def create_app(
 
     @app.get("/health/ready")
     async def readiness() -> dict[str, object]:
+        release_policy_status = store.release_policy_status()
+        if not release_policy_status["current"]:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Release policy worker is fenced: {release_policy_status['reason']}",
+            )
         if not settings.allow_dev_auth and (
             settings.rate_limit_requests is None or settings.rate_limit_window_seconds is None
         ):
@@ -373,6 +490,8 @@ def create_app(
                 status_code=503,
                 detail="Production connector credentials require an approved short-lived credential injection broker; static bearer tokens are not supported.",
             )
+        if not settings.allow_dev_auth and not settings.break_glass_token:
+            raise HTTPException(status_code=503, detail="Production global break-glass control is not configured.")
         if (
             not settings.allow_dev_auth
             and settings.outbound_policy_mode is not None
@@ -415,10 +534,21 @@ def create_app(
                     status_code=503,
                     detail=f"Production operational bindings are incomplete: {', '.join(missing_operational_bindings)}.",
                 )
+            if not settings.allow_dev_auth and settings.outbound_policy_mode != "deny_all" and not tools.effect_budget.ready():
+                raise HTTPException(status_code=503, detail="Production aggregate external-effect policy is unavailable.")
             anchor_backlog = store.audit_anchor_backlog()
             if not settings.allow_dev_auth and anchor_backlog:
                 raise HTTPException(status_code=503, detail=f"Production audit anchor backlog contains {anchor_backlog} event(s).")
-            anchor_delivery = store.audit_anchor_delivery_status(settings.audit_anchor_delivery_max_age_seconds)
+            anchor_delivery = store.audit_anchor_delivery_status(
+                settings.audit_anchor_delivery_max_age_seconds,
+                delivery_binding=audit_anchor.delivery_binding if audit_anchor else '',
+            )
+            anchor_fence = store.audit_anchor_fence_status(
+                settings.audit_anchor_epoch or 1,
+                audit_anchor.delivery_binding if audit_anchor else '',
+            )
+            if not settings.allow_dev_auth and not anchor_fence["worker_admitted"]:
+                raise HTTPException(status_code=503, detail=f"Production audit-anchor worker is fenced: phase={anchor_fence['phase']}, active_epoch={anchor_fence.get('active_epoch')}, pending_epoch={anchor_fence.get('pending_epoch')}, unresolved_attempts={anchor_fence.get('unresolved_attempts')}.")
             if not settings.allow_dev_auth and not anchor_delivery["verified"]:
                 raise HTTPException(status_code=503, detail="Production audit anchoring has not completed a recent verified delivery.")
             execution_job_backlog = store.execution_job_backlog()
@@ -427,6 +557,12 @@ def create_app(
                     status_code=503,
                     detail=f"Production execution job backlog contains {execution_job_backlog} job(s).",
                 )
+            release_attestor_configured = (
+                settings.github_release_attestor_app_id is not None
+                and bool(settings.github_release_workflow_ids)
+            )
+            if not settings.allow_dev_auth and not release_attestor_configured:
+                raise HTTPException(status_code=503, detail="Production release publisher and workflow allowlists are not configured.")
             return {
                 "status": "ready",
                 "loops": len(corpus.loop_descriptors),
@@ -438,11 +574,17 @@ def create_app(
                 # No broker implementation is present in this release. Keep
                 # readiness fail-closed until an approved broker is integrated.
                 "credential_injection_broker_verified": False,
+                "aggregate_effect_budget_verified": settings.outbound_policy_mode == "deny_all" or tools.effect_budget.ready(),
+                "global_break_glass_configured": bool(settings.break_glass_token),
                 "storage_backend": settings.storage_backend,
                 "audit_anchor_configured": audit_anchor is not None,
                 "audit_anchor_backlog": anchor_backlog,
                 "audit_anchor_delivery_verified": anchor_delivery["verified"],
                 "audit_anchor_delivery_fresh": anchor_delivery["fresh"],
+                "audit_anchor_fence": anchor_fence,
+                "release_attestor_configured": release_attestor_configured,
+                "release_policy_epoch": release_policy_status["worker_epoch"],
+                "release_policy_fence": release_policy_status,
                 "audit_anchor_last_delivered_at": anchor_delivery["last_delivered_at"],
                 "execution_job_backlog": execution_job_backlog,
                 "execution_worker_dispatch": worker_dispatch,
@@ -535,6 +677,33 @@ def create_app(
     async def session(actor: Actor = Depends(current_actor)) -> Actor:
         return actor
 
+    @app.post("/v1/session/revoke", status_code=204)
+    async def revoke_session(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> Response:
+        if credentials is None or credentials.scheme.lower() != "bearer":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="A bearer session is required.")
+        try:
+            signer.revoke(credentials.credentials)
+        except InvalidSession as error:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+        return Response(status_code=204)
+
+    @app.post("/v1/controls/sessions/revoke-user", status_code=204)
+    async def revoke_user_sessions(request: SessionRevocationRequest, actor: Actor = Depends(current_actor)) -> Response:
+        if actor.role != "Executive":
+            raise HTTPException(status_code=403, detail="Only Executives can revoke another user's sessions.")
+        store.revoke_user_sessions(actor.tenant_id, request.user_id, request.reason)
+        store.append_event(
+            actor.tenant_id,
+            None,
+            "SESSIONS_REVOKED_FOR_USER",
+            None,
+            actor.user_id,
+            {"target_user_id": request.user_id, "reason": request.reason},
+        )
+        if audit_anchor:
+            await audit_anchor.drain()
+        return Response(status_code=204)
+
     @app.get("/v1/controls/kill-switch", response_model=KillSwitchStatus)
     async def get_kill_switch(actor: Actor = Depends(current_actor)) -> KillSwitchStatus:
         return KillSwitchStatus.model_validate(store.kill_switch_status(actor.tenant_id))
@@ -550,6 +719,46 @@ def create_app(
     async def deactivate_kill_switch(request: KillSwitchRequest, actor: Actor = Depends(current_actor)) -> KillSwitchStatus:
         try:
             return KillSwitchStatus.model_validate(store.deactivate_kill_switch(actor, request.reason))
+        except Exception as error:
+            raise map_store_error(error) from error
+
+    @app.post("/v1/controls/global-kill-switch", response_model=GlobalKillSwitchStatus)
+    async def activate_global_kill_switch(
+        request: KillSwitchRequest,
+        break_glass_token: str | None = Header(default=None, alias="x-loopos-break-glass-token"),
+        actor: Actor = Depends(current_actor),
+    ) -> GlobalKillSwitchStatus:
+        require_break_glass_token(break_glass_token)
+        try:
+            result = store.activate_global_kill_switch(actor, request.reason)
+            if audit_anchor:
+                await audit_anchor.drain()
+            return GlobalKillSwitchStatus.model_validate(result)
+        except Exception as error:
+            raise map_store_error(error) from error
+
+    @app.get("/v1/controls/global-kill-switch", response_model=GlobalKillSwitchStatus)
+    async def get_global_kill_switch(
+        break_glass_token: str | None = Header(default=None, alias="x-loopos-break-glass-token"),
+        actor: Actor = Depends(current_actor),
+    ) -> GlobalKillSwitchStatus:
+        require_break_glass_token(break_glass_token)
+        if actor.role != "Executive":
+            raise HTTPException(status_code=403, detail="Only Executives can inspect the global kill-switch.")
+        return GlobalKillSwitchStatus.model_validate(store.global_kill_switch_status())
+
+    @app.post("/v1/controls/global-kill-switch/deactivate", response_model=GlobalKillSwitchStatus)
+    async def deactivate_global_kill_switch(
+        request: KillSwitchRequest,
+        break_glass_token: str | None = Header(default=None, alias="x-loopos-break-glass-token"),
+        actor: Actor = Depends(current_actor),
+    ) -> GlobalKillSwitchStatus:
+        require_break_glass_token(break_glass_token)
+        try:
+            result = store.deactivate_global_kill_switch(actor, request.reason)
+            if audit_anchor:
+                await audit_anchor.drain()
+            return GlobalKillSwitchStatus.model_validate(result)
         except Exception as error:
             raise map_store_error(error) from error
 
@@ -680,6 +889,33 @@ def create_app(
         actor: Actor = Depends(current_actor),
     ) -> list[ReleaseInitiativeRecord]:
         return store.list_release_initiatives(actor.tenant_id, workspace_id, limit)
+
+    @app.get("/v1/release-policy")
+    async def current_release_policy(actor: Actor = Depends(current_actor)) -> dict[str, object]:
+        status = store.release_policy_status()
+        if not status["current"]:
+            raise HTTPException(status_code=503, detail=f"Release policy worker is fenced: {status['reason']}")
+        return release_policy(
+            settings.github_release_attestor_app_id,
+            settings.github_release_workflow_ids,
+            policy_epoch=settings.release_policy_epoch,
+        )
+
+    @app.post("/v1/release-initiatives/{initiative_id}/reviews", response_model=ReleaseInitiativeRecord)
+    async def review_release_initiative(
+        initiative_id: str,
+        request: ReleaseReviewRequest,
+        actor: Actor = Depends(current_actor),
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> ReleaseInitiativeRecord:
+        if actor.role not in {"Approver", "Executive"}:
+            raise HTTPException(status_code=403, detail="Release review requires Approver or Executive authority.")
+        if not idempotency_key or len(idempotency_key) < 8 or len(idempotency_key) > 200:
+            raise HTTPException(status_code=400, detail="Idempotency-Key must contain 8 to 200 characters.")
+        try:
+            return store.review_release_initiative(actor, initiative_id, request, idempotency_key)
+        except Exception as error:
+            raise map_store_error(error) from error
 
     @app.get("/v1/release-initiatives/{initiative_id}/proof-pack", response_model=ReleaseProofPack)
     async def release_proof_pack(initiative_id: str, actor: Actor = Depends(current_actor)) -> ReleaseProofPack:
@@ -901,6 +1137,13 @@ def create_app(
             "delivery": store.audit_anchor_delivery_status(
                 settings.audit_anchor_delivery_max_age_seconds,
                 tenant_id=actor.tenant_id,
+                delivery_binding=audit_anchor.delivery_binding if audit_anchor else '',
+            ),
+            "fence": store.audit_anchor_fence_status(
+                settings.audit_anchor_epoch or 1,
+                audit_anchor.delivery_binding if audit_anchor else '',
+                tenant_id=actor.tenant_id,
+                include_attempts=True,
             ),
         }
 

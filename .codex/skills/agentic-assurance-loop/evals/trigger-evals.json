@@ -1,0 +1,50 @@
+[
+  {
+    "query": "Run a complete assurance and remediation assessment of our multi-agent claims platform before external beta, including architecture, security, value, moat, future resilience, and a go/no-go decision.",
+    "should_trigger": true
+  },
+  {
+    "query": "Challenge whether this agentic AI product is actually production ready, build a deduplicated evidence-backed risk register, and give exact fix and verification packages.",
+    "should_trigger": true
+  },
+  {
+    "query": "Use the six executive lenses and twenty architecture layers to assess this AI agent application. Keep missing evidence separate from confirmed defects.",
+    "should_trigger": true
+  },
+  {
+    "query": "We fixed three high-risk agent-tool findings. Reopen the assurance run, independently verify closure, and update the release decision without losing stable IDs.",
+    "should_trigger": true
+  },
+  {
+    "query": "As an acquiring CTO, assess the technical diligence, commercial evidence limits, moat, and remediation required for this agentic workflow company.",
+    "should_trigger": true
+  },
+  {
+    "query": "A shared model gateway changed permissions across five AI products. Run a portfolio assurance loop with per-app exposure and verification records.",
+    "should_trigger": true
+  },
+  {
+    "query": "Add a CSV export button to the dashboard and run its component tests.",
+    "should_trigger": false
+  },
+  {
+    "query": "Do a focused security review of this one OAuth callback and list vulnerabilities. No broader readiness assessment.",
+    "should_trigger": false
+  },
+  {
+    "query": "Run the existing Playwright smoke suite and report failures without changing code.",
+    "should_trigger": false
+  },
+  {
+    "query": "Help me brainstorm a product vision and positioning statement for an AI note-taking app.",
+    "should_trigger": false
+  },
+  {
+    "query": "Deploy the already-approved release to Vercel and check the live URL.",
+    "should_trigger": false
+  },
+  {
+    "query": "Explain the difference between an AI agent and a chatbot in simple language.",
+    "should_trigger": false
+  }
+]

@@ -7,7 +7,7 @@ from unittest.mock import patch
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from loopos_authority.config import Settings
+from loopos_authority.config import Settings, _oidc_jwks_allowed_networks
 from loopos_authority.identity import OIDCIdentityVerifier
 
 
@@ -123,6 +123,20 @@ class OIDCIdentityVerifierTests(unittest.TestCase):
 
 
 class IdentityEnvironmentTests(unittest.TestCase):
+    def test_private_jwks_networks_are_explicit_and_strict(self) -> None:
+        self.assertEqual(
+            _oidc_jwks_allowed_networks("10.40.0.0/16,fd12:3456::/48"),
+            ("10.40.0.0/16", "fd12:3456::/48"),
+        )
+        for value in ("10.40.1.2/16", "0.0.0.0/0", "8.8.8.0/24", "10.0.0.0/8,"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                _oidc_jwks_allowed_networks(value)
+
+    def test_settings_load_explicit_private_jwks_networks(self) -> None:
+        with patch.dict("os.environ", {"LOOPOS_OIDC_JWKS_ALLOWED_CIDRS": "10.40.0.0/16"}, clear=True):
+            settings = Settings.from_env()
+        self.assertEqual(settings.oidc_jwks_allowed_networks, ("10.40.0.0/16",))
+
     def test_partial_oidc_configuration_is_rejected(self) -> None:
         with patch.dict(
             "os.environ",

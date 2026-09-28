@@ -1,9 +1,24 @@
 # LoopOS Production Handover Unblock Plan
 
 Status: NO_GO until the external authority, identity, durability, evidence, pilot, and approval gates are proven.
-Last refreshed: 2026-09-05
+Last refreshed: 2026-09-12
 
 This plan follows the repository build loop: graph trace, smallest safe change, live or boundary test, fix, retest, and proof classification. Local tests and a Vercel preview are not substitutes for production identity, tenant isolation, durable storage, or human approval.
+
+## Latest Verification Refresh
+
+The current remediation pass completed the repository-fixable resource, boundary, and dependency clusters:
+
+- Graphify now reports 5,033 nodes and 8,770 edges with zero missing or dangling endpoints; the graph diagnostic reports one existing self-loop and no collapsed endpoint groups.
+- The complete authority test discovery pass reports 283 passed and one intentional skip. The production-environment verifier tests report 33 passed, the handover verifier tests report 35 passed, and the credential-free pilot probes report 9 passed cases across 5 adapters with zero external calls.
+- The UI reports 24 test files and 221 passed tests. The production build passes with a 471.86 kB initial JS entry and a separately emitted 3,516.78 kB catalog asset; PDF/document workers remain on-demand assets.
+- The UI package, CI workflow, and linked Vercel project now share a Node.js 24.x runtime contract; the Vercel build and deployment completed successfully under that contract.
+- Vitest was upgraded from 4.1.10 to 4.1.11 for the reported path-traversal advisory. `npm audit --audit-level=moderate` now reports zero vulnerabilities, and CI now gates at the moderate threshold.
+- Authority request bodies and outbound JSON action bodies are bounded. Authenticated sessions use verified tenant rate-limit buckets; unauthenticated traffic uses source-IP buckets. These controls are locally and boundary tested.
+- Provider-assisted questioning and intake enhancement now send only the reviewed deterministic proposal, require explicit consent, and fail closed when the proposed workspace or reviewed source is sensitive or regulated.
+- The current Vercel preview is `READY`; `/api/health/live` returns `{"status":"live"}` and the SPA root serves successfully. `/api/health/ready` and protected API routes return the expected configuration error because the linked project has no configured environment variables.
+
+This refresh does not change the handover decision. Production identity, managed Postgres/RLS behavior, credential injection, provider evidence, audit anchoring, worker dispatch, restore evidence, operational ownership, pilot approval, and authoritative live handover remain unproven.
 
 ## Decision
 
@@ -27,11 +42,10 @@ The following release decisions remain blocked and cannot be inferred from the l
 
 ## Proven Baseline
 
-- Graphify refresh: 3,176 nodes, 6,636 edges, and 245 communities; the final multigraph diagnostic is recorded in `output/graphify-final-diagnose.json`.
-- UI unit tests: 23 files and 201 tests passed, including the persistence-readiness boundary regression.
+- Graphify refresh: the latest graph has 5,033 nodes and 8,770 edges; the final multigraph diagnostic reports zero missing or dangling endpoints.
+- UI unit tests: 24 files and 221 tests passed, including the persistence-readiness, local role-switch continuity, and provider privacy-boundary regressions.
 - Live local smoke: evaluation entry, advisor navigation, bounded example loading, 24 deterministic recommendations, governance-review readiness, and corpus `PASS` were visible after the final UI source fix.
-- Full authority suite: 257 tests passed and 1 intentional live-Postgres skip.
-- Fresh authority-suite rerun passed with the repository package path configured: 260 tests passed and 1 intentional live-Postgres integration test was skipped because `LOOPOS_TEST_POSTGRES_DSN` was not provided.
+- Full authority suite: 283 tests passed and 1 intentional live-Postgres skip.
 - Tenant kill-switch slice: 5 direct authority regressions passed for Executive-only activation, queued-work blocking, fail-closed creation, audit integrity, non-resuming deactivation, honest in-flight uncertainty, and restart-safe blocking; production connector credential revocation remains external.
 - Fresh governed/release browser regression: the full current matrix passed 94 desktop/mobile tests, including live kill-switch status reads, approval, rejection, audit, proof-pack, tenant-boundary, stalled-stream stop, reconnect, and stale-workspace isolation flows.
 - Enterprise browser boundary: 10 desktop/mobile tests passed for fail-closed readiness, binding mismatch, queued-job blocking, and transient authoritative-save retry behavior.
@@ -53,11 +67,11 @@ The following release decisions remain blocked and cannot be inferred from the l
 - Local pilot probe runner: 5 registered adapters and 9 bounded fixture cases passed with zero external calls; this is local contract proof only, not live organizational evidence.
 - Pilot activation candidate report: `NO_GO`; registry uniqueness, bounded scope, fixture binding, and executable adapter checks pass, while loop status, named owners, authoritative evidence, metric targets, and approved real golden-fixture checks remain fail-closed.
 - Practicality audit: 279 files / 232,472 lines; 0 blockers, 1,603 action-required findings, and 715 warnings.
-- Local and hosted Vite builds passed; the large JavaScript chunk warning remains a performance follow-up, not a handover approval.
-- UI dependency audit: `npm audit --audit-level=high` reports 0 vulnerabilities after updating the transitive `@xmldom/xmldom` and `browserslist` advisories.
+- Local and hosted Vite builds passed; the initial JavaScript entry is below the Vite warning threshold, while the separately emitted catalog and on-demand document workers remain bounded assets, not handover approval.
+- UI dependency audit: `npm audit --audit-level=moderate` reports 0 vulnerabilities after upgrading Vitest 4.1.11 for the `@vitest/mocker` path-traversal advisory.
 - Security-header contract passes. Vercel and Nginx use same-origin `connect-src` by default and reject scheme-wide browser egress.
 - Vercel upload context explicitly excludes `.env*` files; the production preflight now enforces this boundary.
-- Latest preview `dpl_59eWcMUx8HxdXdqFEtRLpr8PT3ys` is `READY` at [the Vercel preview](https://loopos-enterprise-30jkv18dl-vijayvbhoyar-8312s-projects.vercel.app). Protected Vercel CLI probes returned `{"status":"live"}` from `/api/health/live`; `/api/health/ready` and `/api/v1/workspaces` returned `{"detail":"Authority configuration is invalid."}`. The remote build reported 0 vulnerabilities. Direct browser access is protected by Vercel SSO. This is preview reachability and fail-closed behavior, not production authority proof.
+- Latest preview `dpl_A8ZEWZSsBofhoK9pT6QRvZAoiri4` is `READY` at [the Vercel preview](https://loopos-enterprise-p1d3br3zw-vijayvbhoyar-8312s-projects.vercel.app). Protected Vercel CLI probes returned `{"status":"live"}` from `/api/health/live`; `/api/health/ready` returned the configuration failure. The remote Node 24.x build reported 0 vulnerabilities. Direct browser access is protected by Vercel SSO. This is preview reachability and fail-closed behavior, not production authority proof.
 - An enterprise-configured preview with only public test bindings was rejected by the build-time gate with structured `settings_loaded` `NO_GO`; the preflight no longer crashes on a missing runtime Python package.
 - The linked Vercel project currently reports no configured environment variables, so production identity, durable storage, worker, audit, and operational bindings are not present.
 - Local authority now exposes `GET /v1/controls/kill-switch`, Executive-only activation and deactivation, durable tenant control state, worker/engine/scheduler/restart enforcement, and an honest uncertainty record; this does not provision platform-global orchestration, remote connector cancellation, or credential revocation.

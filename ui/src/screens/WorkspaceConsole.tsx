@@ -1,8 +1,9 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import { CheckCircle2, CirclePlus, ClipboardList, Download, FilePenLine, HelpCircle, Save, Trash2, X, XCircle } from "lucide-react";
+import { CheckCircle2, CirclePlus, ClipboardList, Download, FilePenLine, HelpCircle, Save, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Badge, riskTone } from "../components/Badge";
 import { Button } from "../components/Button";
+import { DeleteWorkspaceDialog } from "../components/DeleteWorkspaceDialog";
+import { HelpRequestLedger } from "../components/HelpRequestLedger";
 import { Card, SectionHeader } from "../components/Card";
 import { HelpPopover, InlineNote } from "../components/Help";
 import { getQuestionSuggestions } from "../lib/questionAssistant";
@@ -56,6 +57,19 @@ export function WorkspaceConsole({
     return (
       <Card>
         <SectionHeader title="Saved Workspaces" description="Create a workspace to persist use-case analysis, approval drafts, edits, and execution drafts." />
+        {persistence.status === "error" ? (
+          <div role="alert" className="mb-4 space-y-2 text-sm text-fg2">
+            <p>Workspace changes could not be saved. An empty list does not confirm removal from storage.</p>
+            <p>{persistence.message}</p>
+            {persistence.location === "authority" && persistence.code === "authority_unavailable" && onRetryPersistence ? (
+              <Button onClick={onRetryPersistence}>Retry save</Button>
+            ) : null}
+          </div>
+        ) : (
+          <p role="status" className="mb-4 text-sm text-fg2">
+            No workspace is selected. Removing a workspace record does not erase separately retained evidence or copies.
+          </p>
+        )}
         <div className="flex gap-2">
           <input className="control min-h-10 flex-1 px-3 text-sm" value={newWorkspaceName} onChange={(event) => setNewWorkspaceName(event.target.value)} />
           <Button variant="primary" onClick={() => onCreateWorkspace(newWorkspaceName, data.use_cases[0] ? { title: data.use_cases[0].title, description: data.use_cases[0].summary, environment: "enterprise portfolio", aiScope: "AI readiness", dataSensitivity: "sensitive", businessOutcome: "Prepare an enterprise action path.", maturity: "discovery", constraints: "Created from v2 workspace." } : workspaceSeed())}>
@@ -147,50 +161,13 @@ export function WorkspaceConsole({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
+        <div className="xl:col-span-2">
+          <HelpRequestLedger workspace={workspace} user={user} onMutateWorkspace={onMutateWorkspace} />
+        </div>
         <ApprovalPanel data={data} user={user} workspace={workspace} onMutateWorkspace={onMutateWorkspace} />
         <GovernedExecutionPanel data={data} user={user} workspace={workspace} onSessionExpired={onSessionExpired} />
       </div>
     </div>
-  );
-}
-
-function DeleteWorkspaceDialog({ workspace, onDelete, location }: { workspace: SavedWorkspace; onDelete: (workspaceId: string) => void; location?: WorkspacePersistenceResult["location"] }) {
-  return (
-    <Dialog.Root>
-      <Dialog.Trigger asChild>
-        <Button variant="ghost">
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-          Delete workspace
-        </Button>
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-fg1/50" />
-        <Dialog.Content className="surface fixed left-1/2 top-1/2 z-50 w-11/12 max-w-lg -translate-x-1/2 -translate-y-1/2 p-5" aria-describedby="delete-workspace-description">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <Dialog.Title className="text-lg font-semibold text-fg1">Delete workspace?</Dialog.Title>
-              <Dialog.Description id="delete-workspace-description" className="mt-2 text-sm text-fg2">
-                 {location === "authority"
-                   ? <>This permanently removes {workspace.name} from tenant-scoped authority storage. Export it first when a record must be retained.</>
-                   : <>This permanently removes {workspace.name} from this browser. Export it first when a record must be retained.</>}
-              </Dialog.Description>
-            </div>
-            <Dialog.Close asChild>
-              <Button variant="ghost" aria-label="Close deletion dialog"><X className="h-4 w-4" aria-hidden="true" /></Button>
-            </Dialog.Close>
-          </div>
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Dialog.Close asChild><Button>Cancel</Button></Dialog.Close>
-            <Dialog.Close asChild>
-              <Button variant="danger" onClick={() => onDelete(workspace.workspace_id)}>
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-                Delete permanently
-              </Button>
-            </Dialog.Close>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
   );
 }
 

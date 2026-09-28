@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { UseCaseInput, UseCaseSource } from "../types";
 import { looposData } from "./loopos";
 import { recommendLoops } from "./recommendation";
-import { validateUseCase } from "./validation";
+import { hasCompleteOutcomeMeasurementPlan, validateUseCase } from "./validation";
 
 const input: UseCaseInput = {
   title: "Agentic claims triage workflow",
@@ -33,6 +33,28 @@ function source(overrides: Partial<UseCaseSource> = {}): UseCaseSource {
 }
 
 describe("validateUseCase input provenance", () => {
+  it("requires a structured measurement plan before treating business value as ready", () => {
+    const recommendations = recommendLoops(input, looposData);
+    const missingPlan = validateUseCase(input, recommendations, looposData);
+    expect(hasCompleteOutcomeMeasurementPlan(input)).toBe(false);
+    expect(missingPlan.findings.find((finding) => finding.label === "Outcome measurement plan")?.status).toBe("gap");
+
+    const measuredInput = {
+      ...input,
+      outcomeMeasurement: {
+        metric: "Claim cycle time",
+        unit: "hours" as const,
+        baseline: 40,
+        target: 16,
+        source: "Claims system report",
+        observation_window: "90 days",
+      },
+    };
+    const completePlan = validateUseCase(measuredInput, recommendLoops(measuredInput, looposData), looposData);
+    expect(hasCompleteOutcomeMeasurementPlan(measuredInput)).toBe(true);
+    expect(completePlan.findings.find((finding) => finding.label === "Outcome measurement plan")?.status).toBe("pass");
+  });
+
   it("keeps extraction warnings and truncation in review state", () => {
     const warnedSource = source({
       warnings: [{ code: "truncated", message: "Text was limited to 50,000 characters." }],

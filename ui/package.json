@@ -3,13 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "vite",
+    "dev:authority": "node scripts/run-local-authority.mjs",
     "prebuild": "node scripts/export-data-if-local.mjs",
     "build": "tsc -b && vite build",
     "pretest": "node scripts/run-python.mjs ../scripts/export_ui_data.py --out ui/src/data/loopos-data.json",
     "test": "vitest run",
     "test:e2e": "node scripts/run-e2e.mjs",
+    "test:e2e:isolation": "node --test scripts/e2e-isolation.test.mjs",
     "test:e2e:enterprise-gate": "node scripts/run-enterprise-gate.mjs",
     "lint:design": "node scripts/check-design-tokens.mjs"
   },
@@ -38,6 +43,6 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite": "^8.1.4",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

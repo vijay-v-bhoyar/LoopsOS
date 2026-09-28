@@ -1,0 +1,6 @@
+interface:
+  display_name: "Agentic Production Readiness"
+  short_description: "Harden agentic apps one approved slice at a time"
+  default_prompt: "Use $agentic-production-readiness to inspect this existing agentic AI app, persist its readiness gates, and present one decision without changing code until I choose."
+policy:
+  allow_implicit_invocation: true

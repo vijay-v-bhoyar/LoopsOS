@@ -39,6 +39,9 @@ test("blocks enterprise session bootstrap when authority bindings do not match t
       body: JSON.stringify({
         status: "ready",
         development_auth: false,
+        rate_limit_configured: true,
+        credential_injection_broker_verified: true,
+        aggregate_effect_budget_verified: true,
         storage_backend: "postgres",
         production_identity: true,
         audit_anchor_configured: true,
@@ -104,6 +107,9 @@ test("blocks enterprise session bootstrap when authority adds an unbound endpoin
       body: JSON.stringify({
         status: "ready",
         development_auth: false,
+        rate_limit_configured: true,
+        credential_injection_broker_verified: true,
+        aggregate_effect_budget_verified: true,
         storage_backend: "postgres",
         production_identity: true,
         audit_anchor_configured: true,
@@ -167,6 +173,9 @@ test("blocks enterprise session bootstrap when a ready response still has queued
       body: JSON.stringify({
         status: "ready",
         development_auth: false,
+        rate_limit_configured: true,
+        credential_injection_broker_verified: true,
+        aggregate_effect_budget_verified: true,
         storage_backend: "postgres",
         production_identity: true,
         audit_anchor_configured: true,
@@ -230,6 +239,9 @@ test("offers a retry when an authoritative workspace save is temporarily unavail
       body: JSON.stringify({
         status: "ready",
         development_auth: false,
+        rate_limit_configured: true,
+        credential_injection_broker_verified: true,
+        aggregate_effect_budget_verified: true,
         storage_backend: "postgres",
         production_identity: true,
         audit_anchor_configured: true,

@@ -4,24 +4,30 @@ Enterprise-oriented portal for exploring the LoopOS 108-loop system, mapping AI/
 
 ## Commands
 
+The supported UI build runtime is Node.js 24.x, matching the linked Vercel project and CI.
+
 ```powershell
 npm install
 node scripts/run-python.mjs -m pip install --requirement ../authority/requirements.txt
 npm run test
+# For the full evaluation browser suite, first set the fixture flags below.
 npm run test:e2e
 npm run lint:design
 npm run build
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Run the execution authority in a second terminal:
+The full evaluation suite includes signed synthetic LLM responses and a negative connector allowlist case. In PowerShell, set `$env:LOOPOS_E2E_LLM_ATTESTATION_FIXTURE='1'` and `$env:LOOPOS_E2E_EFFECT_BUDGET_FIXTURE='1'` before `npm run test:e2e`; the runner fixes the deployment mode to `evaluation`. CI sets these only for its browser step. Each run gets a new SQLite database, manifest, and Playwright artifact directory under `output/loopsos-e2e`; pre-existing API or Vite servers are never reused, and direct Playwright invocation without the runner manifest fails closed. The runner passes a strict child environment allowlist, disables Vite `.env` loading, and configures the local authority connector policy to deny external hosts. The effect fixture permits budget admission for deliberately unallowlisted `unknown.example.com` test routes; it does not add that host to the allowlist. The enterprise gate has its own fixed enterprise profile and never receives evaluation fixtures.
+
+Run the local execution authority in a second terminal:
 
 ```powershell
-$env:PYTHONPATH="../authority"
-node scripts/run-python.mjs -m uvicorn loopos_authority.api:app --app-dir ../authority --host 127.0.0.1 --port 8787
+npm run dev:authority
 ```
 
-The launcher selects Python 3.12+ portably (`py -3` on Windows, then `python3`/`python` fallbacks) and rejects an interpreter missing a requested `-m` module. Set `LOOPOS_PYTHON` to an exact interpreter path when the environment requires a pinned runtime.
+The local launcher keeps the authority on `127.0.0.1`, uses `deny_all` connector egress, enables development sessions, and stores its SQLite database under `output/loopsos-local/`. This is for local evaluation only; enterprise mode still requires the hosted identity, durable storage, broker, audit, retention, restore, and operational bindings described below.
+
+The launcher selects Python 3.12+ portably (`py -3` on Windows, then `python3`/`python`, conventional Windows installs, and a workspace `.venv` fallback) and rejects an interpreter missing a requested `-m` module. Set `LOOPOS_PYTHON` to an exact interpreter path when the environment requires a pinned runtime.
 
 `pretest` and `prebuild` regenerate `src/data/loopos-data.json` from the LoopOS corpus with:
 
@@ -40,7 +46,7 @@ node scripts/run-python.mjs ../scripts/export_ui_data.py --out ui/src/data/loopo
 - Optional enterprise voice fallback through `VITE_LOOPOS_TRANSCRIPTION_ENDPOINT`; audio is sent only after explicit consent.
 - Workspace overlays for owners, evidence, approvals, and execution records do not mutate the source LoopOS corpus.
 - Recommendations are deterministic and evidence-backed.
-- Optional endpoint calls enforce HTTPS, host policy, timeout, redirect refusal, and response-size limits.
+- Optional endpoint calls enforce HTTPS, exact host policy, timeout, redirect refusal, and bounded request/response sizes. JSON prompts default to a 256 KB request cap; enterprise multipart voice transcription is bounded at 10 MB. Production still requires a durable server-side tenant budget and rate limiter.
 - Governed runs are durable in the authority database, enforce state transitions and payload-bound approvals, execute registered tool contracts, collect evidence, run validation/effectiveness probes, compensate failures, and stream audit events.
 
 ## Multimodal Intake

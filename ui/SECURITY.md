@@ -15,11 +15,11 @@
 | Approval or audit tampering | Approvals and executions require an append-only authoritative audit sink with actor, tenant, correlation ID, timestamp, before/after state, and policy decision |
 | Approve/reject-and-swap | Authority decisions bind to the SHA-256 hash of the exact plan, evidence scope, risk, corpus version, and loop descriptor; approvals expire, preserve renewal history, and are consumed once; rejection atomically blocks the exact run |
 | Duplicate or ambiguous side effects | Write-ahead dispatch intent, caller idempotency keys, server deduplication, bounded retry classes, and linked recovery runs |
-| SSRF or connector credential exfiltration | Exact host allowlist, HTTPS, DNS/private-address rejection, redirect refusal, response limits, and server-only credential injection |
+| SSRF or connector credential exfiltration | Exact host allowlist, HTTPS, server-side validation of every DNS answer before a numeric dial, redirect refusal, response limits, and server-only credential injection; the browser blocks known non-public IPv6 literals but cannot pin DNS answers or enforce network routes |
 | Document parser abuse | File type/size/count/time limits, text-only extraction, no injected HTML, parser worker termination, and no OCR in this release |
 | Audio or document exfiltration | Raw files/audio remain transient; external transfer requires explicit action; endpoints are HTTPS and host-allowlisted |
 | Prompt injection through source text | Optional AI may propose fields only; the deterministic engine alone selects loops; proposals require user review |
-| Endpoint abuse or SSRF-like configuration | URLs reject credentials and remote HTTP, enforce exact host policy, refuse redirects, time out, and cap JSON responses |
+| Endpoint abuse or SSRF-like configuration | URLs reject credentials and remote HTTP, enforce exact hostname policy, refuse redirects, time out, and cap requests/responses; server connector routes additionally validate and pin resolved addresses, while browser DNS and enterprise VPN/proxy routing require network egress controls; JSON prompts default to 256 KB and enterprise voice multipart requests to 10 MB |
 | XSS/clickjacking | React text rendering, no document HTML injection, CSP, `frame-ancestors 'none'`, `X-Frame-Options: DENY`, and MIME sniffing disabled |
 | Browser storage loss | Bounded writes, save-failure state, portable export, and confirmed deletion; browser storage is never authoritative in enterprise mode |
 | Dependency or image compromise | Lockfile installs, CI audit, pinned release image digest, SBOM, provenance, and vulnerability scanning at release |
