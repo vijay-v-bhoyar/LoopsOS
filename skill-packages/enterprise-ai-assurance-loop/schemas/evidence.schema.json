@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-evidence/v1"
+      ]
+    },
+    "owner": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 12
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "proof": {
+      "enum": [
+        "FIXTURE",
+        "ENTERPRISE"
+      ]
+    },
+    "verifier_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "case_manifest_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "observed_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scope": {
+      "enum": [
+        "APPLICABLE",
+        "NOT_APPLICABLE"
+      ]
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+          },
+          "outcome": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "NOT_RUN",
+              "INCONCLUSIVE",
+              "UNTESTABLE"
+            ]
+          },
+          "observations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "number",
+                "boolean",
+                "string"
+              ]
+            }
+          },
+          "raw_sha": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "case_id",
+          "outcome",
+          "observations",
+          "raw_sha",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "trial_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "all_dispatched_trials": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "raw_manifest": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "operational_claims": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "model_evidence_expires_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema",
+    "owner",
+    "generation",
+    "proof",
+    "verifier_sha",
+    "case_manifest_sha",
+    "observed_at",
+    "scope",
+    "cases",
+    "trial_ids",
+    "all_dispatched_trials",
+    "raw_manifest",
+    "limitations",
+    "dependencies",
+    "operational_claims",
+    "model_evidence_expires_at",
+    "risks"
+  ],
+  "additionalProperties": false
+}

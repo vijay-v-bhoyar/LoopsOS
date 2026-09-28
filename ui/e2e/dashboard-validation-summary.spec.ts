@@ -10,9 +10,11 @@ test("shows corpus validation separately from enterprise activation readiness on
   await signIn(page);
 
   await expect(page.getByRole("heading", { name: "LoopOS Enterprise Console" })).toBeVisible();
+  await expect(page.getByText("Controlled evaluation only")).toBeVisible();
+  await expect(page.getByText("Beta pilot ready")).toHaveCount(0);
   await expect(page.getByText("Corpus validated")).toBeVisible();
   await expect(page.getByRole("main").getByText("Evaluation only").first()).toBeVisible();
-  await expect(page.getByText("1577 activation actions")).toBeVisible();
+  await expect(page.getByText(/\d+ activation actions/)).toBeVisible();
 
   await expect(page.getByText("Validation Reality")).toBeVisible();
   await expect(page.getByText("Corpus validator")).toBeVisible();

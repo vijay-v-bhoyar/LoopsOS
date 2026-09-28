@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "bounded_contract_fixture",
+  "playbook_id": "pilot-sdlc-governance-os",
+  "description": "Deterministic contract inputs for the selected SDLC governance pilot. This fixture does not represent live organizational evidence.",
+  "loop_cases": {
+    "loop-006-requirements-quality-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "requirements-quality"},
+    "loop-007-requirements-change-control-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "requirements-change-control"},
+    "loop-008-requirements-traceability-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "requirements-traceability"},
+    "loop-014-retrospective-improvement-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "retrospective-improvement"},
+    "loop-015-design-review-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "design-review"},
+    "loop-016-architecture-fitness-and-future-compatibility-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "architecture-fitness"},
+    "loop-022-code-quality-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "code-quality"},
+    "loop-023-pull-request-review-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "pull-request-review"},
+    "loop-025-ci-pipeline-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "ci-pipeline"},
+    "loop-036-release-readiness-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "release-readiness"},
+    "loop-038-deployment-validation-loop": {"owner": "fixture-owner", "evidence": "fixture-evidence", "control": "deployment-validation"}
+  },
+  "probe_cases": {
+    "routing-deduplication-v1": {
+      "trigger_record": {
+        "trigger_id": "requirement-123",
+        "primary_loop_id": "loop-006-requirements-quality-loop",
+        "active_handlers": [
+          {
+            "loop_id": "loop-006-requirements-quality-loop",
+            "deduplication_key": "requirement-123|loop-006-requirements-quality-loop"
+          }
+        ]
+      },
+      "loop_graph": {
+        "routes": {
+          "requirement-123": ["loop-006-requirements-quality-loop"]
+        }
+      }
+    },
+    "authority-resolution-v1": [
+      {
+        "loop_descriptor": {
+        "authority": {
+          "policy_owner_ref": "fixture-owner-ref",
+          "gate_owner_ref": "fixture-owner-ref"
+        }
+      },
+      "owner_registry": {
+        "owners": [
+          {
+            "owner_ref": "fixture-owner-ref",
+            "status": "PILOT",
+            "policy_owner": "fixture-policy-owner",
+            "gate_owner": "fixture-gate-owner"
+          }
+        ]
+      }
+      },
+      {
+        "loop_descriptor": {
+          "authority": {
+            "policy_owner_ref": "fixture-owner-ref",
+            "gate_owner_ref": "fixture-owner-ref"
+          }
+        },
+        "owner_registry": {
+          "owners": [
+            {
+              "owner_ref": "fixture-owner-ref",
+              "status": "PILOT",
+              "policy_owner": "fixture-policy-owner",
+              "gate_owner": "fixture-gate-owner"
+            }
+          ],
+          "conflicts": ["policy-and-gate-owner-conflict"],
+          "progression_allowed": false
+        }
+      }
+    ],
+    "state-transition-v1": [
+      {
+        "state_machine": {
+          "allowed_transitions": {
+            "TRIGGERED": ["QUALIFIED"],
+            "QUALIFIED": ["BLOCKED"]
+          }
+        },
+        "state_event": {
+          "from_state": "TRIGGERED",
+          "to_state": "QUALIFIED",
+          "expected": "allow"
+        }
+      },
+      {
+        "state_machine": {
+          "allowed_transitions": {
+            "TRIGGERED": ["QUALIFIED"],
+            "QUALIFIED": ["BLOCKED"]
+          }
+        },
+        "state_event": {
+          "from_state": "QUALIFIED",
+          "to_state": "EFFECTIVENESS_PROVEN",
+          "expected": "block"
+        }
+      }
+    ],
+    "proof-scope-freshness-v1": [
+      {
+        "proof_record": {
+          "scope": "loop-006-requirements-quality-loop",
+          "captured_at": "2026-09-01T00:00:00Z",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "evidence_registry": {
+          "scope": "loop-006-requirements-quality-loop",
+          "freshness_policy": {
+            "now": "2026-09-02T00:00:00Z",
+            "max_age_seconds": 86400
+          }
+        },
+        "expected_decision": "accept"
+      },
+      {
+        "proof_record": {
+          "scope": "loop-006-requirements-quality-loop",
+          "captured_at": "2026-08-01T00:00:00Z",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "evidence_registry": {
+          "scope": "loop-006-requirements-quality-loop",
+          "freshness_policy": {
+            "now": "2026-09-02T00:00:00Z",
+            "max_age_seconds": 86400
+          }
+        },
+        "expected_decision": "reject"
+      }
+    ],
+    "replay-tool-idempotency-v1": [
+      {
+        "operation_id": "operation-123",
+        "tool_call_record": [
+          {
+            "operation_id": "operation-123",
+            "payload_hash": "payload-a",
+            "effect_id": "effect-123"
+          },
+          {
+            "operation_id": "operation-123",
+            "payload_hash": "payload-a",
+            "effect_id": "effect-123"
+          }
+        ],
+        "logical_effect_count": 1,
+        "expected": "replay"
+      },
+      {
+        "operation_id": "operation-123",
+        "tool_call_record": [
+          {
+            "operation_id": "operation-123",
+            "payload_hash": "payload-a",
+            "effect_id": "effect-123"
+          },
+          {
+            "operation_id": "operation-123",
+            "payload_hash": "payload-b",
+            "effect_id": "effect-456",
+            "decision": "REJECTED"
+          }
+        ],
+        "expected": "conflict"
+      }
+    ]
+  }
+}

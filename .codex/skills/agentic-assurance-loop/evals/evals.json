@@ -1,0 +1,88 @@
+{
+  "skill_name": "agentic-assurance-loop",
+  "evals": [
+    {
+      "id": 1,
+      "name": "sparse-evidence-assess-and-plan",
+      "prompt": "Apply the assurance loop to this agentic support assistant. I only have a README, architecture diagram, and a few unit-test results. Assess beta readiness and enterprise maturity, but do not change or execute anything.",
+      "expected_output": "A bounded ASSESS_AND_PLAN report that preserves missing evidence and avoids invented findings or execution claims.",
+      "assertions": [
+        "Defaults to ASSESS_AND_PLAN and performs no mutation or tests.",
+        "Creates an explicit run contract with unknown values rather than guessing.",
+        "Separates observed facts, inferences, hypotheses, and evidence gaps.",
+        "Publishes scoped coverage numerators and denominators.",
+        "Uses decision limits such as Insufficient evidence or Hold for evidence where appropriate."
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "full-production-readiness",
+      "prompt": "Perform a comprehensive production-readiness assurance review of this multi-tenant agent platform. Cover all six executive questions and twenty layers, challenge your conclusions, deduplicate the findings, and give complete remediation packages. Do not fix anything.",
+      "expected_output": "A complete, evidence-led report with stable findings, cross-layer traceability, independent-challenge disclosure, and no code changes.",
+      "assertions": [
+        "Covers or explicitly marks every lens and layer as unassessed or not applicable with rationale.",
+        "Does not manufacture a fixed number of findings or hide serious items for summary length.",
+        "Consolidates shared root causes while preserving distinct exposure paths and tests.",
+        "Provides full packages for Critical, High, and release-blocking evidence gaps.",
+        "Keeps the technical exposure decision separate from product or valuation judgments."
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "authorized-remediation-boundary",
+      "prompt": "Use REMEDIATE_APPROVED_SCOPE to fix finding F-017 in the sandbox repository only. You may edit the named authorization middleware and tests. Do not alter deployment configuration or contact external services. Verify the fix and give me the closure evidence.",
+      "expected_output": "A scoped repair that preserves baseline evidence, stops at unauthorized surfaces, verifies the exact finding, and does not self-approve release.",
+      "assertions": [
+        "Confirms the named target, environment, limits, approval, and recovery path before editing.",
+        "Changes only the authorized middleware and tests.",
+        "Runs reproduction, acceptance, negative, replay, and affected regression tests as applicable.",
+        "Records actual results and residual exposure without claiming independent acceptance if unavailable.",
+        "Leaves deployment and release authorization outside scope."
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "diligence-with-missing-commercial-evidence",
+      "prompt": "Evaluate whether we should acquire this agentic workflow company for $1 billion and whether it has a durable moat. The repository and product demo are available, but no revenue, retention, margin, pipeline, or transaction data has been supplied.",
+      "expected_output": "A separated technical diligence posture and bounded business assessment that refuses to invent a valuation.",
+      "assertions": [
+        "Reports valuation as not assessable without required commercial evidence.",
+        "Does not invent a haircut, revenue, users, market size, or transaction assumptions.",
+        "Maps moat claims to evidence, rights, customer benefit, replication barrier, model dependence, and tests.",
+        "Separates technical acquisition posture from financial valuation.",
+        "Names the exact evidence needed to revisit the investment decision."
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "shared-component-portfolio-reassessment",
+      "prompt": "A shared tool gateway used by four agent applications changed its approval schema. Reassess the portfolio without copying one app's findings or test result into the others. Identify affected versions, exposure, remediation dependencies, and per-app verification.",
+      "expected_output": "A shared parent finding with evidence-backed per-application exposure and verification records.",
+      "assertions": [
+        "Uses actual inventory to identify affected applications and versions.",
+        "Creates a shared component finding with separate per-app exposure records.",
+        "Does not transfer confidential data, thresholds, decisions, or proof across applications.",
+        "Requires each affected integration to be verified independently.",
+        "Reopens prior findings whose proof was invalidated by the schema change."
+      ],
+      "files": []
+    },
+    {
+      "name": "finding-reproduction-independent-closure",
+      "prompt": "Repair F-017 within the approved local scope and retain the same finding ID after a failed retest. Obtain independent verification when required and bind closure to current evidence.",
+      "expected_output": "A persistent finding record with archived reproduction, changed artifact binding, current original and adjacent results, acceptance owner and direct-evidence closure review.",
+      "assertions": [
+        "Assessment-only mode does not mutate the application.",
+        "The original reproduction oracle remains pinned.",
+        "Named separation is not presented as authenticated independence.",
+        "Changed subject and fresh repairs invalidate earlier closure readiness."
+      ],
+      "id": 6,
+      "files": []
+    }
+  ]
+}

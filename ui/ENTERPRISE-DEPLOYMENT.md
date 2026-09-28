@@ -6,15 +6,17 @@ LoopOS has two explicit postures: `evaluation` and `enterprise`. Evaluation mode
 
 | Binding | Required contract | Activation proof |
 | --- | --- | --- |
-| Identity | BFF-managed session; IdP groups mapped server-side to LoopOS roles | Session endpoint verifies tenant, subject, role, expiry, and CSRF protection |
-| Persistence | LoopOS authority service and tenant-scoped durable database | Read/write/isolation/restart probes pass; browser storage is only a non-authoritative workspace cache |
-| Audit | Authority hash chain replicated to an external append-only sink | Write, retrieve, correlation, clock, chain verification, and external-anchor probes pass |
+| Identity | BFF-managed session; IdP groups mapped server-side to LoopOS roles | Session endpoint verifies issuer, audience, signature, expiry, tenant, subject, and one explicit role mapping |
+| Persistence | LoopOS authority service and tenant-scoped durable Postgres database | Authority readiness reports Postgres and the authenticated workspace list succeeds; enterprise mode never uses browser workspace storage |
+| Durable worker | Database-leased execution jobs and a protected worker dispatch route invoked by an external scheduler | Authority readiness reports a fresh durable heartbeat from the configured internal or external dispatch mode |
+| Audit | Authority hash chain delivered through the durable outbox to an external append-only sink | Authority readiness reports a configured sink, at least one accepted signed envelope, and zero undelivered anchors |
 | Transport | HTTPS for every non-local origin | Certificate, reachability, redirect, and hostname checks pass |
 | Retention | Approved retention and deletion policy URL | Legal/security owners approve the policy and deletion evidence path |
 | Operations | Named support contact and on-call route | Alert routing and incident exercise pass |
 | Outbound policy | Exact host allowlist for AI/transcription endpoints | Egress policy and endpoint data-processing terms are approved |
+| Backup and restore | Credential-free HTTPS reference, SHA-256, and timestamp for a recent restore exercise | Authority binds readiness to the immutable digest; the handover verifier independently validates the exact evidence bytes |
 
-The required `VITE_` values are documented in `.env.example`. They are public build configuration, never secrets. Tokens and service credentials belong only in the BFF or service runtime.
+The required `VITE_` values are documented in `.env.example`. They are public build configuration, never secrets. Tokens and service credentials belong only in the BFF or service runtime. The production environment preflight requires the public retention, support, outbound, and restore bindings to match the authority environment and constrains every optional service endpoint to the server allowlist.
 
 ## Production Build
 
@@ -23,17 +25,43 @@ docker compose build
 docker compose up -d
 ```
 
-Terminate TLS at the enterprise ingress, keep the supplied security headers, and narrow `connect-src` in `nginx.conf` to approved origins. Do not set `VITE_LOOPOS_DEPLOYMENT_MODE=enterprise` until the authority API exists and the runtime probes are wired into `evaluateDeploymentPosture`.
+Terminate TLS at the enterprise ingress and keep the supplied security headers. The shipped Vercel and Nginx policies default `connect-src` to `'self'`; use the same-origin `/api` route for authority and optional services where possible. If a deployment intentionally calls a direct optional HTTPS service, add only that exact origin to both `vercel.json` and `nginx.conf` for the deployment, then rerun the production preflight and browser boundary tests. Set `VITE_LOOPOS_AUTHORITY_URL` to `/api` behind a same-origin ingress, or set it to an exact HTTPS authority origin and list that hostname in `VITE_LOOPOS_AUTHORITY_HOST_ALLOWLIST`. For a remote authority, include the UI origin in `LOOPOS_CORS_ORIGINS`; the authority enables credentialed CORS only for those exact origins. Enterprise mode probes `/health/ready`, exchanges the managed identity session, and loads the tenant workspace register before it can transition to `enterprise_ready`.
 
 ## Release Gate
 
-1. Pin the image by digest and attach SBOM, vulnerability scan, and provenance from the enterprise build service.
-2. Run unit, design-token, build, Playwright, corpus-validation, and practicality-audit gates.
-3. Test tenant isolation, session expiry, CSRF, audit append/retrieve, retention deletion, and restore in staging.
-4. Confirm CSP and egress allowlists contain only approved service origins.
-5. Record security, privacy, legal, product, and operations approval references.
-6. Canary to an internal cohort; promote only when errors, latency, persistence, and audit delivery meet the runbook thresholds.
+1. Run `python scripts/verify_production_environment.py --output output/production-configuration.json`; continue only when it reports `READY_FOR_LIVE_VERIFICATION`.
+2. Pin the image by digest and attach SBOM, vulnerability scan, and provenance from the enterprise build service. CI retains attested OCI archives, a digest manifest, HIGH/CRITICAL vulnerability reports, and a hardened two-container runtime smoke report in the `loopos-release-evidence-<commit>` artifact for 30 days.
+3. Run `npm audit --audit-level=high`, unit, design-token, build, Playwright, corpus-validation, and practicality-audit gates. From `ui`, run `npm run test:e2e:enterprise-gate` for the enterprise fail-closed browser gate; it supplies public test bindings explicitly and never supplies credentials.
+4. Test tenant isolation, session expiry, CSRF, audit append/retrieve, retention deletion, and restore in staging.
+5. Confirm CSP and egress allowlists contain only approved service origins.
+6. Record security, privacy, legal, product, and operations approval references.
+7. Canary to an internal cohort; promote only when errors, latency, persistence, and audit delivery meet the runbook thresholds.
+
+## Live Handover Proof
+
+Run the verifier from a controlled release workstation after staging or production bindings are provisioned. The two assertions must resolve to different expected tenants, and the primary identity must have Executive authority so it can create and delete the marker and inspect audit proof. The verifier creates a uniquely named marker, proves the secondary tenant receives `404`, deletes the marker, proves the primary tenant also receives `404`, verifies the complete tenant audit chain and exact `WORKSPACE_DELETED` event, invokes protected worker dispatch, and then validates the complete readiness payload. Assertions, worker tokens, and application session tokens are never included in the JSON report.
+
+```powershell
+$env:LOOPOS_HANDOVER_BASE_URL="https://loopos.example.com/api"
+$env:LOOPOS_HANDOVER_PRIMARY_IDENTITY_ASSERTION="<short-lived-primary-assertion>"
+$env:LOOPOS_HANDOVER_SECONDARY_IDENTITY_ASSERTION="<short-lived-secondary-assertion>"
+$env:LOOPOS_HANDOVER_WORKER_TOKEN="<server-side-worker-token>"
+$env:LOOPOS_HANDOVER_BACKUP_RESTORE_EVIDENCE_FILE="<path-to-reviewed-postgres-restore.json>"
+$env:LOOPOS_HANDOVER_OPERATIONAL_EVIDENCE_FILE="<path-to-reviewed-operational-controls.json>"
+$env:LOOPOS_HANDOVER_EXPECTED_PRIMARY_TENANT="<primary-tenant-id>"
+$env:LOOPOS_HANDOVER_EXPECTED_SECONDARY_TENANT="<secondary-tenant-id>"
+python scripts/verify_production_handover.py --output output/production-handover-report.json
+```
+
+`GO` requires every check to pass. Restore and operational evidence files must be the exact JSON bytes named by production readiness. The operational packet must use schema version 1, match the deployed binding fingerprint and timestamp, and pass `retention_policy_approved`, `retention_deletion_test_passed`, `support_route_tested`, `support_escalation_test_passed`, `outbound_policy_enforced`, and `outbound_denial_test_passed`. Any missing credential, modified evidence byte, insecure target, failed cleanup, cross-tenant visibility, stale evidence or worker heartbeat, audit backlog, development authentication, non-Postgres storage, or incomplete operational binding produces `NO_GO` and a nonzero exit code. If the verifier is interrupted, search the primary tenant for the `handover-probe-` prefix and delete any residual marker before repeating the gate.
+
+The packet must validate against `schemas/operational-evidence.schema.json`. Generate its `binding_fingerprint` only after the production retention URL, support route, outbound mode, and allowlist are final:
+
+```powershell
+$env:PYTHONPATH="authority"
+python -c "from loopos_authority.config import Settings, operational_binding_fingerprint; print(operational_binding_fingerprint(Settings.from_env()))"
+```
 
 ## Current Boundary
 
-This repository now supplies the portal, deterministic recommendation engine, governed execution authority, single-instance SQLite persistence, tool/probe runtime, audit chain, and hardened containers. It does not supply the organization IdP/BFF, horizontally scalable managed database, external WORM/SIEM anchor, secrets manager, or organization-specific retention implementation. Production activation remains blocked until those bindings are integrated and verified.
+This repository supplies the portal, deterministic recommendation engine, governed execution authority, tenant-scoped SQLite/Postgres store contract, authoritative workspace revisions, database-leased execution jobs, protected worker dispatch, tool/probe runtime, audit chain with a durable external-anchor outbox, and hardened containers. It does not supply the organization IdP/BFF, a provisioned managed Postgres instance, the independently administered WORM/SIEM sink, secrets manager, external scheduler, or organization-specific retention/backup implementation. Production activation remains blocked until those bindings are provisioned and verified.

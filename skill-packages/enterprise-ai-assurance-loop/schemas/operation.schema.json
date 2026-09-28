@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-operation/v1"
+      ]
+    },
+    "action": {
+      "enum": [
+        "RESUME",
+        "CANCEL",
+        "SUSPEND",
+        "REPAIR",
+        "MODE_OBSERVED",
+        "MIGRATE"
+      ]
+    },
+    "expected_state_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "risk_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "patch_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "observed_mode": {
+      "enum": [
+        "UNKNOWN",
+        "DISABLED",
+        "ISOLATED_TEST",
+        "SHADOW",
+        "RESTRICTED_READ",
+        "HUMAN_EXECUTED",
+        "BOUNDED_AUTONOMY"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "action",
+    "expected_state_sha",
+    "reason",
+    "references",
+    "risk_id",
+    "patch_sha",
+    "observed_mode"
+  ],
+  "additionalProperties": false
+}

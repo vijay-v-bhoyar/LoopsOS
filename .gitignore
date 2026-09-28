@@ -17,6 +17,7 @@ supabase/.temp/
 *.db
 *.db-shm
 *.db-wal
+.release-evidence/
 
 .vercel
 .env*

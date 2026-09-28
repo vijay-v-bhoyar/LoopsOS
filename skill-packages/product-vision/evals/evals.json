@@ -1,0 +1,18 @@
+{
+  "skill_name": "product-vision",
+  "evals": [
+    {
+      "name": "portable-owned-vision-decisions",
+      "prompt": "Create a proposed vision in this Windows workspace. Keep missing why-now explicit, continue independent diligence, and record my later acceptance of only the first wedge.",
+      "expected_output": "An accessible Markdown dossier plus owned assumption and decision records; accepted scope is bounded and unanswered criteria remain proposed.",
+      "assertions": [
+        "Uses host-provided or workspace output root, not a hardcoded Linux mount.",
+        "A new experiment invalidates its prior decision.",
+        "Shared criterion dependencies all need accepted current decisions.",
+        "Research evidence does not invent founder intent or permission."
+      ],
+      "id": 1,
+      "files": []
+    }
+  ]
+}

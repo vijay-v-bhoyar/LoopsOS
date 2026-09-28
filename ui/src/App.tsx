@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthGate } from "./components/AuthGate";
 import { Shell, type ViewId } from "./components/Shell";
-import { looposData } from "./lib/loopos";
 import { recommendLoops } from "./lib/recommendation";
 import { validateUseCase } from "./lib/validation";
 import { buildEnterpriseActionPlan } from "./lib/actionPlan";
-import { buildProofPackMarkdown, completeNextRunStep, createInitiativeFromWorkspace, refreshInitiative } from "./lib/sdlcProductivity";
+import { buildEvaluationPackMarkdown, completeNextRunStep, createInitiativeFromWorkspace, recordOutcomeObservation, refreshInitiative } from "./lib/sdlcProductivity";
 import { consumeCrashAuthenticatedView } from "./lib/runtimeConfig";
-import { createExecution, DEFAULT_WORKSPACE_USE_CASE, useWorkspaceStore } from "./lib/workspaceStore";
+import { deploymentPostureForRuntime } from "./lib/deployment";
+import { createExecution, EMPTY_WORKSPACE_USE_CASE, useWorkspaceStore } from "./lib/workspaceStore";
 import { downloadMarkdown } from "./lib/workspaceExport";
+import { loadLooposData } from "./lib/runtimeData";
 import { Dashboard } from "./screens/Dashboard";
 import { ImplementationPlan } from "./screens/ImplementationPlan";
 import { LoopExplorer } from "./screens/LoopExplorer";
@@ -17,7 +18,7 @@ import { UseCaseAdvisor, type AdvisorPane } from "./screens/UseCaseAdvisor";
 import { UseCaseLibrary } from "./screens/UseCaseLibrary";
 import { ValidationStudio } from "./screens/ValidationStudio";
 import { WorkspaceConsole } from "./screens/WorkspaceConsole";
-import type { EnterpriseActionPlan, EnterpriseUser, LoopDetail, UseCaseRecord, UseCaseSource } from "./types";
+import type { EnterpriseActionPlan, EnterpriseUser, LoopDetail, LoopOSData, UseCaseRecord, UseCaseSource } from "./types";
 
 const VIEW_IDS: ViewId[] = ["dashboard", "workspace", "loops", "advisor", "usecases", "validation", "readiness", "plan"];
 
@@ -27,6 +28,46 @@ function viewFromLocation(): ViewId {
 }
 
 export default function App() {
+  const [looposData, setLooposData] = useState<LoopOSData | null>(null);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    loadLooposData()
+      .then((data) => {
+        if (active) setLooposData(data);
+      })
+      .catch((error: unknown) => {
+        if (active) setCatalogError(error instanceof Error ? error.message : "The LoopOS catalog could not be loaded.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (catalogError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-bg2 px-6 text-fg1">
+        <div role="alert" className="surface max-w-lg p-6">
+          <h1 className="text-xl font-semibold">LoopOS is unavailable</h1>
+          <p className="mt-2 text-sm text-fg2">{catalogError}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!looposData) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-bg2 px-6 text-fg1">
+        <p role="status" className="text-sm font-semibold text-fg2">Loading the LoopOS catalog...</p>
+      </main>
+    );
+  }
+
+  return <LoadedApp looposData={looposData} />;
+}
+
+function LoadedApp({ looposData }: { looposData: LoopOSData }) {
   const [activeView, setActiveView] = useState<ViewId>(viewFromLocation);
   const [advisorPane, setAdvisorPane] = useState<AdvisorPane>("input");
   const activeViewRef = useRef(activeView);
@@ -36,7 +77,8 @@ export default function App() {
   const [selectedLoop, setSelectedLoop] = useState<LoopDetail | null>(looposData.loops[0] ?? null);
   const [plan, setPlan] = useState<EnterpriseActionPlan | null>(null);
   const workspace = useWorkspaceStore();
-  const input = workspace.activeWorkspace?.use_case ?? DEFAULT_WORKSPACE_USE_CASE;
+  const posture = useMemo(() => deploymentPostureForRuntime(workspace.runtimeEvidence), [workspace.runtimeEvidence]);
+  const input = workspace.activeWorkspace?.use_case ?? EMPTY_WORKSPACE_USE_CASE;
   const inputSources = workspace.activeWorkspace?.input_sources ?? [];
 
   useEffect(() => {
@@ -141,6 +183,7 @@ export default function App() {
   };
 
   const recordDashboardDryRun = () => {
+    if (posture.mode === "enterprise") return;
     const recommendation = recommendations[0];
     const loop = recommendation ? looposData.loops.find((item) => item.loop_id === recommendation.loop_id) : null;
     if (!loop || !workspace.activeWorkspace || !currentUser) return;
@@ -155,8 +198,9 @@ export default function App() {
         `readiness:${validation.readiness}`,
         `controls:${loop.control_profile.applicable_control_ids.length}`,
       ].join(" | "),
-      validation_result: validation.readiness === "Blocked" ? "Inconclusive" : "Passed",
-      proof_state: validation.readiness === "Blocked" ? "Effectiveness Pending" : "Proof Green",
+      // Browser-local dry runs never produce authoritative validation or proof.
+      validation_result: "Inconclusive",
+      proof_state: "Effectiveness Pending",
       owner: currentUser.name,
     });
     workspace.mutateActiveWorkspace((current) => ({
@@ -177,6 +221,7 @@ export default function App() {
   };
 
   const completeSdlcRunStep = () => {
+    if (posture.mode === "enterprise") return;
     const initiative = workspace.activeWorkspace?.initiatives[0];
     if (!initiative) return;
     workspace.mutateActiveWorkspace((current) => ({
@@ -191,13 +236,23 @@ export default function App() {
     }));
   };
 
-  const exportSdlcProofPack = () => {
+  const recordDashboardOutcome = (value: number, sourceRef: string) => {
+    if (posture.mode === "enterprise") return;
+    const initiative = workspace.activeWorkspace?.initiatives[0];
+    if (!initiative) return;
+    workspace.mutateActiveWorkspace((current) => ({
+      ...current,
+      initiatives: current.initiatives.map((item) => item.id === initiative.id ? recordOutcomeObservation(item, value, sourceRef) : item),
+    }));
+  };
+
+  const exportSdlcEvaluationPack = () => {
     const active = workspace.activeWorkspace;
     const initiative = active?.initiatives[0];
     if (!active || !initiative) return;
-    const markdown = buildProofPackMarkdown(active, initiative, looposData, validation);
-    const base = initiative.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "loopos-proof-pack";
-    downloadMarkdown(`${base}-proof-pack.md`, markdown);
+    const markdown = buildEvaluationPackMarkdown(active, initiative, looposData, validation);
+    const base = initiative.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "loopos-evaluation-pack";
+    downloadMarkdown(`${base}-evaluation-pack.md`, markdown);
     workspace.mutateActiveWorkspace((current) => ({ ...current, action_plan_markdown: markdown }));
   };
 
@@ -221,7 +276,9 @@ export default function App() {
           onRecordDryRun={recordDashboardDryRun}
           onCreateInitiative={createSdlcInitiative}
           onCompleteRunStep={completeSdlcRunStep}
-          onExportProofPack={exportSdlcProofPack}
+          onRecordOutcome={recordDashboardOutcome}
+          onExportEvaluationPack={exportSdlcEvaluationPack}
+          posture={posture}
         />
       );
     }
@@ -257,6 +314,8 @@ export default function App() {
           onMutateWorkspace={workspace.mutateActiveWorkspace}
           onUseCaseChange={workspace.updateUseCase}
           onDeleteWorkspace={workspace.deleteWorkspace}
+          onSessionExpired={workspace.signOut}
+          onRetryPersistence={workspace.retryPersistence}
           persistence={workspace.persistence}
         />
       );
@@ -268,14 +327,20 @@ export default function App() {
       return <ValidationStudio data={looposData} input={input} validation={validation} />;
     }
     if (activeView === "readiness") {
-      return <ReadinessWorkbench data={looposData} />;
+      return <ReadinessWorkbench data={looposData} posture={posture} />;
     }
     return <ImplementationPlan plan={plan ?? buildEnterpriseActionPlan(input, recommendations, validation)} />;
   };
   const currentUser = workspace.state.current_user;
 
   return (
-    <AuthGate user={currentUser} onSignIn={workspace.signIn}>
+    <AuthGate
+      user={currentUser}
+      onSignIn={workspace.signIn}
+      enterpriseSession={workspace.enterpriseSession}
+      onEnterpriseSignIn={workspace.retryEnterpriseSignIn}
+      posture={posture}
+    >
       {currentUser ? (
         <Shell
           activeView={activeView}
@@ -289,6 +354,7 @@ export default function App() {
           onSignOut={workspace.signOut}
           canGoBack={activeView !== "dashboard"}
           onBack={goBack}
+          posture={posture}
         >
           {renderView(currentUser)}
         </Shell>

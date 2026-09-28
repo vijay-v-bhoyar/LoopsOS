@@ -3,13 +3,14 @@ import { looposData } from "./loopos";
 import { recommendLoops } from "./recommendation";
 import {
   buildIssueTicketText,
-  buildProofPackMarkdown,
+  buildEvaluationPackMarkdown,
   completeNextRunStep,
   createInitiativeFromWorkspace,
   createLoopRun,
   deriveHandoffs,
   estimateEffortSaving,
   inferWorkflowType,
+  recordOutcomeObservation,
 } from "./sdlcProductivity";
 import { validateUseCase } from "./validation";
 import { createUser, createWorkspace } from "./workspaceStore";
@@ -40,6 +41,49 @@ describe("sdlcProductivity", () => {
     expect(initiative.roi_assumptions.confidence_basis).toContain("No model confidence");
   });
 
+  it("carries the measurement plan and records actual observations with source evidence", () => {
+    const measuredWorkspace = {
+      ...workspace,
+      use_case: {
+        ...workspace.use_case,
+        outcomeMeasurement: {
+          metric: "Review cycle time",
+          unit: "hours" as const,
+          baseline: 40,
+          target: 16,
+          source: "Approved review report",
+          observation_window: "90 days",
+        },
+      },
+    };
+    const measuredRecommendations = recommendLoops(measuredWorkspace.use_case, looposData);
+    const measuredValidation = validateUseCase(measuredWorkspace.use_case, measuredRecommendations, looposData, []);
+    const initiative = createInitiativeFromWorkspace(measuredWorkspace, measuredRecommendations, measuredValidation, looposData, user.name, "2026-07-23T12:00:00.000Z");
+    const observed = recordOutcomeObservation(initiative, 18, "review-report-2026-08", "2026-08-30T12:00:00.000Z");
+
+    expect(initiative.outcome_measurement?.target).toBe(16);
+    expect(observed.outcome_observations).toHaveLength(1);
+    expect(observed.outcome_observations?.[0]).toMatchObject({ value: 18, unit: "hours", source_ref: "review-report-2026-08", observed_at: "2026-08-30T12:00:00.000Z" });
+    expect(buildEvaluationPackMarkdown(measuredWorkspace, observed, looposData, measuredValidation)).toContain("18 hours at 2026-08-30T12:00:00.000Z from review-report-2026-08");
+  });
+
+  it("rejects outcome observations without a plan or evidence source", () => {
+    const initiative = createInitiativeFromWorkspace(workspace, recommendations, validation, looposData, user.name);
+    expect(() => recordOutcomeObservation(initiative, 12, "source")).toThrow("measurement plan");
+    const measuredInitiative = {
+      ...initiative,
+      outcome_measurement: {
+        metric: "Cycle time",
+        unit: "hours" as const,
+        baseline: 10,
+        target: 5,
+        source: "Report",
+        observation_window: "30 days",
+      },
+    };
+    expect(() => recordOutcomeObservation(measuredInitiative, 5, " ")).toThrow("source");
+  });
+
   it("advances a loop run checklist and updates validation output", () => {
     const loop = looposData.loops[0];
     const run = createLoopRun(loop, "initiative-1", user.name, "2026-07-23T12:00:00.000Z");
@@ -52,16 +96,29 @@ describe("sdlcProductivity", () => {
     expect(next.validation_result).toBe("Inconclusive");
   });
 
+  it("keeps a fully completed local checklist inconclusive until authority evidence exists", () => {
+    const loop = looposData.loops[0];
+    let run = createLoopRun(loop, "initiative-1", user.name, "2026-07-23T12:00:00.000Z");
+    for (let index = 0; index < run.step_records.length; index += 1) {
+      run = completeNextRunStep(run, `2026-07-23T12:${String(index + 1).padStart(2, "0")}:00.000Z`);
+    }
+
+    expect(run.status).toBe("validated");
+    expect(run.validation_result).toBe("Inconclusive");
+  });
+
   it("generates proof pack and issue-ticket-ready text with required sections", () => {
     const initiative = createInitiativeFromWorkspace(workspace, recommendations, validation, looposData, user.name, "2026-07-23T12:00:00.000Z");
-    const proof = buildProofPackMarkdown(workspace, initiative, looposData, validation);
-    expect(proof).toContain("## Loop Bundle");
-    expect(proof).toContain("## Handoffs And Blockers");
-    expect(proof).toContain("## ROI Assumptions");
-    expect(proof).toContain("## Release Assurance Gates");
-    expect(proof).toContain("## External Evidence References");
+    const evaluationPack = buildEvaluationPackMarkdown(workspace, initiative, looposData, validation);
+    expect(evaluationPack).toContain("# LoopOS SDLC Evaluation Pack");
+    expect(evaluationPack).toContain("not an authoritative proof pack");
+    expect(evaluationPack).toContain("## Loop Bundle");
+    expect(evaluationPack).toContain("## Handoffs And Blockers");
+    expect(evaluationPack).toContain("## ROI Assumptions");
+    expect(evaluationPack).toContain("## Release Assurance Gates");
+    expect(evaluationPack).toContain("## External Evidence References");
     expect(initiative.release_assurance?.connectors.map((connector) => connector.system)).toEqual(["jira", "github", "manual"]);
-    expect(proof).toContain("## 30/60/90 Day Plan");
+    expect(evaluationPack).toContain("## 30/60/90 Day Plan");
     expect(buildIssueTicketText(initiative)).toContain("[LoopOS]");
   });
 

@@ -4,7 +4,7 @@ import { Badge, riskTone } from "./Badge";
 import { Card, SectionHeader } from "./Card";
 import { HelpPopover } from "./Help";
 import type { LoopDetail } from "../types";
-import { compactList } from "../lib/loopos";
+import { compactList } from "../lib/format";
 
 const RUN_SEQUENCE = [
   "Trigger",

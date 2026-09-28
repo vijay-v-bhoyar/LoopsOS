@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-profile/v1"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "version": {
+      "enum": [
+        "1.0.0"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "cross-industry",
+        "insurance"
+      ]
+    },
+    "exposure": {
+      "enum": [
+        "ISOLATED_TEST",
+        "SHADOW",
+        "RESTRICTED_READ",
+        "HUMAN_EXECUTED",
+        "BOUNDED_AUTONOMY"
+      ]
+    },
+    "required_proof": {
+      "enum": [
+        "FIXTURE",
+        "ENTERPRISE"
+      ]
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "max_detection_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_task_error_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_cohort_loss": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_stop_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_unknown_effects": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_monitor_blind_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_review_miss_rate": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_backlog": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_total_exposure": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_reconciliation_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_eval_delta": {
+          "type": "number",
+          "minimum": 0
+        },
+        "min_samples": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "max_detection_seconds",
+        "max_task_error_rate",
+        "max_cohort_loss",
+        "max_stop_seconds",
+        "max_unknown_effects",
+        "max_monitor_blind_seconds",
+        "max_review_miss_rate",
+        "max_backlog",
+        "max_total_exposure",
+        "max_reconciliation_seconds",
+        "max_eval_delta",
+        "min_samples"
+      ],
+      "additionalProperties": false
+    },
+    "max_repairs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "max_events": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100000
+    },
+    "run_seconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_evidence_age": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "waiver_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 90
+    },
+    "nonwaivable_cases": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "principals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "waiver_compensations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      }
+    },
+    "enterprise_prerequisites": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "version",
+    "kind",
+    "exposure",
+    "required_proof",
+    "limits",
+    "max_repairs",
+    "max_events",
+    "run_seconds",
+    "max_evidence_age",
+    "waiver_days",
+    "nonwaivable_cases",
+    "principals",
+    "operations",
+    "waiver_compensations",
+    "enterprise_prerequisites"
+  ],
+  "additionalProperties": false
+}

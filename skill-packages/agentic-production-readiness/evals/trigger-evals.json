@@ -1,0 +1,50 @@
+[
+  {
+    "query": "Take this existing AI agent application through production readiness one approved fix at a time and keep a persistent gate scorecard.",
+    "should_trigger": true
+  },
+  {
+    "query": "Resume docs/production-readiness.md, show me the next decision, and do not change anything until I choose an option.",
+    "should_trigger": true
+  },
+  {
+    "query": "Inspect our agent tool loops, auth, retrieval, evals, recovery, and operations, then remediate each readiness blocker only after my approval.",
+    "should_trigger": true
+  },
+  {
+    "query": "Run the twelve-gate readiness process for this repository and give me one decision card at a time.",
+    "should_trigger": true
+  },
+  {
+    "query": "REC for the current production-readiness recommendation. Implement only that slice, verify it, update state, and stop at the next decision.",
+    "should_trigger": true
+  },
+  {
+    "query": "STATUS on our agentic production hardening loop: show locally verified, externally blocked, deferred, and open gates without implementing anything.",
+    "should_trigger": true
+  },
+  {
+    "query": "Perform a comprehensive executive assurance assessment across architecture, acquisition value, moat, and future resilience, but do not remediate anything.",
+    "should_trigger": false
+  },
+  {
+    "query": "Add a CSV export button and run the component tests.",
+    "should_trigger": false
+  },
+  {
+    "query": "Deploy the already approved build to Vercel and verify the live URL.",
+    "should_trigger": false
+  },
+  {
+    "query": "Audit only the OAuth callback for security vulnerabilities and give me findings; do not fix them.",
+    "should_trigger": false
+  },
+  {
+    "query": "Run the Playwright suite and report which tests fail without changing code.",
+    "should_trigger": false
+  },
+  {
+    "query": "Approve or reject this release using the evidence bundle and deployment policy.",
+    "should_trigger": false
+  }
+]

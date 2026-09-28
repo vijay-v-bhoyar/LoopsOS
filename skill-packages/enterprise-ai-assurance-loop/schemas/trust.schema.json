@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-trust/v1"
+      ]
+    },
+    "epoch": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "expires_at": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_ttl_seconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "evidence_not_before": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "issuers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "public_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "principal": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+          },
+          "organization_unit": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 12
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "collector",
+                "challenger",
+                "risk-executive",
+                "operator",
+                "help-adapter"
+              ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "test_only": {
+            "type": "boolean"
+          },
+          "valid_from": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "valid_until": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "public_key",
+          "principal",
+          "organization_unit",
+          "owners",
+          "roles",
+          "test_only",
+          "valid_from",
+          "valid_until"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "approved_profiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "revoked_profiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "revoked_issuers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "revoked_invocations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "approved_verifiers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema",
+    "epoch",
+    "issued_at",
+    "expires_at",
+    "max_ttl_seconds",
+    "evidence_not_before",
+    "issuers",
+    "approved_profiles",
+    "revoked_profiles",
+    "revoked_issuers",
+    "revoked_invocations",
+    "approved_verifiers"
+  ],
+  "additionalProperties": false
+}

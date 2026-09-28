@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentic Product Loop"
+  short_description: "Run the final v13 enterprise product loop for any repo."
+  default_prompt: "Run one safe product-loop cycle for the current repo."

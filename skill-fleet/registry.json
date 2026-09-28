@@ -1,0 +1,2525 @@
+{
+  "schema": "skill-fleet/v2",
+  "skills": [
+    {
+      "id": "abuse-fraud-defense",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\abuse-fraud-defense",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\abuse-fraud-defense"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\abuse-fraud-defense": "31f2e077c201d55794e8cbec03db476a9b348b23dce022cd370bcb00cef05f54"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\abuse-fraud-defense": "32ba143b38139213df9c70c1310e256a2ea7452c0de327385a59dff8ac79015f"
+      }
+    },
+    {
+      "id": "agent-architecture",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\agent-architecture",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\agent-architecture"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-architecture": "b7cc41d7173bf19c68819a52053959a7c88085a842691ab845974d95d2583c0c"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-architecture": "a4deef68afa5a61f67c65dfde5b9ce3b54f381ce20d24dd8158669cd8a0828f7"
+      }
+    },
+    {
+      "id": "agent-memory",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\agent-memory",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\agent-memory"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-memory": "d471626d2c20d75361de446db9157c1489b5872fa0d353023d44909009e65c76"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-memory": "6b6ff6ba0178300d2bbfea592013e6abf7576930eec81773d359abcafeb0add8"
+      }
+    },
+    {
+      "id": "agent-oversight",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\agent-oversight",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\agent-oversight"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-oversight": "9444db4a490be7fe0f750ff9b8473451b75785debe68ba4c8bad2c798039e764"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-oversight": "102255b2bce43db64f30a97a5d4040c69b67b5206c8477efe9dc2570a57166ea"
+      }
+    },
+    {
+      "id": "agent-release",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\agent-release",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\agent-release"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-release": "65bf60a2621774367575de2556288458ef4c4ab5c72e9ddcdec80b88308be815"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-release": "4bfe5e90797dc5bf893114c2dcd2c8d388291bcb9a1e25536bc63f5a408cbea3"
+      }
+    },
+    {
+      "id": "agent-security",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\agent-security",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\agent-security"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-security": "b26ed57a73886d9c7f4eac7f6ec98efc4537ef587d6ac48d563b78d052b05deb"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-security": "1921282c36d0eb6f7d5d0988f694855990cfe832ac24b7fecb0950a2fcc32fba"
+      }
+    },
+    {
+      "id": "agent-trust-ux",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\agent-trust-ux",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\agent-trust-ux"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-trust-ux": "f585ef8ae22f495dade7c662264110ed26495ccdc95c3ca5b3d3c6c8add5e9de"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agent-trust-ux": "dbaf8e215261a559b0be7aac9b9d49388ce292c4dab56513e0f6b8bec1cb0474"
+      }
+    },
+    {
+      "id": "agentic-application-architect",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\agentic-application-architect",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\agentic-application-architect"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agentic-application-architect": "4d4a87e0c0ad4ed3ce52eb30a9b99853f272d10486ca94a48f2c6d1989154644"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\agentic-application-architect": "aa3145d590e7e2596fa7980b27f4051a82d782610d6b658cbe81b54c66d5f7ca"
+      }
+    },
+    {
+      "id": "agentic-assurance-loop",
+      "canonical": "${WORKSPACE}/skill-packages/agentic-assurance-loop",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-assurance-loop",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\agentic-assurance-loop"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-assurance-loop": "bd8c4551208b3e508c5b172b99ef809bd8a27f3c932d8c7a60d695cf552cc8b4",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\agentic-assurance-loop": "bd8c4551208b3e508c5b172b99ef809bd8a27f3c932d8c7a60d695cf552cc8b4"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-assurance-loop": "d0814aab9d88379101fd0efbe5e65a168d91d95b8f6ed8e2bbe2aca2166a016d",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\agentic-assurance-loop": "d0814aab9d88379101fd0efbe5e65a168d91d95b8f6ed8e2bbe2aca2166a016d"
+      }
+    },
+    {
+      "id": "agentic-production-readiness",
+      "canonical": "${WORKSPACE}/skill-packages/agentic-production-readiness",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-production-readiness",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\agentic-production-readiness"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-production-readiness": "c75d5b8a73a44d11eecba68df9721d9b26ce07843fde2e9188f4a9248f133c16",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\agentic-production-readiness": "c75d5b8a73a44d11eecba68df9721d9b26ce07843fde2e9188f4a9248f133c16"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-production-readiness": "b84cbe88148b894d22b16654d2756f19f863fae90891099ea3dcc028221557d2",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\agentic-production-readiness": "b84cbe88148b894d22b16654d2756f19f863fae90891099ea3dcc028221557d2"
+      }
+    },
+    {
+      "id": "agentic-product-loop",
+      "canonical": "${WORKSPACE}/skill-packages/agentic-product-loop",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-product-loop"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-product-loop": "c1eb49b4cafe665b326f94eb4953a8f0da01bae0b582fee185006d3e6c53fc68"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\agentic-product-loop": "847bffb1f014f314f0a944c0e284aacea9cefc957db0c07990d1c19b7629c516"
+      }
+    },
+    {
+      "id": "agents-sdk",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\agents-sdk",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "ai-governance-board",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\ai-governance-board",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\ai-governance-board"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ai-governance-board": "853629d3749e9440ea19e95b25fbd8d7eac6f91eec6dcc219d6ba2f72ba6ca39"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ai-governance-board": "511e59dfa227c6811d96020726481e8172995ac664dc0b97f52226e6279d8ede"
+      }
+    },
+    {
+      "id": "ai-guardrails",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\ai-guardrails",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\ai-guardrails"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ai-guardrails": "b61c842cab23444662ed02f5280b88dc21a777bcba0577bf8b65d3a84346a898"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ai-guardrails": "c516ea339c5f245fb93eb36080e8d280ea2bf07a115c0420a6109030e672ee00"
+      }
+    },
+    {
+      "id": "ai-red-team",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\ai-red-team",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\ai-red-team"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ai-red-team": "51346f25ab8a0b987efe6c6f4620ae9a3d059266b2e80f528b485b377cd16423"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ai-red-team": "96e75da9c3226e0d040be471ecd498df1812bd2712cd4dd2889448d5e081c3e2"
+      }
+    },
+    {
+      "id": "ai-validation-management",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\ai-validation-management",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\ai-validation-management"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ai-validation-management": "a6616ce5ac4d81f4487580d3bc2b66deb215b7f373315ec456098da246a91592"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ai-validation-management": "c9befac340ae5665db68f0647678dabdc93280cfde8d5820d28e8c0701056871"
+      }
+    },
+    {
+      "id": "animated-ui-builder",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\animated-ui-builder",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\animated-ui-builder"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\animated-ui-builder": "1b38407bc98e5c942407a2635985737735f76b51cc107a568747c098f0927f3c"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\animated-ui-builder": "14c9974dffb7e56e081ac3d0527cb6a09993c489a0b670377e8dc20b3c76860a"
+      }
+    },
+    {
+      "id": "architecture-decision-records",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\architecture-decision-records",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\architecture-decision-records"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\architecture-decision-records": "7e1b80ba44a0a7cc0affe916aec81f97c34673e8bbdc19cb7097a21b4a320189"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\architecture-decision-records": "5dda84d8d282f00cfd2e8b0e7b0f6414bf2a179ef0d949a7d1df5acc14a8f983"
+      }
+    },
+    {
+      "id": "book-seo-metadata",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\book-seo-metadata",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "canvas-design",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\canvas-design",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\canvas-design"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\canvas-design": "7bebc4a2cf108c55c1e52bb96b1050dc1ab2f9492e9c2d43f1fe57f826728f4d"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\canvas-design": "3a15e0fb1179bbc0cc89b6b9b68417c98abd1052c7e2977913a3e7ea8315884b"
+      }
+    },
+    {
+      "id": "cloudflare",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\cloudflare",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "cloudflare-email-service",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\cloudflare-email-service",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "cloudflare-one",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\cloudflare-one",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "cloudflare-one-migrations",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\cloudflare-one-migrations",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "code-map",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\code-map",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\code-map"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\code-map": "5df0eeb9a43770adb51925624dc71a0fdb5c95a72826d94af317b09d87149941"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\code-map": "69222bd998dbaef2724374398eabefd965170cf1558d3b0d513a92fff6a8a407"
+      }
+    },
+    {
+      "id": "codex-product-build-loop",
+      "canonical": "${WORKSPACE}/skill-packages/codex-product-build-loop",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\codex-product-build-loop",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\codex-product-build-loop"
+      ],
+      "version": "1.1.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\codex-product-build-loop": "4011ba58aa96905976d8e682025a9274d6dcdc418e44234d3c57e7a2ea9fa8ab",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\codex-product-build-loop": "4011ba58aa96905976d8e682025a9274d6dcdc418e44234d3c57e7a2ea9fa8ab"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\codex-product-build-loop": "404488e4bdf6eeeae9255cd6a1a634c9bf1081eb6f5422372834a83fd0406d5d",
+        "C:\\Users\\vijay\\OneDrive\\Documents\\LoopsOS\\.codex\\skills\\codex-product-build-loop": "404488e4bdf6eeeae9255cd6a1a634c9bf1081eb6f5422372834a83fd0406d5d"
+      },
+      "canonical_sha256": "4011ba58aa96905976d8e682025a9274d6dcdc418e44234d3c57e7a2ea9fa8ab",
+      "canonical_tree_sha256": "404488e4bdf6eeeae9255cd6a1a634c9bf1081eb6f5422372834a83fd0406d5d"
+    },
+    {
+      "id": "compliance-mapping",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\compliance-mapping",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\compliance-mapping"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\compliance-mapping": "65d23e687520053dbeefe5dfca21a75d3ce6b80b646c8272af8445733af2036a"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\compliance-mapping": "74ea1903cc7bdeb7371bac39bbbbec0d18b7a3b59addd9c2be8c4d70efbbf8bb"
+      }
+    },
+    {
+      "id": "consolidate-memory",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\consolidate-memory",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\consolidate-memory"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\consolidate-memory": "7edd3cadeefc6461dfc487338bf751ae8f905e7c2dbf0b2eab13000d3659d132"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\consolidate-memory": "45ad55e0d5491afe65a69870e38f8ca2afb81e17a4d456d898b0310e88457614"
+      }
+    },
+    {
+      "id": "context-architecture",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\context-architecture",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\context-architecture"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\context-architecture": "3c61423c9f391bbccd09dcd50f2506a045794233b3046029e71de363995be961"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\context-architecture": "f309080693d10e359a2132c18a03defb5977c41b16dbfbab136654e26198f6dd"
+      }
+    },
+    {
+      "id": "contextual-help",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\contextual-help",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\contextual-help"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\contextual-help": "265a4bf9f4fbd53c0b6a30b428d10536400849f36271d641867054147bb6c98f"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\contextual-help": "544a235984004675f60a7eebce2999c12aa5fe17f9285f805b1464b8265b3e32"
+      }
+    },
+    {
+      "id": "crypto-agility-pqc",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\crypto-agility-pqc",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\crypto-agility-pqc"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\crypto-agility-pqc": "1c37933bb4e4b5b7cee0429800f61213039b92e5ec718c2196423a3876a77cae"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\crypto-agility-pqc": "57aa060c0b6ffaf6c1213c0c5b14987fddcc50e32346301a74fcab9cac4893c6"
+      }
+    },
+    {
+      "id": "data-governance-architecture",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\data-governance-architecture",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\data-governance-architecture"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\data-governance-architecture": "01b0e6896df46dc044c00efeb3cd47b9f9dab0300172411bea91a183f871e106"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\data-governance-architecture": "a55066cd80d0e798d1d7180f68a74c4c62e6c37f8b2f7b09f7f5ea86199446cb"
+      }
+    },
+    {
+      "id": "data-stewardship-operations",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\data-stewardship-operations",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\data-stewardship-operations"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\data-stewardship-operations": "1af9b41dcc266c26624f967ecf45381fb4847d511be7cdd0642db00fc54955da"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\data-stewardship-operations": "196cb8d1b94980b6caff8c754dceeeb1cdc5bf148a4c95705510dff8a0f4c6ca"
+      }
+    },
+    {
+      "id": "deploy-provision",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\deploy-provision",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\deploy-provision"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\deploy-provision": "f3602c08d6b274b6113cacadcfabbd27cc249fb3d4f62530975acc69ba375fea"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\deploy-provision": "5fb9b590eb42d41c7675ce63ee41da3654194087cc1d8af97c415c8df657eba2"
+      }
+    },
+    {
+      "id": "devcontainer-spec",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\devcontainer-spec",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\devcontainer-spec"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\devcontainer-spec": "84c081c2d9c011cb981d828343aa071adca794c7e7b4d99fc35b5805a6dac82a"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\devcontainer-spec": "f822965aa7300e52f5cdd5b96b3502cd6aedc52c82443872c11e32565cc9a6f5"
+      }
+    },
+    {
+      "id": "docx",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\docx",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\docx"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\docx": "4aa6a5f26f220508d1ec6be1d53703464da5d6aeae51f67a382f0163734e7272"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\docx": "c73e658cae6bbd3c816dda659ddcbff4571fe1030b84d55169a28b701ffa63c1"
+      }
+    },
+    {
+      "id": "domain-workflow-validation",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\domain-workflow-validation",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\domain-workflow-validation"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\domain-workflow-validation": "f0c87fe02f94650b291d98e3256632915a9e2528e8f5d989dae64060db4630f1"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\domain-workflow-validation": "16135587555cce8ba854b190f26b3002a84d7cfea8feb5c2dcd36339300aa499"
+      }
+    },
+    {
+      "id": "durable-objects",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\durable-objects",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "enterprise-advanced-capability-assurance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-advanced-capability-assurance",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-advanced-capability-assurance"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-advanced-capability-assurance": "53363dba10029908775a9762d322be603b46a752931e2e3ea128e7a75b9a31bd",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-advanced-capability-assurance": "53363dba10029908775a9762d322be603b46a752931e2e3ea128e7a75b9a31bd"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-advanced-capability-assurance": "510b09c637f39b341ab3029487efe0ca77003d89c9a2b2ec81b5340f1fa1bbad",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-advanced-capability-assurance": "510b09c637f39b341ab3029487efe0ca77003d89c9a2b2ec81b5340f1fa1bbad"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-advanced-capability-assurance",
+      "canonical_sha256": "53363dba10029908775a9762d322be603b46a752931e2e3ea128e7a75b9a31bd",
+      "canonical_tree_sha256": "510b09c637f39b341ab3029487efe0ca77003d89c9a2b2ec81b5340f1fa1bbad",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-agentic-assurance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-agentic-assurance",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-agentic-assurance"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-agentic-assurance": "a7e5ef15d1af2c557c996143072d42eb5d7f90173f9303d98fdb21eb3ce54156",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-agentic-assurance": "a7e5ef15d1af2c557c996143072d42eb5d7f90173f9303d98fdb21eb3ce54156"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-agentic-assurance": "266e10df679b5df14fa3bc521c8c261e6b1146d4278a40fba29ec12ad4e2df76",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-agentic-assurance": "266e10df679b5df14fa3bc521c8c261e6b1146d4278a40fba29ec12ad4e2df76"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-agentic-assurance",
+      "canonical_sha256": "a7e5ef15d1af2c557c996143072d42eb5d7f90173f9303d98fdb21eb3ce54156",
+      "canonical_tree_sha256": "266e10df679b5df14fa3bc521c8c261e6b1146d4278a40fba29ec12ad4e2df76",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-ai-assurance-loop",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-assurance-loop",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-assurance-loop"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-assurance-loop": "0ea71463b6e0798c7e3a275d4a1494e78a4e74dcc2d6413b932e1c2a0ef4b442",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-assurance-loop": "0ea71463b6e0798c7e3a275d4a1494e78a4e74dcc2d6413b932e1c2a0ef4b442"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-assurance-loop": "a0b23668d8d8096cbc05c4758d444772592401c7e598321119a3841ebdd1142c",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-assurance-loop": "a0b23668d8d8096cbc05c4758d444772592401c7e598321119a3841ebdd1142c"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-ai-assurance-loop",
+      "canonical_sha256": "0ea71463b6e0798c7e3a275d4a1494e78a4e74dcc2d6413b932e1c2a0ef4b442",
+      "canonical_tree_sha256": "a0b23668d8d8096cbc05c4758d444772592401c7e598321119a3841ebdd1142c",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-ai-data-lifecycle",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-data-lifecycle",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-data-lifecycle"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-data-lifecycle": "da912e48f76e4c7b3df04e87f960df5d7c8fd7f273a68c39a93a8ddb2853e1a4",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-data-lifecycle": "da912e48f76e4c7b3df04e87f960df5d7c8fd7f273a68c39a93a8ddb2853e1a4"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-data-lifecycle": "e4d93611c293d8ea8da6e59c39cd495f7b906611eb0d26f1b63d5ef397a47103",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-data-lifecycle": "e4d93611c293d8ea8da6e59c39cd495f7b906611eb0d26f1b63d5ef397a47103"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-ai-data-lifecycle",
+      "canonical_sha256": "da912e48f76e4c7b3df04e87f960df5d7c8fd7f273a68c39a93a8ddb2853e1a4",
+      "canonical_tree_sha256": "e4d93611c293d8ea8da6e59c39cd495f7b906611eb0d26f1b63d5ef397a47103",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-ai-discovery",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-discovery",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-discovery"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-discovery": "8863357a13ac50140b0e2c3e509ebb6b6f10b48d14c0c45e072fd887d668a824",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-discovery": "8863357a13ac50140b0e2c3e509ebb6b6f10b48d14c0c45e072fd887d668a824"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-discovery": "b659488e66e59c794ef3f25ffae3865a4a6915da3987453bbe4f840acba932dc",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-discovery": "b659488e66e59c794ef3f25ffae3865a4a6915da3987453bbe4f840acba932dc"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-ai-discovery",
+      "canonical_sha256": "8863357a13ac50140b0e2c3e509ebb6b6f10b48d14c0c45e072fd887d668a824",
+      "canonical_tree_sha256": "b659488e66e59c794ef3f25ffae3865a4a6915da3987453bbe4f840acba932dc",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-ai-independent-challenge",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-independent-challenge",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-independent-challenge"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-independent-challenge": "5045a06ac866146ae67b543ba7d33ad37424069335e2796934f6d1eef3d5db14",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-independent-challenge": "5045a06ac866146ae67b543ba7d33ad37424069335e2796934f6d1eef3d5db14"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-independent-challenge": "d43e5c5475d46b154f3d4778127e1753bb309e90c29cbd9df1f7b01e62aa7008",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-independent-challenge": "d43e5c5475d46b154f3d4778127e1753bb309e90c29cbd9df1f7b01e62aa7008"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-ai-independent-challenge",
+      "canonical_sha256": "5045a06ac866146ae67b543ba7d33ad37424069335e2796934f6d1eef3d5db14",
+      "canonical_tree_sha256": "d43e5c5475d46b154f3d4778127e1753bb309e90c29cbd9df1f7b01e62aa7008",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-ai-quality",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-quality",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-quality"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-quality": "cd12bffca448c597978abe625b72b606e2e15894d7c9c3b7f876fd2baa8f9556",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-quality": "cd12bffca448c597978abe625b72b606e2e15894d7c9c3b7f876fd2baa8f9556"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-quality": "b749b0accf6225057248090a2b24f352828a21e1be167e3097b21ab6e580c146",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-quality": "b749b0accf6225057248090a2b24f352828a21e1be167e3097b21ab6e580c146"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-ai-quality",
+      "canonical_sha256": "cd12bffca448c597978abe625b72b606e2e15894d7c9c3b7f876fd2baa8f9556",
+      "canonical_tree_sha256": "b749b0accf6225057248090a2b24f352828a21e1be167e3097b21ab6e580c146",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-ai-regulatory-assurance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-regulatory-assurance",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-regulatory-assurance"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-regulatory-assurance": "54ae140017d7bd44572323ba1c3872fbfb0c9327ae5c86e0325b1ec638ad637f",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-regulatory-assurance": "54ae140017d7bd44572323ba1c3872fbfb0c9327ae5c86e0325b1ec638ad637f"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-regulatory-assurance": "e65d521c82a278e180f7fa86409116ee3cfdf46181b396d78efd0aac41031308",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-regulatory-assurance": "e65d521c82a278e180f7fa86409116ee3cfdf46181b396d78efd0aac41031308"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-ai-regulatory-assurance",
+      "canonical_sha256": "54ae140017d7bd44572323ba1c3872fbfb0c9327ae5c86e0325b1ec638ad637f",
+      "canonical_tree_sha256": "e65d521c82a278e180f7fa86409116ee3cfdf46181b396d78efd0aac41031308",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-ai-threat-modeling",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-threat-modeling",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-threat-modeling"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-threat-modeling": "f654b2bdd36135621d7ce08424a0f3e40a84874d911d3d9df6b4abf000af64a2",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-threat-modeling": "f654b2bdd36135621d7ce08424a0f3e40a84874d911d3d9df6b4abf000af64a2"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-threat-modeling": "ef0da208bb312a43b97ee74e70917a36db8ca3c10da9e5d9ab1116eda55e6517",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-threat-modeling": "ef0da208bb312a43b97ee74e70917a36db8ca3c10da9e5d9ab1116eda55e6517"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-ai-threat-modeling",
+      "canonical_sha256": "f654b2bdd36135621d7ce08424a0f3e40a84874d911d3d9df6b4abf000af64a2",
+      "canonical_tree_sha256": "ef0da208bb312a43b97ee74e70917a36db8ca3c10da9e5d9ab1116eda55e6517",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-ai-vendor-assurance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-vendor-assurance",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-vendor-assurance"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-vendor-assurance": "0f36f14729320f5b83d8f41eee3c3ee720c2aee78cc5e436b1dac35e7ee35e96",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-vendor-assurance": "0f36f14729320f5b83d8f41eee3c3ee720c2aee78cc5e436b1dac35e7ee35e96"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-ai-vendor-assurance": "f68732e4393214c9e0f00e28555637fc5dd43766db947ef7eefc89afd65b47e5",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-ai-vendor-assurance": "f68732e4393214c9e0f00e28555637fc5dd43766db947ef7eefc89afd65b47e5"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-ai-vendor-assurance",
+      "canonical_sha256": "0f36f14729320f5b83d8f41eee3c3ee720c2aee78cc5e436b1dac35e7ee35e96",
+      "canonical_tree_sha256": "f68732e4393214c9e0f00e28555637fc5dd43766db947ef7eefc89afd65b47e5",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-capability-map",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\enterprise-capability-map",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-capability-map"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-capability-map": "d059c352b5c9304be4abf5800cdf9ee933ad7ed483758858191210b7921038a6"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-capability-map": "366aea73b35bdcb4bbeac18d5665172219d6941ec0104bdf2feeaaa2fc7d57ca"
+      }
+    },
+    {
+      "id": "enterprise-frontier-assurance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-frontier-assurance",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-frontier-assurance"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-frontier-assurance": "97ab13b8b9e84f5bf766f8819a9576129d87d951d0773ceb97e95d3ac2101acd",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-frontier-assurance": "97ab13b8b9e84f5bf766f8819a9576129d87d951d0773ceb97e95d3ac2101acd"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-frontier-assurance": "daeefe599e3329b5ccd8cb5b653ca063939cb59ae4ea49fba512bb80d18eb261",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-frontier-assurance": "daeefe599e3329b5ccd8cb5b653ca063939cb59ae4ea49fba512bb80d18eb261"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-frontier-assurance",
+      "canonical_sha256": "97ab13b8b9e84f5bf766f8819a9576129d87d951d0773ceb97e95d3ac2101acd",
+      "canonical_tree_sha256": "daeefe599e3329b5ccd8cb5b653ca063939cb59ae4ea49fba512bb80d18eb261",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-governance-raci",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\enterprise-governance-raci",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-governance-raci"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-governance-raci": "e2e7abbaa707d546ea5258fb0cbaf2ea0ed00d3e6a6937dd3cd1803d778698ce"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-governance-raci": "9e1fca0a0b0f97a030faab2e953e50865a9136e521b9ad55beaf411099a2cf97"
+      }
+    },
+    {
+      "id": "enterprise-human-ai-operations",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-human-ai-operations",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-human-ai-operations"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-human-ai-operations": "70c7f9bc130c4c9386ceffa151937469a7f3c975122d236da9455a176c8f50e8",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-human-ai-operations": "70c7f9bc130c4c9386ceffa151937469a7f3c975122d236da9455a176c8f50e8"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-human-ai-operations": "685c50d26c64a8fa08bd517525e34231e2eb986d195b4d41aa17acca461d0ff4",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-human-ai-operations": "685c50d26c64a8fa08bd517525e34231e2eb986d195b4d41aa17acca461d0ff4"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-human-ai-operations",
+      "canonical_sha256": "70c7f9bc130c4c9386ceffa151937469a7f3c975122d236da9455a176c8f50e8",
+      "canonical_tree_sha256": "685c50d26c64a8fa08bd517525e34231e2eb986d195b4d41aa17acca461d0ff4",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-llm-assurance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-llm-assurance",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-llm-assurance"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-llm-assurance": "48f9cd37fcbff8f366292420eb7dfac6bb3e783d73d268d7b4a0522b300d0216",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-llm-assurance": "48f9cd37fcbff8f366292420eb7dfac6bb3e783d73d268d7b4a0522b300d0216"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-llm-assurance": "22232628f39651f031abecc3af2e257f82927b3d48246b56afaf611a806a7f98",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-llm-assurance": "22232628f39651f031abecc3af2e257f82927b3d48246b56afaf611a806a7f98"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-llm-assurance",
+      "canonical_sha256": "48f9cd37fcbff8f366292420eb7dfac6bb3e783d73d268d7b4a0522b300d0216",
+      "canonical_tree_sha256": "22232628f39651f031abecc3af2e257f82927b3d48246b56afaf611a806a7f98",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "enterprise-operating-model",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\enterprise-operating-model",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-operating-model"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-operating-model": "4d3fef069e6a179cccf6a0809225e4550c1e1fbf1d0253e4d471aa3ac3b3832c"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-operating-model": "165183fbd9815508d456114d2b7700b4bdf9182a3f0632eddbc8664525e58078"
+      }
+    },
+    {
+      "id": "enterprise-quantum-safe-assurance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-quantum-safe-assurance",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-quantum-safe-assurance"
+      ],
+      "version": "1.0.0",
+      "owner": "enterprise-ai-assurance",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-quantum-safe-assurance": "e24dbb7db49c1088da0b30af8a29e2d79edadd2252f7e833b012140e401aebd8",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-quantum-safe-assurance": "e24dbb7db49c1088da0b30af8a29e2d79edadd2252f7e833b012140e401aebd8"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\enterprise-quantum-safe-assurance": "f28065952524818de0d8378105244c7ead47bdf754fdf97d220e7e9f0e391df3",
+        "C:\\Users\\vijay\\.agents\\skills\\enterprise-quantum-safe-assurance": "f28065952524818de0d8378105244c7ead47bdf754fdf97d220e7e9f0e391df3"
+      },
+      "canonical": "${WORKSPACE}/skill-packages/enterprise-quantum-safe-assurance",
+      "canonical_sha256": "e24dbb7db49c1088da0b30af8a29e2d79edadd2252f7e833b012140e401aebd8",
+      "canonical_tree_sha256": "f28065952524818de0d8378105244c7ead47bdf754fdf97d220e7e9f0e391df3",
+      "execution": {
+        "automatic_test_scope": "synthetic-local",
+        "side_effects": [
+          "local-temporary-files"
+        ],
+        "external_execution": "requires named target, authorized collector and organization-controlled evidence"
+      }
+    },
+    {
+      "id": "feedback-learning-governance",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\feedback-learning-governance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\feedback-learning-governance"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\feedback-learning-governance": "0b4ba2db28ea1e2072e73cec28dd3d926cf0c3e92f6606933bd77283bfc227c0"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\feedback-learning-governance": "8fe067ae5a0d86a5f26f17d1b19a8d75e9f697cb7702a9c4e616d7bfb2fe7089"
+      }
+    },
+    {
+      "id": "find-skills",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\find-skills",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\find-skills"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\find-skills": "deddc03b4b5f50755b97fcdb737a786676992ef7e9be614d2cd2c71e0320bebf"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\find-skills": "781bd6d3f9b19f8c9af6b53d8d0e4876d0183841b565db34ca7092ffa412d111"
+      }
+    },
+    {
+      "id": "finops-model-economics",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\finops-model-economics",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\finops-model-economics"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\finops-model-economics": "5892dd1fc598542ab212e64dce06aa12ead9a366d65690e3504e2630f4c9d577"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\finops-model-economics": "ed88af56c059eb920f8ebc9507cf09a0d5b9e56d98c4a72b700e6392bd166ff4"
+      }
+    },
+    {
+      "id": "fluent2-design-tokens",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\fluent2-design-tokens",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\fluent2-design-tokens"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\fluent2-design-tokens": "0531c5df3c82d81fa8960966a23088c54f7f28c648ff383f6f4d569b60543b55"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\fluent2-design-tokens": "76c960e7ee1b6f876626d080a49fb45b5ace4c9ecf076a29a71ca2ffa1cf4645"
+      }
+    },
+    {
+      "id": "glass-ui",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\glass-ui",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\glass-ui"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\glass-ui": "2b919be4bf1f531f7b2f9dd66672ab549b7ecba15a981a09519cbd7fd566d778"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\glass-ui": "4843ab4e35147d306463a8b3a7a27fad00951bb8145fefc3054414d46e0d8487"
+      }
+    },
+    {
+      "id": "graphify",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\graphify",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\graphify"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\graphify": "3898b1042721cad27d6f87ca44f638415a7f763203aefd86b90f9358ffea3a43"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\graphify": "08a1524e162a47e307fa90729897f5ef1c78971a97565fda2d1ee32a63172442"
+      }
+    },
+    {
+      "id": "gstack",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\gstack",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\gstack"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\gstack": "c0e824752a185907bd19a665327e98dda54e0b1b300c0c4f799d7003310f2f47"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\gstack": "0c6c9d13ed7f59eae84559eeefecacb3ea887ed225ad80403332b954272080de"
+      }
+    },
+    {
+      "id": "idea-add-moat",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\idea-add-moat",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\idea-add-moat"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\idea-add-moat": "2b6ad74a77bb72072c12cd499ff46a857085615d3c206e6b32c10c50c35164af"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\idea-add-moat": "d187c5fd7eed63de909e188b8a0221a47405122a2c0f5124fa0a9c073cf0bd96"
+      }
+    },
+    {
+      "id": "idea-reviewer",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\idea-reviewer",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\idea-reviewer"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\idea-reviewer": "3818084ae876a2825db2e59f18064139f19970c48eb5457b74786a630a436fca"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\idea-reviewer": "30ee5935959c078ff92d49989789b7a956ce847a364fd6c652bebc796034d1d3"
+      }
+    },
+    {
+      "id": "identity-access-governance",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\identity-access-governance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\identity-access-governance"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\identity-access-governance": "ea84f70ea3c76857b92e399643ceb94adca01364e46e1379c1e9617f9b9c6d10"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\identity-access-governance": "55e63438c8e5b0822134c6cc2b44ac85469b904d3467518cbc1852f2560747b3"
+      }
+    },
+    {
+      "id": "intent-router",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\intent-router",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\intent-router"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\intent-router": "e69fdf0ce8cf958395f7dd65d37f1d04c6a0bd1d22319197f396adeff7ea22e8"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\intent-router": "4ecca2bef58f066acdd7fb7f9a35e091fbd58eeef7aaf1a95b1a8b28485487b2"
+      }
+    },
+    {
+      "id": "last30days",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\last30days",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\last30days"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\last30days": "8a970f865e96a8eb67e845e9a4efe36bf5a4ef2cc60b22853efb763b45863bb9"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\last30days": "10179c6c228dfe0154d173aa9876974f8a31c2e4d2c8a8a6db53d8cc655e26df"
+      }
+    },
+    {
+      "id": "legal-risk-register",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\legal-risk-register",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\legal-risk-register"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\legal-risk-register": "6975751f469149f97fd7afcaf957eadeb4b284096a4f6d7af91a7a0641920b9a"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\legal-risk-register": "6c410209b9901d9767a8658f99c6609084d6030763255e33d012a22a0fb7bc0f"
+      }
+    },
+    {
+      "id": "loop-fleet",
+      "canonical": "${WORKSPACE}/skill-packages/loop-fleet",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\loop-fleet",
+        "C:\\Users\\vijay\\.codex\\skills\\loop-fleet"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\loop-fleet": "92289715c25ede1c9e0074004486887d0598f4a1c3a234d731edb779763926b8",
+        "C:\\Users\\vijay\\.codex\\skills\\loop-fleet": "92289715c25ede1c9e0074004486887d0598f4a1c3a234d731edb779763926b8"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\loop-fleet": "d98ec56ab8747f1ead9ca97bff867ff1fa1ef49e7a6afb3ddade0439061e5a28",
+        "C:\\Users\\vijay\\.codex\\skills\\loop-fleet": "d98ec56ab8747f1ead9ca97bff867ff1fa1ef49e7a6afb3ddade0439061e5a28"
+      }
+    },
+    {
+      "id": "market-sizing",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\market-sizing",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\market-sizing"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\market-sizing": "d4d3aca22b8552dad94a539747be80757d21e6d4a74ee68c8aefc6a11478c631"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\market-sizing": "b3fd4f3f45aa91853483c288122bd02f12d992f222092386d5c3b377dba56a57"
+      }
+    },
+    {
+      "id": "mcp-builder",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\mcp-builder",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\mcp-builder"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\mcp-builder": "0f4592dcb53cf2b5d6b7febee6b4152018b565551a1c29e3c612f57b218ab295"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\mcp-builder": "1c33d78616a9ee32c60e1e8325c26fec6d552cb93bc2d272e579e52c83ac7302"
+      }
+    },
+    {
+      "id": "migration-safety",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\migration-safety",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\migration-safety"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\migration-safety": "e9028a3680c23cdd7ec8c34f33dc5d4b953e93a87f72f4f2e35b4e3023e863af"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\migration-safety": "b1410935103c214a4d3f3b723f2502586330c43e6f581681735e356c574e542a"
+      }
+    },
+    {
+      "id": "moat-reviewer",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\moat-reviewer",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\moat-reviewer"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\moat-reviewer": "c2b858adf25908de260b142372f978aa7d77a5948ce403ece4d4a37292bdeb04"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\moat-reviewer": "1c05c563765f650ed365f537ffdb1132b5b55ebee7cf45f916be8b6084462b3e"
+      }
+    },
+    {
+      "id": "model-gateway",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\model-gateway",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\model-gateway"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\model-gateway": "920d9605125955743687399b33cc9296cbb38a0af3de8aae34eb94781ad44afa"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\model-gateway": "05efe08ba83beb8a707fea730eaca8a79140b899119093e1b9b7bda4d337b9a3"
+      }
+    },
+    {
+      "id": "mytress-builder",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\mytress-builder",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\mytress-builder"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\mytress-builder": "a75ccd67b1fd240ca2fcf78b4b29d283ecee782dc5812b522d45b7493611f2ce"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\mytress-builder": "bf2a7fba7e7e2ee0ead338cf69b0d003a978765c8098aacf4718a0a7a330a80e"
+      }
+    },
+    {
+      "id": "open-access-article-finder",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\open-access-article-finder",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "pdf",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\pdf",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\pdf"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\pdf": "9f78b8359fbd4943ad260a7a1e436e5a96503406d6c34e99f69223d647d85b9c"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\pdf": "d65ae30b3f92919fe512b7b8c12ec04d6ecfc79423d39ccdb4e8c6c377164387"
+      }
+    },
+    {
+      "id": "plain-edit",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\plain-edit",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\plain-edit"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\plain-edit": "233f9dc7143a653be6d8b21e44e33d6406325a28b29af685eb4e36cc7cf8c067"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\plain-edit": "039f712d98ba933f6adaf4a7e829a9ab2c501736daa9ad3a1b4f2e14acbafdae"
+      }
+    },
+    {
+      "id": "playwright",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\playwright",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "pptx",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\pptx",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\pptx"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\pptx": "c54788e85b3655d1e596187f7307dd6372a70fe96ef0ab3f63b47f57a27346a3"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\pptx": "1d3bdf3563c31d4658ee93c3b8840f65d3ecff9d5ad0f2cb84b6964515f28ccc"
+      }
+    },
+    {
+      "id": "privacy-data-governance",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\privacy-data-governance",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\privacy-data-governance"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\privacy-data-governance": "6ec4f368e59a2485127722b58ea2dad320b4d9d2917a9c8bfbd874717bb4bf27"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\privacy-data-governance": "a805dec0a3f477e8c6251f86a724b41837b2a8fdc5eaa49137cb3bd46c95dd8b"
+      }
+    },
+    {
+      "id": "product-backlog",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\product-backlog",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\product-backlog"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-backlog": "601e44498ae9bb8853e0eea9180d41bfe5eafc41fe91f3d60f376bf7e497939b"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-backlog": "16d9ed33f4f0a90ef286bf13bdde7432e1d8d64afa4f1615aaa2efeef8fe15a7"
+      }
+    },
+    {
+      "id": "product-diligence",
+      "canonical": "${WORKSPACE}/skill-packages/product-diligence",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\Product Deligence Loop V4",
+        "C:\\Users\\vijay\\.codex\\skills\\Product Deligence Loop V4",
+        "C:\\Users\\vijay\\.codex\\skills\\prompts"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [
+        "Product Deligence Loop V4",
+        "prompts"
+      ],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\Product Deligence Loop V4": "c908c4694da270586b3844ca64f221b6f2fb49a45fe238ac7ae96b93eb7e080a",
+        "C:\\Users\\vijay\\.agents\\skills\\Product Deligence Loop V4": "c908c4694da270586b3844ca64f221b6f2fb49a45fe238ac7ae96b93eb7e080a",
+        "C:\\Users\\vijay\\.codex\\skills\\prompts": "c908c4694da270586b3844ca64f221b6f2fb49a45fe238ac7ae96b93eb7e080a"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\Product Deligence Loop V4": "5837df187d613ca208a81e888102842b0b45c19d808794710547fb17428a05b2",
+        "C:\\Users\\vijay\\.agents\\skills\\Product Deligence Loop V4": "5837df187d613ca208a81e888102842b0b45c19d808794710547fb17428a05b2",
+        "C:\\Users\\vijay\\.codex\\skills\\prompts": "5837df187d613ca208a81e888102842b0b45c19d808794710547fb17428a05b2"
+      }
+    },
+    {
+      "id": "product-evals",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\product-evals",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\product-evals"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-evals": "4e119d1e201bf05e0de0d44c0a47a8f0aabce2cfe5857934d859c3cec3eeae2d"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-evals": "3807df09193bc00b29c88772c79a2b23c2ac813cac2c57de6a33164d2ece80f7"
+      }
+    },
+    {
+      "id": "product-lifecycle-loop",
+      "canonical": "${WORKSPACE}/skill-packages/product-lifecycle-loop",
+      "mirrors": [
+        "C:\\Users\\vijay\\.codex\\skills\\product-lifecycle-loop"
+      ],
+      "version": "1.1.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\product-lifecycle-loop": "dc8870c09243b8d32e795be5f2e8cf988109f3b8fb0eea175747f43434ef773b"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.codex\\skills\\product-lifecycle-loop": "ccb7ff27d37ec6d8e61712435e114c3e9e90572dd75ffa5c4f2b38e8d132eed4"
+      },
+      "canonical_sha256": "dc8870c09243b8d32e795be5f2e8cf988109f3b8fb0eea175747f43434ef773b",
+      "canonical_tree_sha256": "ccb7ff27d37ec6d8e61712435e114c3e9e90572dd75ffa5c4f2b38e8d132eed4"
+    },
+    {
+      "id": "product-loop",
+      "canonical": "${WORKSPACE}/skill-packages/product-loop",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\product-loop",
+        "C:\\Users\\vijay\\.codex\\skills\\product-loop"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-loop": "229fba715f7e5ef2bd64c0f7b6ca1f212f05884a73c850fae806dc31754e19e6",
+        "C:\\Users\\vijay\\.codex\\skills\\product-loop": "229fba715f7e5ef2bd64c0f7b6ca1f212f05884a73c850fae806dc31754e19e6"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-loop": "03db1db5f5592fad7895480502ca67ed6bf69614329e7cc79af2dfc7136da114",
+        "C:\\Users\\vijay\\.codex\\skills\\product-loop": "03db1db5f5592fad7895480502ca67ed6bf69614329e7cc79af2dfc7136da114"
+      }
+    },
+    {
+      "id": "product-telemetry",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\product-telemetry",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\product-telemetry"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-telemetry": "41c4264f52179afd060f2ed1fac88045c7bbfd0c20127b0e607a44873a2d6594"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-telemetry": "d5ee156bd90f11adc156125cdcc0e5b6a841a94f454b9ad6edd9abd1346a672a"
+      }
+    },
+    {
+      "id": "product-vision",
+      "canonical": "${WORKSPACE}/skill-packages/product-vision",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\product-vision",
+        "C:\\Users\\vijay\\.codex\\skills\\product-vision"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "fixture"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-vision": "0d9f580606f413624e604ad7d5ea26fc2938b329225b7fc6c84fad5755f8e2a6",
+        "C:\\Users\\vijay\\.codex\\skills\\product-vision": "0d9f580606f413624e604ad7d5ea26fc2938b329225b7fc6c84fad5755f8e2a6"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\product-vision": "c635346706e2ed11b13e60687c1a659aada3aef341dc239730e9228c6e2ab03e",
+        "C:\\Users\\vijay\\.codex\\skills\\product-vision": "c635346706e2ed11b13e60687c1a659aada3aef341dc239730e9228c6e2ab03e"
+      }
+    },
+    {
+      "id": "prompt-ops",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\prompt-ops",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\prompt-ops"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\prompt-ops": "1fec3e740d22c851e20f7a775fd024b5b9575314bb5ae223b0477fc1a45d5713"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\prompt-ops": "d3a3c512fc358803fd7db878edfbb2420046aaa1e1b8e6fb336ca8c8bfa41c1e"
+      }
+    },
+    {
+      "id": "react-pwa-help",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\react-pwa-help",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\react-pwa-help"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\react-pwa-help": "5b41fd9aed9e72ad8607d257f91cdf913f400a51e9c2db41a2c7c3c571d745fb"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\react-pwa-help": "c041669b6d38e5fa53bc4ae31b76fac28ae171e441caa21f0e9bba36861a76fb"
+      }
+    },
+    {
+      "id": "release-governor",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\release-governor",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\release-governor"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\release-governor": "2752bd2ceeebda8c80bfb86bb1c361ed364492728eb7b0667e92e6bc2dca3450"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\release-governor": "280e643479eba351c4d11673c53fb545776af31e393cf400e378db9553cc1537"
+      }
+    },
+    {
+      "id": "requirements-traceability",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\requirements-traceability",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\requirements-traceability"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\requirements-traceability": "670fc0ec996577d64e40cd19e952699e2eede9016d8d36a076f698156c09d7a0"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\requirements-traceability": "f943d23f3e77c9591babd46fc1445f915b3245c0cf16ae7ae7a4986ac8b87875"
+      }
+    },
+    {
+      "id": "resilience",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\resilience",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\resilience"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\resilience": "95c710590b3c6df547f3b0394d8dae3fe32681c3952be0f03cc8183d3d760f11"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\resilience": "a6cb70135adbb9a9c561a77fb7ba0425e8847113395b41bd80ffddbf878aa786"
+      }
+    },
+    {
+      "id": "responsible-ai-impact-assessment",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\responsible-ai-impact-assessment",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\responsible-ai-impact-assessment"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\responsible-ai-impact-assessment": "988f06040e492b17123fd6e2d61065b8b1492688290f631b821ed2e6d78406a7"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\responsible-ai-impact-assessment": "45ec8e252007b8eda7b19274a7269562a1752e923d1fb08bc1d7cc50499b3ce0"
+      }
+    },
+    {
+      "id": "retrieval-engineering",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\retrieval-engineering",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\retrieval-engineering"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\retrieval-engineering": "22cfba4ca4ff91c35ad9cdc01fa817a3e130fe9a55ec329d0dc4d6ff2cf5d6fa"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\retrieval-engineering": "2cc4747a6d46c480b9ba031994b803debecab325d49b8665379b17d29432e2d6"
+      }
+    },
+    {
+      "id": "sandbox-migrate-to-next",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\sandbox-migrate-to-next",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "sandbox-next",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\sandbox-next",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "sandbox-stable",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\sandbox-stable",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "schedule",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\schedule",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\schedule"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\schedule": "f22ae34af4c3a3e87ed1d14669bb285f0556012fcc722e7df3e60cae4557b434"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\schedule": "4f0a76bbf263a4f85074c4a045729fff915d888fb1896f8fee24c03d754455ba"
+      }
+    },
+    {
+      "id": "security-review",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\security-review",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\security-review"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\security-review": "4efa982c3c9d18aba62ff6c10ec43db5386f99a5e9f45a2c401a6b7bba1a6ff0"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\security-review": "e596d86ad286610887b5503c94e1faa0fcecfa86d72fb960f4e9bebc1b5b0b16"
+      }
+    },
+    {
+      "id": "setup-cowork",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\setup-cowork",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\setup-cowork"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\setup-cowork": "734d7a83fdfa8d9116741f8508338cc061c070756977acd464d82bf7217d933e"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\setup-cowork": "0d810295bca35dedfce9aea2965a99efc484070a14ab892399b1e61858f40b41"
+      }
+    },
+    {
+      "id": "ship-release",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\ship-release",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\ship-release"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ship-release": "446c54e15a3da4830b4b71d4f20511c1d7535901c4c3f830b5aea2ec5ac5b2cb"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\ship-release": "58be81428f97ef886ac1086bc33302a67143f4d2e3b7838fc6f4296d3bca0dbf"
+      }
+    },
+    {
+      "id": "skill-creator",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\skill-creator",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\skill-creator"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\skill-creator": "42765c880e446a83c85f7852fc77b43ecd46c76ca219d68051799ac7425e6943"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\skill-creator": "428facd4f62b1aa78de69da7821182c11beefa2ddb9bf6e625fb199adf712b95"
+      }
+    },
+    {
+      "id": "sre-incident-response",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\sre-incident-response",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\sre-incident-response"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\sre-incident-response": "df06bd120999b497ee722cd9a09937d37d0cf37031e1af48ae407312b360bf67"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\sre-incident-response": "86538f510e9110f903bcb258ba3133acef5ff307614c04a1c07badc2d2b34822"
+      }
+    },
+    {
+      "id": "stakeholder-brief",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\stakeholder-brief",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\stakeholder-brief"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\stakeholder-brief": "ad51085f52f90e246222afa21105e2e7d29f3658cf637e3f20e748b5e0ea0377"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\stakeholder-brief": "862a65d7c107eb0530a518c8b98cee96714cc9368633eee286f6027c6f1b1b9b"
+      }
+    },
+    {
+      "id": "state-book-research",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\state-book-research",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "stop-slop",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\stop-slop",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\stop-slop"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\stop-slop": "c19e33a1b83aab5078e1d5895cdfd232e87199414212db952dceeaa276b91470"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\stop-slop": "cc4d2c0e37256a8b0a9bf0e605f02e9c2d777779cedfb49183cb3cf5f8fe751e"
+      }
+    },
+    {
+      "id": "supabase-architect",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\supabase-architect",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\supabase-architect"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\supabase-architect": "4e7ad1baded11c071ee55d29a917c5283d0ce04cadbf149b17e8ca8668b899d5"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\supabase-architect": "c3667a4b1d8798137c3b777bc3241f7acd63b1f74f310bec6ea728019080c224"
+      }
+    },
+    {
+      "id": "supabase-dexie-sync",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\supabase-dexie-sync",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\supabase-dexie-sync"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\supabase-dexie-sync": "1f965373e49f5479c2fdacca5e34952b7be94c6b451456ca949cbf01f4bf01d0"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\supabase-dexie-sync": "2aa982c6516292e05bbaefc958369cd28df5c5e89753d70f5971831e9e15093a"
+      }
+    },
+    {
+      "id": "supply-chain-security",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\supply-chain-security",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\supply-chain-security"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\supply-chain-security": "4c9700db6361c2f2b2c219dab0bb474c0eeb92fbaf9592b72b332dc74582ad1a"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\supply-chain-security": "26c9023b8b60b4ccc8477fcad98a5e8042c1d092c854dfd2f9940f02cef07e89"
+      }
+    },
+    {
+      "id": "test-hardening",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\test-hardening",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\test-hardening"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\test-hardening": "4dce0b768b6d563e508f17a7f5f957441f35baa123bfd8b8d657af3526880617"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\test-hardening": "ac02a91623d3f476b85d0c2f1a1ce2f02b0a7e580ac35fd2d3d27e97c609c357"
+      }
+    },
+    {
+      "id": "tool-contracts",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\tool-contracts",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\tool-contracts"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\tool-contracts": "6a925dbbf047090876874d8cb745613fc862d09be4880b025fbbb991cb221e32"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\tool-contracts": "02b0785979ba8de70ebb554e2bda518c13b366ce760d66b07cee5ab035fca0a4"
+      }
+    },
+    {
+      "id": "turnstile-spin",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\turnstile-spin",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "manual-required",
+        "prerequisite": "A named sandbox target and explicit authority for side-effecting execution."
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "video-seo-metadata",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\video-seo-metadata",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "web-artifacts-builder",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\web-artifacts-builder",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\web-artifacts-builder"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\web-artifacts-builder": "81c5002c6643b0de7b8710b00e7a9038daa6fb9b68d59870ee6adb12da8d10f8"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\web-artifacts-builder": "8eca100e512b3aec33c606cf0cbb9563249731544d94b685c50f2eeeec82720a"
+      }
+    },
+    {
+      "id": "web-perf",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\web-perf",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "workers-best-practices",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\workers-best-practices",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "wrangler",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\wrangler",
+      "mirrors": [],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {},
+      "reviewed_mirror_tree_hashes": {}
+    },
+    {
+      "id": "xlsx",
+      "canonical": "C:\\Users\\vijay\\.codex\\skills\\xlsx",
+      "mirrors": [
+        "C:\\Users\\vijay\\.agents\\skills\\xlsx"
+      ],
+      "version": "1.0.0",
+      "owner": "skill-fleet",
+      "test": {
+        "class": "static"
+      },
+      "aliases": [],
+      "reviewed_mirror_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\xlsx": "2ce5a370c04b4127413aa7e9def3b03c215f18f3c58d647c5e3a60adaa4d1866"
+      },
+      "reviewed_mirror_tree_hashes": {
+        "C:\\Users\\vijay\\.agents\\skills\\xlsx": "ef3209677dca65db67910b7d9bb31ef79548fa9c9822275efca558dadd46e80e"
+      }
+    }
+  ],
+  "lifecycle_policy": {
+    "version": "1.1.0",
+    "artifacts": {
+      "map": "reports/SKILL_FLEET_LIFECYCLE_MAP.md",
+      "generator": "skill-fleet/generate_lifecycle_map.py"
+    },
+    "topology": {
+      "conductor": "product-lifecycle-loop",
+      "delivery_engines": [
+        "codex-product-build-loop",
+        "product-loop",
+        "agentic-product-loop"
+      ],
+      "exactly_one_delivery_engine": true,
+      "parallelizer": "loop-fleet",
+      "parallelization_requires_solo_engine_proof": true,
+      "assurance": "agentic-assurance-loop",
+      "release_decider": "release-governor",
+      "deployment_executor": "deploy-provision",
+      "deployment_requires_go_and_authority": true
+    },
+    "mandatory_steps": [
+      {
+        "id": "registry-admission",
+        "applies_when": "Before every lifecycle run, resumption, schedule registration, or skill distribution change.",
+        "required_skills": [
+          "product-lifecycle-loop",
+          "skill-creator"
+        ],
+        "required_evidence": "Current registry digest, valid source/install inventory, and declared test class for every active skill."
+      },
+      {
+        "id": "graph-orientation",
+        "applies_when": "Before planning, implementing, debugging, enhancing, or testing repository behavior.",
+        "required_skills": [
+          "graphify",
+          "code-map"
+        ],
+        "required_evidence": "Current code-graph or recorded source-and-test trace; refresh changed surfaces after meaningful edits."
+      },
+      {
+        "id": "goal-and-requirement-admission",
+        "applies_when": "Before admitting a material product goal or selecting a delivery slice.",
+        "required_skills": [
+          "product-vision",
+          "product-backlog",
+          "requirements-traceability",
+          "domain-workflow-validation"
+        ],
+        "required_evidence": "Accepted goal, material assumptions/experiments, mapped requirements, acceptance criteria, and selected admissible work."
+      },
+      {
+        "id": "delivery-engine-selection",
+        "applies_when": "Before implementation starts or a run resumes implementation.",
+        "required_skills": [
+          "product-lifecycle-loop",
+          "codex-product-build-loop",
+          "product-loop",
+          "agentic-product-loop"
+        ],
+        "required_evidence": "One selected delivery engine, run identity, budget, admission decision, and parent-goal acceptance criteria."
+      },
+      {
+        "id": "specialist-and-risk-routing",
+        "applies_when": "Whenever architecture, tools, data, models, security, privacy, resilience, or user trust are materially affected.",
+        "required_skills": [
+          "tool-contracts",
+          "agent-security",
+          "ai-guardrails",
+          "resilience",
+          "security-review"
+        ],
+        "required_evidence": "Applicable specialist contracts, risk decisions, owners, and verification boundaries linked to the run identity."
+      },
+      {
+        "id": "recover-park-and-resume",
+        "applies_when": "Whenever a material check fails, work is blocked, help is required, or a run is restarted.",
+        "required_skills": [
+          "product-lifecycle-loop",
+          "codex-product-build-loop",
+          "product-loop",
+          "agentic-product-loop"
+        ],
+        "required_evidence": "Failure reproduction, attempted repair history, budget state, targeted help packet or park condition, and verified wake condition."
+      },
+      {
+        "id": "independent-verification-and-closure",
+        "applies_when": "Before a delivery slice or parent goal is reported complete.",
+        "required_skills": [
+          "agentic-assurance-loop",
+          "product-evals",
+          "test-hardening",
+          "security-review"
+        ],
+        "required_evidence": "Finding-to-reproduction-to-repair-to-retest chain, independent closure, and current parent-goal acceptance evidence."
+      },
+      {
+        "id": "enterprise-ai-assurance",
+        "applies_when": "Enterprise AI assurance is requested or required by the product risk profile, including enterprise readiness and material model/autonomy changes.",
+        "required_skills": [
+          "enterprise-ai-assurance-loop",
+          "enterprise-ai-discovery",
+          "enterprise-ai-quality",
+          "enterprise-llm-assurance",
+          "enterprise-agentic-assurance",
+          "enterprise-frontier-assurance",
+          "enterprise-ai-threat-modeling",
+          "enterprise-quantum-safe-assurance",
+          "enterprise-advanced-capability-assurance",
+          "enterprise-ai-regulatory-assurance",
+          "enterprise-ai-data-lifecycle",
+          "enterprise-ai-independent-challenge",
+          "enterprise-ai-vendor-assurance",
+          "enterprise-human-ai-operations"
+        ],
+        "required_evidence": "One subject/profile/verifier-bound run; thirteen applicability dispositions; raw signed owner evidence; persistent known-unaddressed risks; authenticated independent challenge; scoped current decision; one delivery engine; no implicit deployment authority."
+      },
+      {
+        "id": "governed-release",
+        "applies_when": "Before a release decision, deployment, migration, agent promotion, or other live external effect.",
+        "required_skills": [
+          "release-governor",
+          "deploy-provision",
+          "migration-safety",
+          "ship-release",
+          "agent-release"
+        ],
+        "required_evidence": "Named GO/NO_GO/ESCALATE decision, target identity, authority, fresh live evidence, and verified rollback or compensation path."
+      },
+      {
+        "id": "operate-and-learn",
+        "applies_when": "After a live product capability is released or material user feedback is received.",
+        "required_skills": [
+          "product-telemetry",
+          "feedback-learning-governance",
+          "stakeholder-brief"
+        ],
+        "required_evidence": "Observed signal, interpretation, owner, backlog consequence, and stakeholder communication where required."
+      },
+      {
+        "id": "fleet-change-quality",
+        "applies_when": "Whenever a personal skill, loop package, alias, mirror, or lifecycle policy changes.",
+        "required_skills": [
+          "skill-creator",
+          "product-lifecycle-loop"
+        ],
+        "required_evidence": "Regenerated lifecycle map, UTF-8 fleet validation, declared test result, reviewed distribution diff, and updated registry hashes."
+      }
+    ],
+    "enterprise_assurance": {
+      "skill": "enterprise-ai-assurance-loop",
+      "required_owner_count": 13,
+      "evaluator": "skill-packages/enterprise-ai-assurance-loop/scripts/assurance.py",
+      "parent_completion_gate": "skill-packages/product-lifecycle-loop/scripts/progress_state.py",
+      "test_evidence_cannot_prove_enterprise": true,
+      "deployment_authority": false,
+      "compatibility": "Version 1.0.0 non-enterprise runs remain readable; current revocation and security floors still apply."
+    }
+  }
+}

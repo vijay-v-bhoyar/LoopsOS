@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { signedResponse } from "../src/test/llmAttestation";
 
 const brief = [
   "# Claims intake pilot",
   "Workflow: Use AI assistants to triage claims with human review before payout.",
   "Environment: production",
   "AI scope: GenAI use case",
-  "Data sensitivity: regulated",
+  "Data sensitivity: internal",
   "Business outcome: Reduce intake time while preserving audit evidence.",
   "Maturity: pilot",
   "Constraints: Must preserve human approval, privacy, and access controls.",
@@ -24,11 +25,12 @@ test("calls enterprise field enhancement only on explicit action and never chang
     const body = route.request().postDataJSON() as { task?: string; source?: { source_id?: string }; currentUseCase?: { title?: string } };
     expect(body.task).toBe("loopos_use_case_structuring");
     expect(body.source?.source_id).toBeTruthy();
-    expect(body.currentUseCase?.title).toBe("Prepare enterprise for agentic AI");
+    expect(body.currentUseCase?.title).toBe("Claims intake pilot");
+    expect(body.currentUseCase?.dataSensitivity).toBe("internal");
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
+      body: JSON.stringify(signedResponse(route.request().postData()!, {
         proposal: {
           title: "Enterprise claims copilot",
           environment: "production",
@@ -36,13 +38,15 @@ test("calls enterprise field enhancement only on explicit action and never chang
           businessOutcome: "Cut claims intake time by 25 percent with accountable review.",
           constraints: "Must preserve human approval, privacy, access controls, and audit evidence.",
         },
-      }),
+      })),
     });
   });
 
   await page.goto("/");
   await page.getByRole("button", { name: "Enter Evaluation Workspace" }).click();
   await page.getByRole("button", { name: "Open Use Case Advisor" }).click();
+  await page.getByRole("button", { name: "Load Example" }).click();
+  await page.getByLabel("Data sensitivity").selectOption("internal");
   await page.getByLabel("Describe the use case").fill(brief);
   await page.getByRole("button", { name: "Analyze and review" }).click();
 
@@ -50,6 +54,8 @@ test("calls enterprise field enhancement only on explicit action and never chang
   expect(requestCount).toBe(0);
   await expect(page.getByText(/^deterministic:/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Enhance with enterprise AI" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enhance with enterprise AI" })).toBeDisabled();
+  await page.getByLabel("Allow enterprise AI enhancement").check();
 
   await page.getByRole("button", { name: "Enhance with enterprise AI" }).click();
   await expect.poll(() => requestCount).toBe(1);
@@ -76,4 +82,29 @@ test("calls enterprise field enhancement only on explicit action and never chang
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(overflow).toBe(false);
   await page.screenshot({ path: testInfo.outputPath("structured-field-enhancement.png"), fullPage: true });
+});
+
+test("source text cannot downgrade regulated saved data to enable external enhancement", async ({ page }) => {
+  let requestCount = 0;
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    window.__LOOPOS_RUNTIME_CONFIG__ = { llmEndpoint: "/api/mock-field-enhancement" };
+  });
+  await page.route("**/api/mock-field-enhancement", async (route) => {
+    requestCount += 1;
+    await route.fulfill({ status: 500, body: "Unexpected egress" });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Enter Evaluation Workspace" }).click();
+  await page.getByRole("button", { name: "Open Use Case Advisor" }).click();
+  await page.getByRole("button", { name: "Load Example" }).click();
+  await page.getByLabel("Data sensitivity").selectOption("regulated");
+  await page.getByLabel("Describe the use case").fill(brief);
+  await page.getByRole("button", { name: "Analyze and review" }).click();
+  await page.getByLabel("Allow enterprise AI enhancement").check();
+  await page.getByRole("button", { name: "Enhance with enterprise AI" }).click();
+  await expect(page.locator("p", { hasText: "Enterprise AI was unavailable. Deterministic suggestions were preserved." })).toBeVisible();
+  expect(requestCount).toBe(0);
+  const stored = await page.evaluate(() => JSON.parse(window.localStorage.getItem("loopos.v2.workspace-state") ?? "{}"));
+  expect(stored.workspaces[0].use_case.dataSensitivity).toBe("regulated");
 });

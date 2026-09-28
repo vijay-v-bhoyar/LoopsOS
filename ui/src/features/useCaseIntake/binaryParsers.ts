@@ -1,5 +1,6 @@
 import type { BinaryParseResult } from "./documentExtraction";
 import { IntakeError } from "./documentExtraction";
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.mjs?url";
 
 interface PdfTextItem {
   str?: string;
@@ -11,7 +12,8 @@ interface PdfDocumentLike {
 }
 
 interface PdfModuleLike {
-  getDocument(options: { data: ArrayBuffer; disableWorker: boolean }): { promise: Promise<PdfDocumentLike> };
+  getDocument(options: { data: ArrayBuffer; worker?: unknown }): { promise: Promise<PdfDocumentLike> };
+  GlobalWorkerOptions: { workerSrc: string };
 }
 
 interface MammothModuleLike {
@@ -36,7 +38,9 @@ async function loadMammoth(): Promise<MammothModuleLike> {
 export async function parsePdfBuffer(buffer: ArrayBuffer, loader: PdfLoader = loadPdfJs): Promise<BinaryParseResult> {
   try {
     const pdfjs = await loader();
-    const document = await pdfjs.getDocument({ data: buffer, disableWorker: true }).promise;
+    // PDF.js 6 requires an explicit worker source in browser and nested-worker contexts.
+    pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+    const document = await pdfjs.getDocument({ data: buffer }).promise;
     const pages: string[] = [];
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber);

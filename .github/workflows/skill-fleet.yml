@@ -1,0 +1,31 @@
+name: Skill fleet
+
+on:
+  pull_request:
+    paths:
+      - 'skill-fleet/**'
+      - 'skill-packages/**'
+      - '.github/workflows/skill-fleet.yml'
+  workflow_dispatch:
+
+jobs:
+  safe-local:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pyyaml -r skill-packages/enterprise-ai-assurance-loop/requirements.txt
+      - run: python skill-fleet/generate_lifecycle_map.py
+      - run: git diff --exit-code -- reports/SKILL_FLEET_LIFECYCLE_MAP.md
+      - run: python skill-fleet/run_gate.py --output output/fleet-ci-receipt.json
+      - name: Synthetic enterprise journeys
+        run: python skill-packages/enterprise-ai-assurance-loop/scripts/local_demo.py --output output/enterprise-ci-demo
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safe-local-assurance-evidence
+          path: |
+            output/fleet-ci-receipt.json
+            output/enterprise-ci-demo/**

@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-subject/v1"
+      ]
+    },
+    "product": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "tenant": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "environment": {
+      "enum": [
+        "ISOLATED_TEST",
+        "SANDBOX",
+        "PRODUCTION"
+      ]
+    },
+    "workflow": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "autonomy": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "frontier": {
+      "enum": [
+        "ON",
+        "OFF",
+        "UNKNOWN"
+      ]
+    },
+    "manifest": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "deployed": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "config": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "prompt": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "tools": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "corpus": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "memory": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "consent": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "enforcement": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "source",
+        "deployed",
+        "config",
+        "model",
+        "prompt",
+        "tools",
+        "corpus",
+        "memory",
+        "consent",
+        "enforcement"
+      ],
+      "additionalProperties": false
+    },
+    "provider_identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "data_classes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "jurisdictions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema",
+    "product",
+    "tenant",
+    "environment",
+    "workflow",
+    "autonomy",
+    "frontier",
+    "manifest",
+    "provider_identity",
+    "permissions",
+    "data_classes",
+    "jurisdictions"
+  ],
+  "additionalProperties": false
+}

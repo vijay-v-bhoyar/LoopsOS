@@ -415,18 +415,18 @@ def build_state_machine() -> dict[str, Any]:
         "allowed_transitions": {
             "TRIGGERED": ["QUALIFIED", "INPUT_INCOMPLETE", "BLOCKED"],
             "QUALIFIED": ["OBSERVED", "INSUFFICIENT_EVIDENCE", "BLOCKED"],
-            "OBSERVED": ["DIAGNOSED", "INPUT_STALE", "INPUT_CONFLICTED", "INPUT_UNTRUSTED"],
-            "DIAGNOSED": ["PRIORITIZED", "INSUFFICIENT_EVIDENCE"],
+            "OBSERVED": ["DIAGNOSED", "INPUT_STALE", "INPUT_CONFLICTED", "INPUT_UNTRUSTED", "BLOCKED"],
+            "DIAGNOSED": ["PRIORITIZED", "INSUFFICIENT_EVIDENCE", "BLOCKED"],
             "PRIORITIZED": ["PLANNED", "PAUSED", "BLOCKED"],
             "PLANNED": ["AUTHORIZED", "BLOCKED"],
             "AUTHORIZED": ["ACTION_IN_PROGRESS", "BLOCKED"],
             "ACTION_IN_PROGRESS": ["ACTION_APPLIED", "VALIDATION_FAILED", "ROLLED_BACK", "BLOCKED"],
-            "ACTION_APPLIED": ["VALIDATION_PASSED", "VALIDATION_FAILED", "ROLLED_BACK"],
-            "VALIDATION_PASSED": ["PROOF_GREEN", "PROOF_FAILED", "EFFECTIVENESS_PENDING"],
+            "ACTION_APPLIED": ["VALIDATION_PASSED", "VALIDATION_FAILED", "ROLLED_BACK", "BLOCKED"],
+            "VALIDATION_PASSED": ["PROOF_GREEN", "PROOF_FAILED", "EFFECTIVENESS_PENDING", "BLOCKED"],
             "VALIDATION_FAILED": ["PLANNED", "ROLLED_BACK", "BLOCKED"],
-            "PROOF_GREEN": ["EFFECTIVENESS_PENDING", "EFFECTIVENESS_PROVEN"],
+            "PROOF_GREEN": ["EFFECTIVENESS_PENDING", "EFFECTIVENESS_PROVEN", "BLOCKED"],
             "PROOF_FAILED": ["PLANNED", "BLOCKED", "ROLLED_BACK"],
-            "EFFECTIVENESS_PENDING": ["EFFECTIVENESS_PROVEN", "EFFECTIVENESS_FAILED", "INSUFFICIENT_EVIDENCE"],
+            "EFFECTIVENESS_PENDING": ["EFFECTIVENESS_PROVEN", "EFFECTIVENESS_FAILED", "INSUFFICIENT_EVIDENCE", "BLOCKED"],
             "INSUFFICIENT_EVIDENCE": ["OBSERVED", "CONDITIONAL_ACTIVE", "BLOCKED"],
             "CONDITIONAL_ACTIVE": ["EFFECTIVENESS_PENDING", "CONDITIONAL_EXPIRED", "BLOCKED"],
             "CONDITIONAL_EXPIRED": ["BLOCKED", "PLANNED"],
@@ -532,7 +532,7 @@ def build_owner_registry(loops: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "version": "1.0",
         "status": "draft_registry_requires_named_humans_before_active_use",
-        "activation_rule": "DRAFT loops may use category placeholder owners; ACTIVE loops must resolve named policy, gate, risk, executor, and validator owners.",
+        "activation_rule": "DRAFT loops may use category placeholder owners; ACTIVE loops must resolve named policy, gate, risk, executor, validator, and backup owners.",
         "owners": [
             {
                 "owner_ref": f"owner-category-{number:02d}",
@@ -540,6 +540,8 @@ def build_owner_registry(loops: list[dict[str, Any]]) -> dict[str, Any]:
                 "policy_owner": "UNASSIGNED",
                 "gate_owner": "UNASSIGNED",
                 "risk_owner": "UNASSIGNED",
+                "executor_owner": "UNASSIGNED",
+                "validator_owner": "UNASSIGNED",
                 "backup_owner": "UNASSIGNED",
                 "status": "DRAFT",
             }
@@ -595,6 +597,7 @@ def build_probe_registry(loops: list[dict[str, Any]]) -> dict[str, Any]:
         "probes": [
             {
                 "probe_id": "routing-deduplication-v1",
+                "adapter": "scripts/pilot_probes/routing_deduplication.py",
                 "loop_ids": [loop["loop_id"] for loop in loops],
                 "method": "SCENARIO_PROBE",
                 "inputs": ["trigger_record", "loop_graph"],
@@ -603,6 +606,7 @@ def build_probe_registry(loops: list[dict[str, Any]]) -> dict[str, Any]:
             },
             {
                 "probe_id": "authority-resolution-v1",
+                "adapter": "scripts/pilot_probes/authority_resolution.py",
                 "loop_ids": [loop["loop_id"] for loop in loops],
                 "method": "AUTHORIZATION_PROBE",
                 "inputs": ["loop_descriptor", "owner_registry"],
@@ -611,6 +615,7 @@ def build_probe_registry(loops: list[dict[str, Any]]) -> dict[str, Any]:
             },
             {
                 "probe_id": "state-transition-v1",
+                "adapter": "scripts/pilot_probes/state_transition.py",
                 "loop_ids": [loop["loop_id"] for loop in loops],
                 "method": "BOUNDARY_PROBE",
                 "inputs": ["state_machine", "state_event"],
@@ -619,6 +624,7 @@ def build_probe_registry(loops: list[dict[str, Any]]) -> dict[str, Any]:
             },
             {
                 "probe_id": "proof-scope-freshness-v1",
+                "adapter": "scripts/pilot_probes/proof_scope_freshness.py",
                 "loop_ids": [loop["loop_id"] for loop in loops],
                 "method": "EVIDENCE_AUDIT",
                 "inputs": ["proof_record", "evidence_registry"],
@@ -627,6 +633,7 @@ def build_probe_registry(loops: list[dict[str, Any]]) -> dict[str, Any]:
             },
             {
                 "probe_id": "replay-tool-idempotency-v1",
+                "adapter": "scripts/pilot_probes/replay_tool_idempotency.py",
                 "loop_ids": [loop["loop_id"] for loop in loops if "tool" in loop["name"].lower() or "agent" in loop["category_name"].lower()],
                 "method": "REPLAY_PROBE",
                 "inputs": ["operation_id", "tool_call_record"],
@@ -1116,7 +1123,7 @@ def build_human_handoffs() -> dict[str, Any]:
         "handoff_rules": [
             {
                 "handoff_id": "missing_authority",
-                "trigger": "policy owner, gate owner, risk owner, executor, or validator cannot be resolved",
+                "trigger": "policy owner, gate owner, risk owner, executor, validator, or backup owner cannot be resolved",
                 "required_human": "category policy owner",
                 "allowed_state": "BLOCKED",
             },
@@ -1295,14 +1302,14 @@ def build_practicality_gaps() -> dict[str, Any]:
             {
                 "gap_id": "probes-are-contracts-not-integrations",
                 "severity": "pilot_blocker",
-                "description": "probe registry defines proof methods but does not yet call real CI, observability, security, or model-eval systems",
-                "required_fix": "bind probe IDs to executable adapters for the first pilot playbook",
+                "description": "credential-free local probe adapters and fixtures exist; real CI, observability, security, and model-eval integrations remain organization-owned",
+                "required_fix": "bind probe IDs to approved external adapters and retain independent live evidence for the first pilot playbook",
             },
             {
                 "gap_id": "golden-tasks-need-real-fixtures",
                 "severity": "pilot_blocker",
-                "description": "golden tasks exist for every loop but need real examples from the operating environment",
-                "required_fix": "seed golden tasks from recent releases, incidents, defects, AI failures, audits, and agent tool calls",
+                "description": "bounded contract fixtures exist for the pilot; real examples from the operating environment are still required",
+                "required_fix": "seed and approve golden tasks from recent releases, incidents, defects, AI failures, audits, and agent tool calls",
             },
         ],
     }

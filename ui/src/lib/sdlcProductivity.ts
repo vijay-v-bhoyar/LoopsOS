@@ -9,6 +9,9 @@ import type {
   LoopRecommendation,
   LoopRun,
   LoopRunStep,
+  OutcomeMeasurementObservation,
+  OutcomeMeasurementPlan,
+  OutcomeMeasurementUnit,
   RiskTier,
   SavedWorkspace,
   UseCaseValidationResult,
@@ -116,7 +119,8 @@ export function completeNextRunStep(run: LoopRun, timestamp = nowIso()): LoopRun
     current_step: next?.step_key ?? "validated",
     step_records,
     evidence_refs: Array.from(new Set([...run.evidence_refs, step_records[openIndex].required_evidence])),
-    validation_result: next ? "Inconclusive" : "Passed",
+    // Completing the local checklist is not an authority validation result.
+    validation_result: "Inconclusive",
     updated_at: timestamp,
   };
 }
@@ -151,6 +155,30 @@ export function estimateEffortSaving(initiativeId: string, loopCount: number, ha
     hours_saved_estimate: Math.round(hours),
     assumptions: "1.5h per status meeting, 3h per review cycle, 0.5h per reused evidence item, and 1h per explicit handoff made visible.",
     confidence_basis: "Transparent estimate from loop count, handoff count, evidence references, and completed checklist steps. No model confidence is used.",
+  };
+}
+
+export function recordOutcomeObservation(
+  initiative: InitiativeWorkspace,
+  value: number,
+  sourceRef: string,
+  timestamp = nowIso(),
+): InitiativeWorkspace {
+  const plan = initiative.outcome_measurement;
+  if (!plan) throw new Error("An outcome measurement plan is required before recording an observation.");
+  if (!Number.isFinite(value)) throw new Error("Outcome observation value must be finite.");
+  if (!sourceRef.trim()) throw new Error("Outcome observation source is required.");
+  const observation: OutcomeMeasurementObservation = {
+    observation_id: uid("outcome-observation"),
+    value,
+    unit: plan.unit,
+    source_ref: sourceRef.trim(),
+    observed_at: timestamp,
+  };
+  return {
+    ...initiative,
+    outcome_observations: [...(initiative.outcome_observations ?? []), observation],
+    updated_at: timestamp,
   };
 }
 
@@ -192,6 +220,8 @@ export function createInitiativeFromWorkspace(
     approvals: workspace.approvals,
     handoffs,
     roi_assumptions: estimateEffortSaving(id, loopIds.length, handoffs.length, evidence_records.length, 0),
+    outcome_measurement: workspace.use_case.outcomeMeasurement,
+    outcome_observations: [],
   };
   return {
     ...initiative,
@@ -213,10 +243,16 @@ export function refreshInitiative(initiative: InitiativeWorkspace, validation: U
   };
 }
 
-export function buildProofPackMarkdown(workspace: SavedWorkspace, initiative: InitiativeWorkspace, data: LoopOSData, validation: UseCaseValidationResult): string {
+export function buildEvaluationPackMarkdown(workspace: SavedWorkspace, initiative: InitiativeWorkspace, data: LoopOSData, validation: UseCaseValidationResult): string {
   const loops = initiative.loop_bundle_ids.map((id) => data.loops.find((loop) => loop.loop_id === id)).filter((loop): loop is LoopDetail => Boolean(loop));
+  const measurement = initiative.outcome_measurement;
+  const observations = initiative.outcome_observations ?? [];
   return [
-    `# LoopOS SDLC Proof Pack: ${initiative.title}`,
+    `# LoopOS SDLC Evaluation Pack: ${initiative.title}`,
+    "",
+    "Evidence status: LOCAL DRAFT - not an authoritative proof pack.",
+    "Authority record: none. Human approval: not recorded.",
+    "Use this artifact to prepare review; rely on the tenant-bound authority proof pack for release decisions.",
     "",
     `Status: ${initiative.status}`,
     `Workflow: ${workflowLabel(initiative.workflow_type)}`,
@@ -226,6 +262,23 @@ export function buildProofPackMarkdown(workspace: SavedWorkspace, initiative: In
     "## Business Outcome",
     "",
     initiative.business_outcome,
+    "",
+    "## Outcome Measurement",
+    "",
+    ...(measurement
+      ? [
+          `Metric: ${measurement.metric || "Not defined"}`,
+          `Unit: ${measurement.unit}`,
+          `Baseline: ${measurement.baseline ?? "Not defined"}`,
+          `Target: ${measurement.target ?? "Not defined"}`,
+          `Evidence source: ${measurement.source || "Not defined"}`,
+          `Observation window: ${measurement.observation_window || "Not defined"}`,
+        ]
+      : ["No structured outcome measurement plan recorded."]),
+    `Actual observations recorded: ${observations.length}`,
+    ...(observations.length
+      ? observations.map((observation) => `- ${observation.value} ${observation.unit} at ${observation.observed_at} from ${observation.source_ref}`)
+      : ["- No actual outcome observations recorded; value remains unproven."]),
     "",
     "## Loop Bundle",
     "",

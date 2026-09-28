@@ -1,0 +1,54 @@
+# LoopsOS release attestor and shared audit fence continuation
+
+**Decision: local repair evidence PASS; enterprise reliance NO_GO; parent goal PARTIAL.** No deployment, hosted migration, real provider call, audit-sink write or external notification was performed.
+
+This report updates findings F12 and F13 in the [thirteen-owner assessment](LOOPSOS_13_OWNER_REPAIR_ASSESSMENT_2026-09-21.md). It is limited to the release publisher trust path and cross-worker audit delivery fencing. The whole local subject is recorded in [subject.json](../output/loopsos-enterprise-repair/subject.json), with manifest digest `f65f350d28cef1ded681c1199ae7d56231018769a832cafc974fe72c1dbc3038`. The lifecycle conductor remains `product-lifecycle-loop`; `codex-product-build-loop` remains the sole delivery engine.
+
+## F13 — release publisher identity and workflow provenance
+
+**Red-team failure mode.** A valid webhook HMAC proves possession of the configured webhook secret. By itself, it does not prove that a check was produced by the organization-approved GitHub App or by the protected release workflow. If the evaluator accepts only the signed event and check name, a different app, unrelated workflow, stale success or altered workflow payload can be mistaken for current release evidence. That can make a release appear reviewable even when the publisher or workflow is outside the intended trust boundary.
+
+**Blue-team correction.** Release policy now includes the server-configured GitHub App ID and workflow ID allowlist, and both values contribute to the policy digest. For each required check, evaluation verifies the publisher App, exact repository and commit, check-suite identity, and a matching workflow run from an allowlisted workflow. It chooses the newest applicable workflow attempt/state and fails closed on a failed latest rerun, stale or malformed matching evidence, or a payload whose stored bytes do not match its digest. Configuration parsing rejects incomplete pairs, duplicates, invalid or out-of-range IDs. Production readiness and the production preflight both require the App and workflow allowlist.
+
+The runtime configuration names are `LOOPOS_GITHUB_RELEASE_ATTESTOR_APP_ID` and `LOOPOS_GITHUB_RELEASE_WORKFLOW_IDS`. The CI browser job uses synthetic IDs only in its explicit evaluation test environment. The browser fixture creates signed check and workflow events for the same suite, repository and commit, then exercises the reviewer approval and rejection journey against the local authority.
+
+**Adversarial coverage.** The authority tests deny an unapproved App, unapproved workflow, absent workflow proof, corrupted workflow payload and failed latest rerun. They also verify that changing either approved publisher identity changes the policy digest. The final evaluation browser journey passes with synthetic webhook material and synthetic provider events. Those tests establish local contract behavior; they do not establish that an actual GitHub App token, protected branch, workflow permission set, webhook delivery or CI artifact is trustworthy.
+
+**Remaining exposure and required evidence.** A compromised approved App or webhook secret can still create misleading signed events unless GitHub-side permissions, secret custody, rotation, repository ownership and workflow protections are independently controlled. The configured workflow ID can point at a mutable or inappropriate workflow unless the organization verifies its source, branch protections, reusable-workflow chain, environment approvals, artifact provenance and runner isolation. The current test does not call GitHub. Before pilot or release, the organization must approve the exact App/workflow IDs, validate the current workflow definition and permissions, exercise key revocation and workflow replacement, and prove collector-side identity against live provider records. Owner 10 must independently challenge that evidence; Owner 11 must verify the CI and supply-chain boundary.
+
+## F12 — shared audit delivery fencing
+
+**Red-team failure mode.** Per-process locks do not coordinate workers that share a database. During a destination or key rotation, an old worker can remain alive, continue sending to the prior endpoint, or race a new worker. An HTTP response can be lost after the sink accepts the event, leaving the sender uncertain about whether to retry. Automatically expiring that attempt or replaying history to a replacement sink can duplicate, misroute or misrepresent audit delivery.
+
+**Blue-team correction.** The outbox now records a delivery epoch. A shared control row stores the active/pending epoch, target binding and rotation phase; attempt rows record admitted and uncertain work. Each worker claims an event in a database transaction under the current epoch and exact target binding, then releases the database transaction before network I/O. Completion uses an attempt-token compare-and-set. An uncertain attempt remains visible and blocks epoch activation; retry preserves the same event ID and bytes. Rotation enters draining, prevents fresh work under the old epoch, waits for admitted/uncertain work to resolve, then activates the next epoch. There is no time-based force release for an ambiguous external result.
+
+The versioned v2 request signature binds the epoch and exact body; the request also carries the epoch header. The additive PostgreSQL migration creates private control/attempt tables, enables row-level security, revokes client roles and adds the epoch column without backfilling or replaying old delivery history. The operator runbook records cutover, crash and rollback constraints.
+
+**Adversarial coverage.** Local SQLite tests use separate database connections to verify that two same-epoch workers cannot admit one event twice, that a stale worker cannot claim fresh work after rotation begins, and that an uncertain or crashed attempt remains visible and prevents activation. A same-ID retry can resolve the uncertainty. Migration tests check additive/replay-free SQL, RLS and privilege revocation, required columns and lock/statement timeout declarations. The full authority suite passes. No live PostgreSQL instance was configured, so the PostgreSQL transaction/locking and hosted RLS behavior remain unproven.
+
+**Remaining exposure and required evidence.** The database fence cannot stop a pre-fence binary that has no epoch-aware protocol or that uses a different database. Cutover therefore requires an organization-owned stop/drain/revoke procedure for old workers and credentials. The receiving sink must verify the v2 signature, persist and enforce monotonic epochs, deduplicate event IDs, and report durable retention rather than merely returning 2xx/202. Sink backup, immutable retention, restore, availability, queue growth, alerting and operational recovery have not been exercised. No historical payload is automatically replayed to the new target. Before production, review and apply the migration under the approved change window, prove all old senders are stopped or revoked, exercise receiver epoch rejection and same-ID deduplication, and run loss-of-response, crash and restore drills on the authorized target.
+
+## Current local verification
+
+| Check | Result | Boundary |
+|---|---:|---|
+| Authority backend suite | 386 executions; 366 distinct test IDs; 1 skipped | Local authority and static storage contracts. The discovery run imports 20 API cases a second time. The skipped test needs `LOOPOS_TEST_POSTGRES_DSN`; hosted PostgreSQL is untested. |
+| Skill, owner and loop packages | 347 tests across 23 groups | Includes all thirteen owner method suites and the lifecycle, delivery, assurance, diligence and fleet fixtures. These validate local owner-method and loop contracts; they do not mean every risk-specific enterprise campaign or business outcome trial was run. |
+| Skill-fleet validator | PASS | `skill-fleet/fleet.py validate --registry skill-fleet/registry.json`; read-only. |
+| UI unit/integration | 278 tests across 29 files | Local deterministic/mocked tests. |
+| UI build and design-token gate | PASS | Local production bundle and token checks; not deployed. |
+| Enterprise readiness browser gate | 10 passed | Desktop/mobile local test authority with synthetic bindings. |
+| Evaluation browser matrix | 100 passed; 10 skipped | Chromium desktop/mobile; enterprise-only cases are exercised by the separate gate above. |
+| Refreshed Graphify | 164 code files; 2,057 nodes; 6,424 edges; 82 unresolved references; 0 dangling endpoints | Structural AST only; not SQL semantics, full threat coverage or proof of hosted correctness. |
+
+The first full-browser attempt omitted its explicit evaluation fixture flags and produced 90 passes, 10 failures and 10 skips. The retained log is [the unconfigured attempt](../output/loopsos-followup-e2e.log). The corrected evaluation run then exposed that the release browser fixture lacked App/workflow evidence; [that failed run](../output/loopsos-followup-e2e-evaluation.log) remains preserved. The fixture and CI environment were corrected, and [the final evaluation run](../output/loopsos-followup-e2e-attested.log) passed all 100 applicable tests. The full authority log and fleet/lifecycle package log are [authority-suite-final.log](../output/authority-suite-final.log) and [loopsos-skill-package-suite-final.log](../output/loopsos-skill-package-suite-final.log).
+
+The exact current source, graph and local test hashes are in the [continuation receipt](../output/loopsos-enterprise-repair/anchor-fence/completion-receipt.json). They identify this modified checkout, not a protected or deployed artifact. A review snapshot does not authorize a release action.
+
+## 13-owner impact and decision
+
+F13 primarily affects Owner 10 (independent challenge), Owner 11 (vendor, dependency and supply-chain assurance), and Owner 8 (regulatory and governance assurance). F12 affects Owners 3 (agentic effects), 5 (security architecture), 9 (data lifecycle and evidence custody), 10 (independent challenge), and 12 (human operations and recovery). The remaining owner findings and acceptance conditions are detailed in the parent assessment; this continuation does not close their open organizational, provider or business evidence.
+
+Local implementation evidence is materially stronger, but enterprise acceptance still requires an approved subject and risk profile, organization-controlled identities and trust roots, independent second-line challenge, a live managed database and reviewed migration, real audit receiver evidence, production worker/credential revocation, observed rollback and recovery, approved supply-chain artifacts and business-outcome evidence. No individual test or local GO can replace those prerequisites.
+
+**Current decision: NO_GO for enterprise reliance; parent remediation PARTIAL; deployment unauthorized.**

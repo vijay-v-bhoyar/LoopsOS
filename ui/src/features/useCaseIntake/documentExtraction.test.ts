@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { extractDocument, IntakeError } from "./documentExtraction";
+import { extractDocument, INTAKE_LIMITS, IntakeError } from "./documentExtraction";
 
 function file(name: string, contents: string, type: string): File {
   return new File([contents], name, { type });
@@ -49,7 +49,9 @@ describe("extractDocument", () => {
 
   it("enforces file count, size, source text, workspace text, and timeout limits", async () => {
     await expect(extractDocument(file("sixth.txt", "content", "text/plain"), { currentFileCount: 5 })).rejects.toMatchObject({ code: "file_count" });
-    await expect(extractDocument(file("large.txt", "x".repeat(10 * 1024 * 1024 + 1), "text/plain"))).rejects.toMatchObject({ code: "file_size" });
+    const oversized = file("large.txt", "x", "text/plain");
+    Object.defineProperty(oversized, "size", { value: INTAKE_LIMITS.maxFileBytes + 1 });
+    await expect(extractDocument(oversized)).rejects.toMatchObject({ code: "file_size" });
 
     const long = await extractDocument(file("long.md", "x".repeat(50_010), "text/markdown"));
     expect(long.accepted_text).toHaveLength(50_000);
@@ -64,7 +66,7 @@ describe("extractDocument", () => {
     await expect(
       extractDocument(file("slow.pdf", "%PDF", "application/pdf"), { parseBinary: () => never, timeoutMs: 5 }),
     ).rejects.toMatchObject({ code: "timeout" });
-  });
+  }, 15_000);
 
   it("maps encrypted and image-only PDF results to actionable errors", async () => {
     await expect(

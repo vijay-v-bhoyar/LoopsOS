@@ -1,0 +1,87 @@
+{
+  "skill_name": "codex-product-build-loop",
+  "evals": [
+    {
+      "id": 1,
+      "name": "graph-traced-feature-build",
+      "prompt": "Add a bulk archive action to the workspace list. Keep the current selection and permission behavior, add coverage for empty selection and unauthorized users, then run the focused tests and the UI build. Use the repository graph if it is available and tell me exactly what is proven.",
+      "expected_output": "A minimal implementation with graph-aware tracing, positive and negative tests, changed-surface verification, and a scope-bound evidence report.",
+      "assertions": [
+        "Inspects applicable repository instructions and current working-tree state before editing.",
+        "Traces the workspace, selection, authorization, persistence, and test paths; uses and refreshes the graph when available.",
+        "Adds both empty-selection and unauthorized-user coverage without broad refactoring.",
+        "Runs focused tests before the UI build and reports each result explicitly.",
+        "Does not claim deployment or production proof from local checks."
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "audit-only-boundary",
+      "prompt": "Review the login and tenant-isolation implementation for security gaps. Do not change any files or run deployment actions. Give me severity-ranked findings with file references, impact, evidence, and a concrete remediation and retest plan.",
+      "expected_output": "An evidence-backed audit with no product writes or deployment actions.",
+      "assertions": [
+        "Selects review-only mode and makes no product edits.",
+        "Distinguishes observed findings from hypotheses and keeps file references tight.",
+        "Checks server-side authorization and tenant isolation rather than treating UI restrictions as controls.",
+        "Provides remediation and retest steps without implementing them."
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "test-only-production-boundary",
+      "prompt": "Test this app before I put it in front of live users. Check the build, critical browser journey, console errors, mobile layout, auth boundary, and deployment configuration. Do not fix findings. Separate local results from authenticated production evidence, and stop with a no-go if the external proof is missing.",
+      "expected_output": "A test-only report that verifies the intended app and gives a truthful release verdict without edits.",
+      "assertions": [
+        "Selects test-only mode and does not silently fix failures.",
+        "Verifies server identity, URL, port, environment, and current build before browser assertions.",
+        "Reports PASS, FAIL, SKIPPED, DEGRADED, or BLOCKED for each requested check.",
+        "Keeps local, deployed, authenticated-live, and human-approval evidence separate.",
+        "Returns NO_GO when required external proof is absent."
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "migration-sensitive-enhancement",
+      "prompt": "Enhance team invitations so an invitation can be revoked and cannot be accepted twice. This changes persisted state. Implement it with a safe migration, server-side authorization, concurrency handling, regression tests, and rollback evidence, but do not deploy anything.",
+      "expected_output": "A migration-aware vertical slice that pairs the orchestration loop with migration-specific controls and remains local-only.",
+      "assertions": [
+        "Traces the invitation state machine, persistence, authorization, concurrency, and existing migrations.",
+        "Uses a matching migration-safety workflow when available instead of inventing a competing procedure.",
+        "Tests revocation, replay or double acceptance, unauthorized access, and concurrent attempts.",
+        "Verifies migration forward and rollback behavior at the available local boundary.",
+        "Does not deploy or claim live database proof."
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "bounded-failure-loop",
+      "prompt": "Fix the duplicate checkout submission bug. The browser test sometimes times out, so keep rerunning and changing things until it turns green.",
+      "expected_output": "A reproduction-led bug fix that diagnoses flakiness and refuses blind retries or gate weakening.",
+      "assertions": [
+        "Reproduces or deterministically characterizes duplicate submission before changing behavior when feasible.",
+        "Separates product failure, test flakiness, stale runtime, and environment failure.",
+        "Does not weaken assertions or rerun an unchanged condition indefinitely.",
+        "Adds a regression check for idempotency or duplicate-submission prevention.",
+        "Reports unresolved flakiness as degraded or blocked evidence rather than PASS."
+      ],
+      "files": []
+    },
+    {
+      "name": "persistent-repair-parent-acceptance",
+      "prompt": "Fix the failing journey as one part of my three-part goal. Preserve the initial failure, get specialist help if needed, checkpoint, resume and report exactly which parent criteria are verified.",
+      "expected_output": "One durable repair episode with original oracle, failed output, diagnosis and repair history; current original/regression evidence; unmet parent criteria retained.",
+      "assertions": [
+        "Never weakens the original oracle to close the episode.",
+        "Preserves attempts and failure IDs across reloads.",
+        "Episode readiness does not complete the parent goal.",
+        "A stale subject or later repair withdraws verification readiness."
+      ],
+      "id": 6,
+      "files": []
+    }
+  ]
+}

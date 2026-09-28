@@ -1,0 +1,3 @@
+interface:
+  display_name: "Enterprise AI Owner 9"
+  short_description: "Verify data derivatives, memory provenance, deletion and restore behavior, evidence privacy and holdout integrity."

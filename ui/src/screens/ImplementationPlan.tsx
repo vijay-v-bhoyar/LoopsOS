@@ -8,7 +8,7 @@ export function ImplementationPlan({ plan }: { plan: EnterpriseActionPlan | null
   if (!plan) {
     return (
       <Card>
-        <SectionHeader title="Implementation Plan Export" description="Use the Use Case Advisor to generate a read-only enterprise action plan." />
+        <SectionHeader title="Evaluation Plan Export" description="Use the Use Case Advisor to generate a read-only evaluation action plan." />
         <InlineNote>Generated plans appear here after a use case is evaluated.</InlineNote>
       </Card>
     );
@@ -31,7 +31,8 @@ export function ImplementationPlan({ plan }: { plan: EnterpriseActionPlan | null
   return (
     <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
       <Card>
-        <SectionHeader title="Enterprise Action Plan" description={plan.summary} action={<HelpPopover helpKey="export" />} />
+        <SectionHeader title="Enterprise Evaluation Action Plan" description={plan.summary} action={<HelpPopover helpKey="export" />} />
+        <InlineNote tone="warning">This browser-local plan is an evaluation draft. It does not create authority evidence, release approval, or production access.</InlineNote>
         <div className="mb-4 flex flex-wrap gap-2">
           <Button onClick={copy}>
             <Copy className="h-4 w-4" aria-hidden="true" />

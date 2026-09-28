@@ -1,0 +1,6 @@
+interface:
+  display_name: "Agentic Assurance Loop"
+  short_description: "Assure and remediate agentic AI systems"
+  default_prompt: "Use $agentic-assurance-loop to assess this agentic AI application and produce evidence-backed findings, remediation, verification, and scoped decisions."
+policy:
+  allow_implicit_invocation: true

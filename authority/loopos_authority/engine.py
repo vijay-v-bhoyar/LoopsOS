@@ -13,13 +13,17 @@ class ExecutionEngine:
         self.store = store
         self.tools = tools
 
-    async def execute(self, tenant_id: str, run_id: str) -> None:
-        run = self.store.claim_run(tenant_id, run_id)
+    async def execute(self, tenant_id: str, run_id: str, reclaim_running: bool = False) -> None:
+        run = self.store.claim_run(tenant_id, run_id, reclaim_running=reclaim_running)
         try:
+            if self._interrupt_if_kill_switch_active(run, "before_preparation"):
+                return
             if run.state == "EFFECTIVENESS_PENDING":
                 await self._complete_effectiveness(run)
                 return
             run = await self._prepare(run)
+            if self._interrupt_if_kill_switch_active(run, "before_authorization"):
+                return
             if run.state == "PLANNED":
                 if run.requires_approval:
                     try:
@@ -27,9 +31,13 @@ class ExecutionEngine:
                     except Forbidden:
                         self.store.release_run(tenant_id, run_id, "awaiting_approval")
                         return
+                    if self._interrupt_if_kill_switch_active(run, "after_approval"):
+                        return
                 run = self.store.transition(tenant_id, run_id, "AUTHORIZED", "authority-engine", {"payload_hash": run.payload_hash})
 
             if run.state == "AUTHORIZED":
+                if self._interrupt_if_kill_switch_active(run, "before_action_dispatch"):
+                    return
                 run = self.store.transition(tenant_id, run_id, "ACTION_IN_PROGRESS", "authority-engine")
 
             if run.state != "ACTION_IN_PROGRESS":
@@ -40,9 +48,16 @@ class ExecutionEngine:
             try:
                 action_output = await self.tools.execute_action(tenant_id, run_id, run.plan.action, run.plan.max_attempts)
             except ToolFailure as error:
-                await self._fail_action(run, str(error))
+                await self._fail_action(run, str(error), error.code)
                 return
 
+            if self._interrupt_if_kill_switch_active(
+                run,
+                "after_action_dispatch",
+                action_output=action_output,
+                action_external_effect=run.plan.action.external_effect,
+            ):
+                return
             run = self.store.transition(tenant_id, run_id, "ACTION_APPLIED", "authority-engine", {"action_output": action_output})
             validation_passed, validation_results = await self._run_probes(run, "validation", run.plan.validation_probes, action_output, evidence)
             self.store.set_output(tenant_id, run_id, {
@@ -68,7 +83,9 @@ class ExecutionEngine:
         except Exception as error:
             current = self.store.get_run(tenant_id, run_id)
             if not self.corpus.is_terminal(current.state):
-                if self.corpus.allows_transition(current.state, "BLOCKED"):
+                if current.state == "EFFECTIVENESS_PENDING":
+                    self.store.transition(tenant_id, run_id, "EFFECTIVENESS_FAILED", "authority-engine", {"error": str(error)})
+                elif self.corpus.allows_transition(current.state, "BLOCKED"):
                     self.store.transition(tenant_id, run_id, "BLOCKED", "authority-engine", {"error": str(error)})
                 elif current.state == "ACTION_APPLIED":
                     failed = self.store.transition(tenant_id, run_id, "VALIDATION_FAILED", "authority-engine", {"error": str(error)})
@@ -78,13 +95,32 @@ class ExecutionEngine:
                     failed = self.store.transition(tenant_id, run_id, "PROOF_FAILED", "authority-engine", {"error": str(error)})
                     await self._rollback_or_block(failed, str(error))
                     return
-                elif current.state == "EFFECTIVENESS_PENDING":
-                    self.store.transition(tenant_id, run_id, "EFFECTIVENESS_FAILED", "authority-engine", {"error": str(error)})
             self.store.release_run(tenant_id, run_id, "failed", str(error))
 
-    async def rollback(self, tenant_id: str, run_id: str, reason: str) -> None:
-        run = self.store.claim_run(tenant_id, run_id)
+    async def rollback(self, tenant_id: str, run_id: str, reason: str, reclaim_running: bool = False) -> None:
+        run = self.store.claim_run(tenant_id, run_id, reclaim_running=reclaim_running)
+        if self._interrupt_if_kill_switch_active(run, "before_rollback"):
+            return
         await self._rollback_or_block(run, reason)
+
+    def _interrupt_if_kill_switch_active(
+        self,
+        run,
+        phase: str,
+        *,
+        action_output: dict[str, Any] | None = None,
+        action_external_effect: bool = False,
+    ) -> bool:
+        if not self.store.is_kill_switch_active(run.tenant_id):
+            return False
+        self.store.interrupt_run_for_kill_switch(
+            run.tenant_id,
+            run.run_id,
+            phase,
+            action_output=action_output,
+            action_external_effect=action_external_effect,
+        )
+        return True
 
     async def _prepare(self, run):
         tenant_id, run_id = run.tenant_id, run.run_id
@@ -108,7 +144,7 @@ class ExecutionEngine:
         all_passed = True
         for probe in probes:
             try:
-                passed, detail = await self.tools.run_probe(probe, action_output, evidence)
+                passed, detail = await self.tools.run_probe(probe, action_output, evidence, tenant_id=run.tenant_id)
             except ToolFailure as error:
                 passed, detail = False, {"error": str(error), "code": error.code}
             self.store.save_probe(run.tenant_id, run.run_id, phase, probe.probe_id, passed, detail)
@@ -117,6 +153,8 @@ class ExecutionEngine:
         return all_passed, results
 
     async def _complete_effectiveness(self, run) -> None:
+        if self._interrupt_if_kill_switch_active(run, "before_effectiveness_probe"):
+            return
         output = run.output or {}
         action_output = output.get("action")
         if not isinstance(action_output, dict):
@@ -124,20 +162,26 @@ class ExecutionEngine:
         evidence = self.store.list_evidence(run.tenant_id, run.run_id)
         effectiveness_passed, effectiveness_results = await self._run_probes(run, "effectiveness", run.plan.effectiveness_probes, action_output, evidence)
         if effectiveness_passed:
-            self.store.transition(run.tenant_id, run.run_id, "EFFECTIVENESS_PROVEN", "authority-engine", {"probe_results": effectiveness_results})
             self.store.set_output(run.tenant_id, run.run_id, {**output, "effectiveness": effectiveness_results})
+            self.store.transition(run.tenant_id, run.run_id, "EFFECTIVENESS_PROVEN", "authority-engine", {"probe_results": effectiveness_results})
             self.store.release_run(run.tenant_id, run.run_id, "completed")
         else:
-            self.store.transition(run.tenant_id, run.run_id, "EFFECTIVENESS_FAILED", "authority-engine", {"probe_results": effectiveness_results})
             self.store.set_output(run.tenant_id, run.run_id, {**output, "effectiveness": effectiveness_results})
+            self.store.transition(run.tenant_id, run.run_id, "EFFECTIVENESS_FAILED", "authority-engine", {"probe_results": effectiveness_results})
             self.store.release_run(run.tenant_id, run.run_id, "failed", "Effectiveness probes failed.")
 
-    async def _fail_action(self, run, message: str) -> None:
+    async def _fail_action(self, run, message: str, code: str = "tool_failure") -> None:
         self.store.set_output(run.tenant_id, run.run_id, {
             "action_error": message,
+            "action_error_code": code,
             "invariant": self.corpus.state_machine["invariant"],
             "standard_hash": self.corpus.standard_hash,
         })
+        if code in {"external_outcome_unknown", "external_effect_denied"}:
+            if self.corpus.allows_transition("ACTION_IN_PROGRESS", "BLOCKED"):
+                self.store.transition(run.tenant_id, run.run_id, "BLOCKED", "authority-engine", {"tool_error": message, "code": code, "automatic_compensation": False})
+            self.store.release_run(run.tenant_id, run.run_id, "failed", message)
+            return
         if self.corpus.allows_transition("ACTION_IN_PROGRESS", "VALIDATION_FAILED"):
             failed = self.store.transition(run.tenant_id, run.run_id, "VALIDATION_FAILED", "authority-engine", {"tool_error": message})
             await self._rollback_or_block(failed, message)
@@ -145,6 +189,8 @@ class ExecutionEngine:
             self.store.release_run(run.tenant_id, run.run_id, "failed", message)
 
     async def _rollback_or_block(self, run, reason: str) -> None:
+        if self._interrupt_if_kill_switch_active(run, "rollback_blocked"):
+            return
         if run.plan.rollback and self.corpus.allows_transition(run.state, "ROLLED_BACK"):
             try:
                 result = await self.tools.execute_action(run.tenant_id, run.run_id, run.plan.rollback, run.plan.max_attempts)

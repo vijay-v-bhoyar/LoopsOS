@@ -19,10 +19,10 @@ gaps:
   -
     gap_id: probes-are-contracts-not-integrations
     severity: pilot_blocker
-    description: "probe registry defines proof methods but does not yet call real CI, observability, security, or model-eval systems"
-    required_fix: "bind probe IDs to executable adapters for the first pilot playbook"
+    description: "credential-free local probe adapters and fixtures exist; real CI, observability, security, and model-eval integrations remain organization-owned"
+    required_fix: "bind probe IDs to approved external adapters and retain independent live evidence for the first pilot playbook"
   -
     gap_id: golden-tasks-need-real-fixtures
     severity: pilot_blocker
-    description: "golden tasks exist for every loop but need real examples from the operating environment"
-    required_fix: "seed golden tasks from recent releases, incidents, defects, AI failures, audits, and agent tool calls"
+    description: "bounded contract fixtures exist for the pilot; real examples from the operating environment are still required"
+    required_fix: "seed and approve golden tasks from recent releases, incidents, defects, AI failures, audits, and agent tool calls"

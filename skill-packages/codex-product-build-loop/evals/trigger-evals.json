@@ -1,0 +1,50 @@
+[
+  {
+    "query": "Add bulk editing to the customer table, preserve tenant permissions, cover empty and unauthorized selections, and run the relevant browser and build checks.",
+    "should_trigger": true
+  },
+  {
+    "query": "The checkout button sometimes charges twice. Reproduce it, fix the actual cause, add an idempotency regression test, and verify the purchase journey.",
+    "should_trigger": true
+  },
+  {
+    "query": "Enhance the mobile onboarding flow so keyboard users can finish it, then test the affected viewports and console errors.",
+    "should_trigger": true
+  },
+  {
+    "query": "Refactor the notification service without changing behavior; establish the current contract, make the smallest change, and prove no regressions.",
+    "should_trigger": true
+  },
+  {
+    "query": "Test every critical journey in this app before live users see it. Do not fix anything; separate local evidence from production proof.",
+    "should_trigger": true
+  },
+  {
+    "query": "Build a governed agent tool that can revoke invitations, with approval, replay protection, failure compensation, and tests.",
+    "should_trigger": true
+  },
+  {
+    "query": "Help me brainstorm three possible product visions for a family calendar app. No repository work yet.",
+    "should_trigger": false
+  },
+  {
+    "query": "Write a friendly launch announcement email for our new dashboard.",
+    "should_trigger": false
+  },
+  {
+    "query": "Perform an audit-only threat model of this architecture and do not change or test the repository.",
+    "should_trigger": false
+  },
+  {
+    "query": "Deploy the already-built release to Vercel production and confirm the live domain.",
+    "should_trigger": false
+  },
+  {
+    "query": "Review this SQL migration plan for rollback safety, but do not implement product behavior.",
+    "should_trigger": false
+  },
+  {
+    "query": "Explain what this TypeScript function does in plain English.",
+    "should_trigger": false
+  }
+]

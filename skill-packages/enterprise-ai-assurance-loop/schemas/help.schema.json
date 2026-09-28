@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "enum": [
+        "enterprise-help/v1"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "risk_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "destination": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$"
+    },
+    "request": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "risk_while_waiting": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "deadline": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "wake_condition": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "status": {
+      "enum": [
+        "DRAFT",
+        "DELIVERED",
+        "ACKNOWLEDGED",
+        "RESOLVED",
+        "DEAD_LETTER"
+      ]
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "delivery_reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "risk_id",
+    "destination",
+    "request",
+    "evidence_refs",
+    "risk_while_waiting",
+    "deadline",
+    "wake_condition",
+    "status",
+    "attempts",
+    "delivery_reference"
+  ],
+  "additionalProperties": false
+}

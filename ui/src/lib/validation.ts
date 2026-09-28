@@ -4,6 +4,20 @@ function hasEnoughText(value: string, minWords: number): boolean {
   return value.trim().split(/\s+/).filter(Boolean).length >= minWords;
 }
 
+export function hasCompleteOutcomeMeasurementPlan(input: UseCaseInput): boolean {
+  const plan = input.outcomeMeasurement;
+  return Boolean(
+    plan
+      && plan.metric.trim()
+      && plan.source.trim()
+      && plan.observation_window.trim()
+      && plan.baseline !== null
+      && Number.isFinite(plan.baseline)
+      && plan.target !== null
+      && Number.isFinite(plan.target),
+  );
+}
+
 export function validateUseCase(
   input: UseCaseInput,
   recommendations: LoopRecommendation[],
@@ -24,6 +38,11 @@ export function validateUseCase(
   add(hasEnoughText(input.description, 10) ? "pass" : "gap", "Workflow description", "Describe trigger, user, current workflow, and expected change.");
   add(input.environment ? "pass" : "gap", "Environment", "Choose whether this applies to development, pilot, production, or enterprise portfolio.");
   add(input.businessOutcome ? "pass" : "gap", "Business outcome", "State measurable value such as reduced cycle time, safer release, better grounded answers, or lower incident recurrence.");
+  add(
+    hasCompleteOutcomeMeasurementPlan(input) ? "pass" : input.businessOutcome ? "gap" : "review",
+    "Outcome measurement plan",
+    "Record a metric, unit, numeric baseline, numeric target, evidence source, and observation window before claiming business value.",
+  );
   const acceptedSources = sources.filter((source) => source.status === "accepted");
   add(acceptedSources.length ? "pass" : "review", "Input provenance", "Attach or record a named source when the use case depends on enterprise evidence beyond the structured fields.");
   if (acceptedSources.length) {

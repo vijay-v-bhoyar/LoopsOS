@@ -3557,18 +3557,21 @@
         "tasks": [
           {
             "task_id": "loop-006-requirements-quality-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Requirements Quality Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-006-requirements-quality-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Requirements Quality Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-006-requirements-quality-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Requirements Quality Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -4122,18 +4125,21 @@
         "tasks": [
           {
             "task_id": "loop-007-requirements-change-control-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Requirements Change Control Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-007-requirements-change-control-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Requirements Change Control Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-007-requirements-change-control-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Requirements Change Control Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -4687,18 +4693,21 @@
         "tasks": [
           {
             "task_id": "loop-008-requirements-traceability-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Requirements Traceability Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-008-requirements-traceability-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Requirements Traceability Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-008-requirements-traceability-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Requirements Traceability Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -9563,18 +9572,21 @@
         "tasks": [
           {
             "task_id": "loop-014-retrospective-improvement-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Retrospective Improvement Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-014-retrospective-improvement-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Retrospective Improvement Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-014-retrospective-improvement-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Retrospective Improvement Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -10128,18 +10140,21 @@
         "tasks": [
           {
             "task_id": "loop-015-design-review-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Design Review Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-015-design-review-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Design Review Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-015-design-review-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Design Review Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -10693,18 +10708,21 @@
         "tasks": [
           {
             "task_id": "loop-016-architecture-fitness-and-future-compatibility-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Architecture Fitness and Future Compatibility Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-016-architecture-fitness-and-future-compatibility-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Architecture Fitness and Future Compatibility Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-016-architecture-fitness-and-future-compatibility-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Architecture Fitness and Future Compatibility Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -14083,18 +14101,21 @@
         "tasks": [
           {
             "task_id": "loop-022-code-quality-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Code Quality Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-022-code-quality-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Code Quality Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-022-code-quality-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Code Quality Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -14648,18 +14669,21 @@
         "tasks": [
           {
             "task_id": "loop-023-pull-request-review-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Pull Request Review Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-023-pull-request-review-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Pull Request Review Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-023-pull-request-review-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Pull Request Review Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -15778,18 +15802,21 @@
         "tasks": [
           {
             "task_id": "loop-025-ci-pipeline-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "CI Pipeline Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-025-ci-pipeline-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "CI Pipeline Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-025-ci-pipeline-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "CI Pipeline Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -22203,18 +22230,21 @@
         "tasks": [
           {
             "task_id": "loop-036-release-readiness-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Release Readiness Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-036-release-readiness-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Release Readiness Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-036-release-readiness-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Release Readiness Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -23461,18 +23491,21 @@
         "tasks": [
           {
             "task_id": "loop-038-deployment-validation-loop-happy-path",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "happy_path",
             "scenario": "Deployment Validation Loop receives sufficient fresh evidence and the correct owner is resolved.",
             "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
           },
           {
             "task_id": "loop-038-deployment-validation-loop-missing-proof",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "failure_path",
             "scenario": "Deployment Validation Loop has declared or implemented control but no current executed proof.",
             "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
           },
           {
             "task_id": "loop-038-deployment-validation-loop-conditional-expiry",
+            "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
             "type": "conditional_path",
             "scenario": "Deployment Validation Loop receives temporary approval with missing evidence and compensating controls.",
             "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -95621,18 +95654,21 @@
       "tasks": [
         {
           "task_id": "loop-006-requirements-quality-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Requirements Quality Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-006-requirements-quality-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Requirements Quality Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-006-requirements-quality-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Requirements Quality Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -95645,18 +95681,21 @@
       "tasks": [
         {
           "task_id": "loop-007-requirements-change-control-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Requirements Change Control Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-007-requirements-change-control-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Requirements Change Control Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-007-requirements-change-control-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Requirements Change Control Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -95669,18 +95708,21 @@
       "tasks": [
         {
           "task_id": "loop-008-requirements-traceability-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Requirements Traceability Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-008-requirements-traceability-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Requirements Traceability Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-008-requirements-traceability-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Requirements Traceability Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -95813,18 +95855,21 @@
       "tasks": [
         {
           "task_id": "loop-014-retrospective-improvement-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Retrospective Improvement Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-014-retrospective-improvement-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Retrospective Improvement Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-014-retrospective-improvement-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Retrospective Improvement Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -95837,18 +95882,21 @@
       "tasks": [
         {
           "task_id": "loop-015-design-review-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Design Review Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-015-design-review-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Design Review Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-015-design-review-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Design Review Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -95861,18 +95909,21 @@
       "tasks": [
         {
           "task_id": "loop-016-architecture-fitness-and-future-compatibility-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Architecture Fitness and Future Compatibility Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-016-architecture-fitness-and-future-compatibility-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Architecture Fitness and Future Compatibility Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-016-architecture-fitness-and-future-compatibility-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Architecture Fitness and Future Compatibility Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -96005,18 +96056,21 @@
       "tasks": [
         {
           "task_id": "loop-022-code-quality-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Code Quality Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-022-code-quality-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Code Quality Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-022-code-quality-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Code Quality Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -96029,18 +96083,21 @@
       "tasks": [
         {
           "task_id": "loop-023-pull-request-review-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Pull Request Review Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-023-pull-request-review-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Pull Request Review Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-023-pull-request-review-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Pull Request Review Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -96077,18 +96134,21 @@
       "tasks": [
         {
           "task_id": "loop-025-ci-pipeline-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "CI Pipeline Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-025-ci-pipeline-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "CI Pipeline Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-025-ci-pipeline-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "CI Pipeline Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -96353,18 +96413,21 @@
       "tasks": [
         {
           "task_id": "loop-036-release-readiness-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Release Readiness Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-036-release-readiness-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Release Readiness Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-036-release-readiness-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Release Readiness Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -96401,18 +96464,21 @@
       "tasks": [
         {
           "task_id": "loop-038-deployment-validation-loop-happy-path",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "happy_path",
           "scenario": "Deployment Validation Loop receives sufficient fresh evidence and the correct owner is resolved.",
           "expected": "QUALIFIED through PROOF_GREEN or EFFECTIVENESS_PENDING with evidence references."
         },
         {
           "task_id": "loop-038-deployment-validation-loop-missing-proof",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "failure_path",
           "scenario": "Deployment Validation Loop has declared or implemented control but no current executed proof.",
           "expected": "MISSING_PROOF or PROOF_FAILED blocks pass verdict."
         },
         {
           "task_id": "loop-038-deployment-validation-loop-conditional-expiry",
+          "fixture_ref": "evals/fixtures/pilot-sdlc-governance-os.json",
           "type": "conditional_path",
           "scenario": "Deployment Validation Loop receives temporary approval with missing evidence and compensating controls.",
           "expected": "CONDITIONAL_ACTIVE expires to CONDITIONAL_EXPIRED unless proof is produced."
@@ -100150,11 +100216,13 @@
         "DIAGNOSED",
         "INPUT_STALE",
         "INPUT_CONFLICTED",
-        "INPUT_UNTRUSTED"
+        "INPUT_UNTRUSTED",
+        "BLOCKED"
       ],
       "DIAGNOSED": [
         "PRIORITIZED",
-        "INSUFFICIENT_EVIDENCE"
+        "INSUFFICIENT_EVIDENCE",
+        "BLOCKED"
       ],
       "PRIORITIZED": [
         "PLANNED",
@@ -100178,12 +100246,14 @@
       "ACTION_APPLIED": [
         "VALIDATION_PASSED",
         "VALIDATION_FAILED",
-        "ROLLED_BACK"
+        "ROLLED_BACK",
+        "BLOCKED"
       ],
       "VALIDATION_PASSED": [
         "PROOF_GREEN",
         "PROOF_FAILED",
-        "EFFECTIVENESS_PENDING"
+        "EFFECTIVENESS_PENDING",
+        "BLOCKED"
       ],
       "VALIDATION_FAILED": [
         "PLANNED",
@@ -100192,7 +100262,8 @@
       ],
       "PROOF_GREEN": [
         "EFFECTIVENESS_PENDING",
-        "EFFECTIVENESS_PROVEN"
+        "EFFECTIVENESS_PROVEN",
+        "BLOCKED"
       ],
       "PROOF_FAILED": [
         "PLANNED",
@@ -100202,7 +100273,8 @@
       "EFFECTIVENESS_PENDING": [
         "EFFECTIVENESS_PROVEN",
         "EFFECTIVENESS_FAILED",
-        "INSUFFICIENT_EVIDENCE"
+        "INSUFFICIENT_EVIDENCE",
+        "BLOCKED"
       ],
       "INSUFFICIENT_EVIDENCE": [
         "OBSERVED",
@@ -100628,7 +100700,7 @@
   "human_handoffs": [
     {
       "handoff_id": "missing_authority",
-      "trigger": "policy owner, gate owner, risk owner, executor, or validator cannot be resolved",
+      "trigger": "policy owner, gate owner, risk owner, executor, validator, or backup owner cannot be resolved",
       "required_human": "category policy owner",
       "allowed_state": "BLOCKED"
     },
@@ -100709,14 +100781,14 @@
     {
       "gap_id": "probes-are-contracts-not-integrations",
       "severity": "pilot_blocker",
-      "description": "probe registry defines proof methods but does not yet call real CI, observability, security, or model-eval systems",
-      "required_fix": "bind probe IDs to executable adapters for the first pilot playbook"
+      "description": "credential-free local probe adapters and fixtures exist; real CI, observability, security, and model-eval integrations remain organization-owned",
+      "required_fix": "bind probe IDs to approved external adapters and retain independent live evidence for the first pilot playbook"
     },
     {
       "gap_id": "golden-tasks-need-real-fixtures",
       "severity": "pilot_blocker",
-      "description": "golden tasks exist for every loop but need real examples from the operating environment",
-      "required_fix": "seed golden tasks from recent releases, incidents, defects, AI failures, audits, and agent tool calls"
+      "description": "bounded contract fixtures exist for the pilot; real examples from the operating environment are still required",
+      "required_fix": "seed and approve golden tasks from recent releases, incidents, defects, AI failures, audits, and agent tool calls"
     }
   ],
   "owners": [
@@ -100726,6 +100798,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100735,6 +100809,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100744,6 +100820,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100753,6 +100831,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100762,6 +100842,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100771,6 +100853,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100780,6 +100864,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100789,6 +100875,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100798,6 +100886,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100807,6 +100897,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100816,6 +100908,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100825,6 +100919,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     },
@@ -100834,6 +100930,8 @@
       "policy_owner": "UNASSIGNED",
       "gate_owner": "UNASSIGNED",
       "risk_owner": "UNASSIGNED",
+      "executor_owner": "UNASSIGNED",
+      "validator_owner": "UNASSIGNED",
       "backup_owner": "UNASSIGNED",
       "status": "DRAFT"
     }
@@ -100960,6 +101058,7 @@
   "probes": [
     {
       "probe_id": "routing-deduplication-v1",
+      "adapter": "scripts/pilot_probes/routing_deduplication.py",
       "loop_ids": [
         "loop-001-product-discovery-loop",
         "loop-002-ai-use-case-validation-loop",
@@ -101083,6 +101182,7 @@
     },
     {
       "probe_id": "authority-resolution-v1",
+      "adapter": "scripts/pilot_probes/authority_resolution.py",
       "loop_ids": [
         "loop-001-product-discovery-loop",
         "loop-002-ai-use-case-validation-loop",
@@ -101207,6 +101307,7 @@
     },
     {
       "probe_id": "state-transition-v1",
+      "adapter": "scripts/pilot_probes/state_transition.py",
       "loop_ids": [
         "loop-001-product-discovery-loop",
         "loop-002-ai-use-case-validation-loop",
@@ -101330,6 +101431,7 @@
     },
     {
       "probe_id": "proof-scope-freshness-v1",
+      "adapter": "scripts/pilot_probes/proof_scope_freshness.py",
       "loop_ids": [
         "loop-001-product-discovery-loop",
         "loop-002-ai-use-case-validation-loop",
@@ -101454,6 +101556,7 @@
     },
     {
       "probe_id": "replay-tool-idempotency-v1",
+      "adapter": "scripts/pilot_probes/replay_tool_idempotency.py",
       "loop_ids": [
         "loop-066-agent-goal-achievement-loop",
         "loop-067-agent-planning-quality-loop",
@@ -102065,10 +102168,10 @@
     "validator_checks": 94,
     "audit": {
       "status": "pass_with_action_items",
-      "files_scanned": 262,
-      "lines_scanned": 219735,
+      "files_scanned": 279,
+      "lines_scanned": 232472,
       "blockers": 0,
-      "action_required": 1577,
+      "action_required": 1603,
       "warnings": 715
     },
     "required_counts": {

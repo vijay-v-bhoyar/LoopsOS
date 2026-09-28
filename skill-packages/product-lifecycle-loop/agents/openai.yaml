@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Lifecycle Loop"
+  short_description: "Pursue product goals with verified repair and recovery"
+  default_prompt: "Use $product-lifecycle-loop to pursue my full product goal, diagnose and repair failures, request precise help when needed, and resume until the accepted outcome is verified or a genuine dependency requires my action."

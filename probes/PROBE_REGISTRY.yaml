@@ -9,6 +9,7 @@ enterprise_probe_types:
 probes:
   -
     probe_id: routing-deduplication-v1
+    adapter: scripts/pilot_probes/routing_deduplication.py
     loop_ids:
       - loop-001-product-discovery-loop
       - loop-002-ai-use-case-validation-loop
@@ -128,6 +129,7 @@ probes:
     evidence_output: routing_verdict.json
   -
     probe_id: authority-resolution-v1
+    adapter: scripts/pilot_probes/authority_resolution.py
     loop_ids:
       - loop-001-product-discovery-loop
       - loop-002-ai-use-case-validation-loop
@@ -248,6 +250,7 @@ probes:
     evidence_output: authority_verdict.json
   -
     probe_id: state-transition-v1
+    adapter: scripts/pilot_probes/state_transition.py
     loop_ids:
       - loop-001-product-discovery-loop
       - loop-002-ai-use-case-validation-loop
@@ -367,6 +370,7 @@ probes:
     evidence_output: state_transition_verdict.json
   -
     probe_id: proof-scope-freshness-v1
+    adapter: scripts/pilot_probes/proof_scope_freshness.py
     loop_ids:
       - loop-001-product-discovery-loop
       - loop-002-ai-use-case-validation-loop
@@ -487,6 +491,7 @@ probes:
     evidence_output: proof_freshness_verdict.json
   -
     probe_id: replay-tool-idempotency-v1
+    adapter: scripts/pilot_probes/replay_tool_idempotency.py
     loop_ids:
       - loop-066-agent-goal-achievement-loop
       - loop-067-agent-planning-quality-loop

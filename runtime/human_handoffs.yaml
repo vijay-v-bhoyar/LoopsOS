@@ -3,7 +3,7 @@ principle: "handoff before irreversible consequence, privileged access, external
 handoff_rules:
   -
     handoff_id: missing_authority
-    trigger: "policy owner, gate owner, risk owner, executor, or validator cannot be resolved"
+    trigger: "policy owner, gate owner, risk owner, executor, validator, or backup owner cannot be resolved"
     required_human: "category policy owner"
     allowed_state: BLOCKED
   -

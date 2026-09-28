@@ -1,10 +1,11 @@
 FROM node:22-alpine AS build
 
 WORKDIR /workspace
+ENV LOOPOS_USE_CHECKED_IN_DATA=1
 COPY . .
 RUN cd ui && npm ci && npm run build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.31.3-alpine3.24-slim@sha256:22f839c5fb4007dc24d203a170a9e03fc185d660bfefc34ac6823a7aef085cbc AS runtime
 
 COPY ui/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /workspace/ui/dist /usr/share/nginx/html
